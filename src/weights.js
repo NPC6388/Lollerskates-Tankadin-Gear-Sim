@@ -58,6 +58,17 @@ export const SCALES = {
     health: 0.08, resilienceRating: 0.05, armor: 0.06,
     metaSockets: 18, redSockets: 9, yellowSockets: 9, blueSockets: 12,
   }),
+
+  // 6. Balanced — caps enforced as constraints; beyond them, 1 SP ~= 1 stamina with
+  // survival mitigation (block/defense/dodge) edging ahead. For GearForge-style optimizers.
+  balanced: scale({
+    stamina: 1.0, intellect: 0.15, strength: 0.4, agility: 0.92,
+    dodgeRating: 1.06, parryRating: 0.85, defenseRating: 1.2,
+    blockRating: 1.2, blockValue: 0.05, blockValueBonus: 0.05,
+    hitRating: 0.6, expertiseRating: 0.9, spellDamage: 1.0, spellHitRating: 1.1,
+    health: 0.08, resilienceRating: 0.05, armor: 0.06,
+    metaSockets: 18, redSockets: 9, yellowSockets: 9, blueSockets: 12,
+  }),
 };
 
 // Goal -> scale mapping used by the goal picker ("the agent"). Resistance goals reuse
@@ -68,4 +79,5 @@ export const GOALS = {
   'st-survival': { scale: 'survivalEHP', uncrushable: 'required' },
   'progression-spike': { scale: 'survivalUncrushable', uncrushable: 'required', staminaLean: true },
   'resistance-set': { scale: 'survivalEHP', uncrushable: 'optional', resistanceConstraint: true },
+  'balanced': { scale: 'balanced', uncrittable: 'required', uncrushable: 'required' },
 };
