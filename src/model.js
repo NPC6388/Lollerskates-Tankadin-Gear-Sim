@@ -1,22 +1,41 @@
 // Character model: turns a set of items (raw ratings + stats) into the final
-// character-sheet values evaluateSet() expects. This is the rating->% conversion
-// layer the spreadsheet doesn't need (you read finals off the game) but the
-// optimizer must compute per candidate set.
+// character-sheet values evaluateSet() expects.
 //
-// NOTE: the base avoidance values below are PLACEHOLDERS for a level-70 Prot
-// Paladin with no gear. They must be CALIBRATED against your real unbuffed
-// character sheet (the addon can export your finals so we back out the bases:
-// base = sheet_value - sum(item contributions)). The conversions/ratings are exact.
+// This is a FIRST-PRINCIPLES forward calculation: final = race/class base + talents +
+// gear, using real game constants. It deliberately does NOT back-fit to the player's
+// sheet (the old `calibrate()` is gone) — so if a computed final differs from the game,
+// that difference is a real signal (a missing stat source or a wrong constant), not
+// something papered over.
+//
+// Constants below are for a level-70 Blood Elf Protection Paladin running the guide's
+// Avenger's Shield build (0/43/18). Each is traceable to a game source; the few
+// race/class base intercepts were derived once from the unbuffed sheet + correct gear
+// (e.g. base dodge from the unbuffed↔buffed agility pair) and are documented as such.
 
 import { RATING, BASE } from './constants.js';
 
-export const MODEL = {
-  baseDodgePct: 5.0,        // CALIBRATE
-  baseParryPct: 5.0,        // CALIBRATE
-  baseBlockPct: 5.0,        // CALIBRATE
-  agilityPerDodgePct: 25,   // agility for +1% dodge (CALIBRATE)
-  baseHealth: 3500,         // L70 base before stamina (CALIBRATE)
+// Race/class base intercepts (L70 Blood Elf Paladin, no gear, no talents, no buffs).
+export const CHARACTER = {
+  baseAgility: 79,          // sheet agility 85 - 6 (chest gem) = 79 base
+  baseStamina: 115,         // (sheet 981 / 1.16 stam-talents) - 731 gear ≈ 115
+  baseDodgePct: 0.649,      // dodge at 0 agility; from the unbuffed↔buffed sheet pair
+  baseParryPct: 5.0,        // class base parry
+  baseBlockPct: 5.0,        // class base block
+  agilityPerDodgePct: 25.0, // agility per +1% dodge (derived: Δ18 agi → Δ0.72% dodge)
+  armorPerAgility: 2,       // base armor = agility × 2 (Toughness does NOT touch this)
+  baseHealth: 3377,         // health at 0 stamina (first-20-stamina rule applied below)
   hpPerStamina: 10,
+};
+
+// Avenger's Shield build (0/43/18) talent modifiers that affect the defensive sheet.
+export const TALENTS = {
+  anticipationDefenseSkill: 20, // Anticipation 5/5: +20 defense skill (flat)
+  deflectionParryPct: 5,        // Deflection 5/5: +5% parry
+  toughnessItemArmorMult: 1.10, // Toughness 5/5: +10% armor FROM ITEMS
+  staminaMult: 1.16,            // Sacred Duty 2/2 (+6%) + Combat Expertise 5/5 (+10%)
+  combatExpertise: 5,           // Combat Expertise 5/5: +5 expertise (flat)
+  precisionSpellHitPct: 3,      // Precision 3/3: +3% spell hit
+  precisionMeleeHitPct: 3,      // Precision 3/3: +3% melee hit
 };
 
 export const STAT_KEYS = [
@@ -35,53 +54,43 @@ export function sumStats(items) {
   return t;
 }
 
-// Derive per-character calibration from the equipped set + the character-sheet finals
-// (from the addon's C: line). base* fold in class base + agility + talents; the defense
-// offset captures raw/enchant defense skill not from defense rating. Stable across a
-// character's plate sets, so it transfers to new sets the optimizer builds.
-export function calibrate(equippedItems, finals) {
-  const t = sumStats(equippedItems);
-  const defBonus = (finals.defenseSkill - BASE.baseDefenseSkill) * BASE.defenseBenefitPerSkill;
-  return {
-    defenseSkillOffset: finals.defenseSkill - (BASE.baseDefenseSkill + t.defenseRating / RATING.defensePerSkill),
-    baseDodge: finals.dodge - t.dodgeRating / RATING.dodgePer1 - defBonus,
-    baseParry: finals.parry - t.parryRating / RATING.parryPer1 - defBonus,
-    baseBlock: finals.block - t.blockRating / RATING.blockPer1 - defBonus,
-    baseArmor: (finals.armor || 0) - t.armor,
-    baseHealth: (finals.health || 0) - t.stamina * MODEL.hpPerStamina,
-  };
+// TBC stamina→health: the first 20 stamina give 1 HP each, the rest give 10 HP each.
+function healthFromStamina(stam) {
+  return stam <= 20 ? stam : 20 + (stam - 20) * CHARACTER.hpPerStamina;
 }
 
-// items -> evaluateSet() input shape. Pass opts.calibration (from calibrate()) for a
-// character-accurate result; without it, the placeholder MODEL bases are used.
+// items -> evaluateSet() input shape, computed from scratch. opts.buffs (optional) is a
+// flat stat block added on top of gear for the raid-buffed view (e.g. Mark of the Wild,
+// Fortitude, Wizard Oil); omit it for the unbuffed sheet.
 export function aggregate(items, opts = {}) {
-  const { hsBlockBonus = 30, staminaMult = 1.0, calibration: cal } = opts;
+  const { hsBlockBonus = 30, buffs = {} } = opts;
+  const C = CHARACTER, T = TALENTS;
   const t = sumStats(items);
+  const b = (k) => (t[k] || 0) + (buffs[k] || 0);
 
-  const defOffset = cal ? cal.defenseSkillOffset : 0;
-  const defenseSkill = BASE.baseDefenseSkill + t.defenseRating / RATING.defensePerSkill + defOffset;
+  const defenseSkill =
+    BASE.baseDefenseSkill + b('defenseRating') / RATING.defensePerSkill + T.anticipationDefenseSkill;
   const defBonus = (defenseSkill - BASE.baseDefenseSkill) * BASE.defenseBenefitPerSkill;
 
-  const baseDodge = cal ? cal.baseDodge : MODEL.baseDodgePct;
-  const baseParry = cal ? cal.baseParry : MODEL.baseParryPct;
-  const baseBlock = cal ? cal.baseBlock : MODEL.baseBlockPct;
-  // agility->dodge only when uncalibrated; calibrated baseDodge already folds agility in
-  const agiDodge = cal ? 0 : t.agility / MODEL.agilityPerDodgePct;
-  const baseArmor = cal ? cal.baseArmor : 0;
-  const baseHealth = cal ? cal.baseHealth : MODEL.baseHealth;
+  const agility = C.baseAgility + b('agility');
+  const stamina = (C.baseStamina + b('stamina')) * T.staminaMult;
 
   return {
     defenseSkill,
-    resilienceRating: t.resilienceRating,
+    resilienceRating: b('resilienceRating'),
     missPct: BASE.baseMissChance + defBonus,
-    dodgePct: baseDodge + agiDodge + t.dodgeRating / RATING.dodgePer1 + defBonus,
-    parryPct: baseParry + t.parryRating / RATING.parryPer1 + defBonus,
-    blockPct: baseBlock + t.blockRating / RATING.blockPer1 + defBonus,
+    dodgePct: C.baseDodgePct + agility / C.agilityPerDodgePct + b('dodgeRating') / RATING.dodgePer1 + defBonus,
+    parryPct: C.baseParryPct + T.deflectionParryPct + b('parryRating') / RATING.parryPer1 + defBonus,
+    blockPct: C.baseBlockPct + b('blockRating') / RATING.blockPer1 + defBonus,
     hsBlockBonus,
-    armor: baseArmor + t.armor,
-    health: (baseHealth + t.stamina * MODEL.hpPerStamina) * staminaMult,
-    spellPower: t.spellDamage,
-    blockValue: t.blockValue,
+    armor: agility * C.armorPerAgility + b('armor') * T.toughnessItemArmorMult,
+    health: C.baseHealth + healthFromStamina(stamina),
+    stamina,
+    agility,
+    spellPower: b('spellDamage'),
+    // NOTE: a shield's base "N Block" line is not yet captured by the addon, nor is the
+    // Strength→block-value contribution modeled, so this is gear-suffix block value only.
+    blockValue: b('blockValue'),
     _raw: t,
   };
 }
