@@ -178,7 +178,11 @@ flow into this module (and vice-versa).
    on the sample pool; 53/53 tests. **Remaining for M2:** real item DB + the goal-picker UI
    (currently driven via the API).
 3. **M3 — Item/gem/enchant databases + gem/enchant solver + professions + buff toggle.**
-4. **M4 — Companion addon (bulk import).**
+4. **M4 — Companion addon (bulk import). ✅ DONE.** `addon/TankadinGearSim` exports
+   equipped + bags + bank + reagent bank as `I:item:...` lines (gems/enchants preserved),
+   plus a `C:...` line of current character-sheet finals so the sim can **self-calibrate**
+   its base-stat model. `src/import.js` parses the format; 6 tests cover it. Reads all WoW
+   APIs defensively (pcall) for client-build resilience.
 5. **M5 — Exhaustive toggle, resistance-set UI, "why this piece" explanations, polish,
    and a link from the guide.**
 
