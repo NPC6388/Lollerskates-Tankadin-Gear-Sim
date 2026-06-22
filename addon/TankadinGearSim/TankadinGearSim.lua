@@ -7,7 +7,7 @@
 -- (GetItemStats alone returns the base item with empty sockets). Empty-socket counts are
 -- still taken from GetItemStats for the gem optimizer. Everything read defensively.
 
-local VERSION = "4"
+local VERSION = "5"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -84,9 +84,11 @@ local function tooltipLines(link)
   return out
 end
 
--- Ordered phrase patterns (lowercased line) -> ITEM_MOD key. More specific first so e.g.
--- "spell hit rating" wins over "hit rating". Handles both "...by N" (equip/enchant) and
--- "+N ... rating" (gem) wordings.
+-- Ordered phrase patterns (matched against a single-stat CLAUSE, see parseTooltipStats)
+-- -> ITEM_MOD key. More specific first so "spell hit rating" wins over "hit rating".
+-- Handles both "...by N" (equip/enchant) and "+N ... rating" (gem) wordings. The game
+-- prints "Spell Damage"; gamers say "spell power" -- we accept BOTH and store as
+-- ITEM_MOD_SPELL_POWER (the parser maps that to our internal spellPower).
 local PHRASES = {
   { "defense rating by (%d+)", "ITEM_MOD_DEFENSE_SKILL_RATING" },
   { "%+(%d+) defense rating", "ITEM_MOD_DEFENSE_SKILL_RATING" },
@@ -108,12 +110,14 @@ local PHRASES = {
   { "expertise rating by (%d+)", "ITEM_MOD_EXPERTISE_RATING" },
   { "%+(%d+) expertise rating", "ITEM_MOD_EXPERTISE_RATING" },
   { "spell critical strike rating by (%d+)", "ITEM_MOD_CRIT_SPELL_RATING" },
+  { "%+(%d+) spell critical strike rating", "ITEM_MOD_CRIT_SPELL_RATING" },
   { "critical strike rating by (%d+)", "ITEM_MOD_CRIT_RATING" },
   { "%+(%d+) critical strike rating", "ITEM_MOD_CRIT_RATING" },
   { "haste rating by (%d+)", "ITEM_MOD_HASTE_RATING" },
+  { "spell damage by (%d+)", "ITEM_MOD_SPELL_POWER" },
+  { "%+(%d+) spell damage", "ITEM_MOD_SPELL_POWER" },
   { "spell power by (%d+)", "ITEM_MOD_SPELL_POWER" },
   { "%+(%d+) spell power", "ITEM_MOD_SPELL_POWER" },
-  { "magical spells and effects by up to (%d+)", "ITEM_MOD_SPELL_POWER" },
   { "attack power by (%d+)", "ITEM_MOD_ATTACK_POWER" },
   { "%+(%d+) attack power", "ITEM_MOD_ATTACK_POWER" },
 }
@@ -123,6 +127,27 @@ local PRIMARY = { stamina = "ITEM_MOD_STAMINA_SHORT", strength = "ITEM_MOD_STREN
 
 local RESIST = { fire = "RESISTANCE2_NAME", nature = "RESISTANCE3_NAME", frost = "RESISTANCE4_NAME",
   shadow = "RESISTANCE5_NAME", arcane = "RESISTANCE6_NAME", holy = "RESISTANCE1_NAME" }
+
+-- Parse one already-lowercased clause (a single stat) into (key, value) and add it.
+local function parseClause(clause, add)
+  -- "+N all stats" -> every primary
+  local alln = clause:match("%+(%d+) all stats")
+  if alln then
+    for _, pk in pairs(PRIMARY) do add(pk, tonumber(alln)) end
+    return
+  end
+  -- primary: "+43 stamina" / gem "+12 stamina" (un-anchored so socketed-gem lines count)
+  local n, word = clause:match("%+(%d+)%s+(%a+)")
+  if n and PRIMARY[word] then add(PRIMARY[word], tonumber(n)) end
+  -- resistance: "+21 fire resistance"
+  local rn, rword = clause:match("%+(%d+)%s+(%a+)%s+resistance")
+  if rn and RESIST[rword] then add(RESIST[rword], tonumber(rn)) end
+  -- ratings / spell power / attack power: first matching phrase wins for this clause
+  for _, pair in ipairs(PHRASES) do
+    local v = clause:match(pair[1])
+    if v then add(pair[2], tonumber(v)); break end
+  end
+end
 
 local function parseTooltipStats(link)
   local s = {}
@@ -134,20 +159,22 @@ local function parseTooltipStats(link)
       or l:find("when struck", 1, true) or l:find("for %d+ sec") then
       -- skip this line
     else
-    -- armor: "1227 armor"
-    local arm = l:match("^([%d,]+) armor")
-    if arm then add("RESISTANCE0_NAME", tonumber((arm:gsub(",", "")))) end
-    -- primary stats: "+43 stamina"
-    local n, word = l:match("^%+(%d+) (%a+)")
-    if n and PRIMARY[word] then add(PRIMARY[word], tonumber(n)) end
-    -- resistances: "+21 fire resistance"
-    local rn, rword = l:match("%+(%d+) (%a+) resistance")
-    if rn and RESIST[rword] then add(RESIST[rword], tonumber(rn)) end
-    -- ratings / spell power / attack power: first matching phrase wins
-    for _, pair in ipairs(PHRASES) do
-      local v = l:match(pair[1])
-      if v then add(pair[2], tonumber(v)); break end
-    end
+      -- equip spell-power phrase FIRST: it contains " and " (which we split on below),
+      -- so consume + strip it before clause-splitting.
+      local eqsp = l:match("magical spells and effects by up to (%d+)")
+      if eqsp then add("ITEM_MOD_SPELL_POWER", tonumber(eqsp)) end
+      -- armor: "1227 armor" (whole-line)
+      local arm = l:match("^([%d,]+) armor")
+      if arm then add("RESISTANCE0_NAME", tonumber((arm:gsub(",", "")))) end
+      -- Split combined stat lines into single-stat clauses so BOTH stats are read:
+      --   "+22 Spell Power and +14 Spell Hit Rating" (Glyph of Power)
+      --   "+35 Spell Damage and +20 Stamina" (Runic Spellthread)
+      --   "+X Defense Rating and +10 Dodge Rating" (shoulder inscription)
+      local body = l:gsub("magical spells and effects by up to %d+", "")
+      body = body:gsub(" and ", "\1"):gsub(",", "\1")
+      for clause in body:gmatch("[^\1]+") do
+        parseClause(clause, add)
+      end
     end -- end of non-skipped line
   end
   return s
