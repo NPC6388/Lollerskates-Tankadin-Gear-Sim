@@ -26,10 +26,11 @@
 | Gems/enchants | **Ideal by default**, with profession toggles (e.g. drop JC-only gems if no Jewelcrafting). Socket bonuses are *optional* — only gem-for-color when the bonus beats the best raw gem |
 | Stat basis | **Toggle: unbuffed ↔ raid-buffed** |
 | Talents | **Preset builds from the guide** (each carries its talent modifiers so caps compute correctly) |
-| Professions | **Modeled** — user supplies their two professions |
+| Professions | **Selected in the sim's UI** — user picks their two professions; perks applied from that choice |
 | Caps | **Uncrittable always enforced**; **uncrushable per-goal** (required for survival goals, optional for farm threat) |
 
-**Still to confirm:** the user's two professions; any tweaks to goals #1–4.
+**Confirmed:** goals are settled as-is for now; profession selection is an in-sim UI input
+(not a hardcoded value).
 
 ---
 
@@ -126,7 +127,8 @@ etc.). The buff toggle models available resist buffs per school.
   so the caps compute correctly.
 - **Buffs:** unbuffed↔raid-buffed toggle. Buffed view matches the guide's reference
   profile assumptions and adds resist buffs/auras toward resistance targets.
-- **Professions:** user supplies their two. Modeled perks (TBC): Blacksmithing sockets
+- **Professions:** chosen in the sim's UI (the user selects their two professions).
+  Modeled perks (TBC): Blacksmithing sockets
   (gloves/bracers), Jewelcrafting special/JC-only gems, Enchanting ring enchants,
   Leatherworking armor kits / bracer fur lining, Engineering tinkers (cloak/gloves/etc.),
   Mining Toughness (+stamina), Alchemy mixology. Profession-locked gems/enchants are
@@ -175,7 +177,9 @@ flow into this module (and vice-versa).
 ---
 
 ## 11. Open items
-- [ ] User's two professions.
-- [ ] Confirm/tweak goals #1–4.
 - [ ] Source and scope the item database.
 - [ ] Decide GitHub Pages enablement once there's something to serve.
+
+Goals #1–5 are settled and profession selection is an in-sim UI input — both resolved.
+Next step is **M1** (core math/constraint engine), gated on reproducing the guide's
+709 SP reference profile exactly.
