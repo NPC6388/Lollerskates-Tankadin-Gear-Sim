@@ -26,7 +26,8 @@ export const BASE = {
   defenseBenefitPerSkill: 0.04, // % per defense skill to dodge/parry/block/miss/crit-avoid
   raidBossLevel: 73,
   heroicBossLevel: 72,
-  bossCritVsPlayer: 5.6,        // % crit a level 73 boss has on a level 70 (guide: 1531)
+  bossCritVsPlayer: 5.6,        // % crit a level 73 raid boss has on a level 70 (guide: 1531)
+  heroicBossCritVsPlayer: 5.4,  // % crit a level 72 heroic boss has on a level 70
 };
 
 // --- Hard caps / thresholds (guide: #stat-conversions, #combat-table) ---
