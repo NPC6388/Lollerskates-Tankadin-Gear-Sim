@@ -7,7 +7,7 @@
 -- (GetItemStats alone returns the base item with empty sockets). Empty-socket counts are
 -- still taken from GetItemStats for the gem optimizer. Everything read defensively.
 
-local VERSION = "3"
+local VERSION = "4"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -129,6 +129,11 @@ local function parseTooltipStats(link)
   local function add(k, v) if k and v then s[k] = (s[k] or 0) + v end end
   for _, raw in ipairs(tooltipLines(link)) do
     local l = raw:lower()
+    -- skip on-use / proc effects: their big activated numbers are not passive stats
+    if l:match("^use:") or l:find("chance on", 1, true) or l:find("chance when", 1, true)
+      or l:find("when struck", 1, true) or l:find("for %d+ sec") then
+      -- skip this line
+    else
     -- armor: "1227 armor"
     local arm = l:match("^([%d,]+) armor")
     if arm then add("RESISTANCE0_NAME", tonumber((arm:gsub(",", "")))) end
@@ -143,6 +148,7 @@ local function parseTooltipStats(link)
       local v = l:match(pair[1])
       if v then add(pair[2], tonumber(v)); break end
     end
+    end -- end of non-skipped line
   end
   return s
 end
@@ -167,17 +173,19 @@ end
 
 local function scanGear()
   local seen, list = {}, {}
-  local function addLink(link)
+  -- Equipped items are tagged "E:" (used to auto-calibrate the model to your sheet);
+  -- everything else is "I:". Equipped slots are scanned first so they win the de-dupe.
+  local function addLink(link, equipped)
     local s = extractItemString(link)
     if not s or seen[s] then return end
     seen[s] = true
-    list[#list + 1] = "I:" .. s .. "|" .. itemSegment(link)
+    list[#list + 1] = (equipped and "E:" or "I:") .. s .. "|" .. itemSegment(link)
   end
-  for slot = 1, 19 do addLink(safe(GetInventoryItemLink, "player", slot)) end
+  for slot = 1, 19 do addLink(safe(GetInventoryItemLink, "player", slot), true) end
   local bags = { 0, 1, 2, 3, 4, -1, 5, 6, 7, 8, 9, 10, 11, -3 }
   for _, bag in ipairs(bags) do
     local n = safe(GetContainerNumSlots, bag) or 0
-    for slot = 1, n do addLink(safe(GetContainerItemLink, bag, slot)) end
+    for slot = 1, n do addLink(safe(GetContainerItemLink, bag, slot), false) end
   end
   return list
 end

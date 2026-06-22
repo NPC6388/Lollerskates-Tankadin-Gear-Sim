@@ -115,10 +115,12 @@ export function parseExport(text) {
         if (!k) continue;
         out.character[k] = v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v;
       }
-    } else if (line.startsWith('I:')) {
+    } else if (line.startsWith('I:') || line.startsWith('E:')) {
+      const equipped = line.startsWith('E:');
       const body = line.slice(2);
       const [itemStr, equipLoc = '', statSeg = ''] = body.split('|');
       const item = parseItemString(itemStr);
+      item.equipped = equipped;
       if (equipLoc || statSeg) {
         const { stats, itemLevel } = parseStatSegment(statSeg);
         item.equipLoc = equipLoc;

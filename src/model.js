@@ -35,24 +35,51 @@ export function sumStats(items) {
   return t;
 }
 
-// items -> evaluateSet() input shape
+// Derive per-character calibration from the equipped set + the character-sheet finals
+// (from the addon's C: line). base* fold in class base + agility + talents; the defense
+// offset captures raw/enchant defense skill not from defense rating. Stable across a
+// character's plate sets, so it transfers to new sets the optimizer builds.
+export function calibrate(equippedItems, finals) {
+  const t = sumStats(equippedItems);
+  const defBonus = (finals.defenseSkill - BASE.baseDefenseSkill) * BASE.defenseBenefitPerSkill;
+  return {
+    defenseSkillOffset: finals.defenseSkill - (BASE.baseDefenseSkill + t.defenseRating / RATING.defensePerSkill),
+    baseDodge: finals.dodge - t.dodgeRating / RATING.dodgePer1 - defBonus,
+    baseParry: finals.parry - t.parryRating / RATING.parryPer1 - defBonus,
+    baseBlock: finals.block - t.blockRating / RATING.blockPer1 - defBonus,
+    baseArmor: (finals.armor || 0) - t.armor,
+    baseHealth: (finals.health || 0) - t.stamina * MODEL.hpPerStamina,
+  };
+}
+
+// items -> evaluateSet() input shape. Pass opts.calibration (from calibrate()) for a
+// character-accurate result; without it, the placeholder MODEL bases are used.
 export function aggregate(items, opts = {}) {
-  const { hsBlockBonus = 30, staminaMult = 1.0 } = opts;
+  const { hsBlockBonus = 30, staminaMult = 1.0, calibration: cal } = opts;
   const t = sumStats(items);
 
-  const defenseSkill = BASE.baseDefenseSkill + t.defenseRating / RATING.defensePerSkill;
+  const defOffset = cal ? cal.defenseSkillOffset : 0;
+  const defenseSkill = BASE.baseDefenseSkill + t.defenseRating / RATING.defensePerSkill + defOffset;
   const defBonus = (defenseSkill - BASE.baseDefenseSkill) * BASE.defenseBenefitPerSkill;
+
+  const baseDodge = cal ? cal.baseDodge : MODEL.baseDodgePct;
+  const baseParry = cal ? cal.baseParry : MODEL.baseParryPct;
+  const baseBlock = cal ? cal.baseBlock : MODEL.baseBlockPct;
+  // agility->dodge only when uncalibrated; calibrated baseDodge already folds agility in
+  const agiDodge = cal ? 0 : t.agility / MODEL.agilityPerDodgePct;
+  const baseArmor = cal ? cal.baseArmor : 0;
+  const baseHealth = cal ? cal.baseHealth : MODEL.baseHealth;
 
   return {
     defenseSkill,
     resilienceRating: t.resilienceRating,
     missPct: BASE.baseMissChance + defBonus,
-    dodgePct: MODEL.baseDodgePct + t.agility / MODEL.agilityPerDodgePct + t.dodgeRating / RATING.dodgePer1 + defBonus,
-    parryPct: MODEL.baseParryPct + t.parryRating / RATING.parryPer1 + defBonus,
-    blockPct: MODEL.baseBlockPct + t.blockRating / RATING.blockPer1 + defBonus,
+    dodgePct: baseDodge + agiDodge + t.dodgeRating / RATING.dodgePer1 + defBonus,
+    parryPct: baseParry + t.parryRating / RATING.parryPer1 + defBonus,
+    blockPct: baseBlock + t.blockRating / RATING.blockPer1 + defBonus,
     hsBlockBonus,
-    armor: t.armor,
-    health: (MODEL.baseHealth + t.stamina * MODEL.hpPerStamina) * staminaMult,
+    armor: baseArmor + t.armor,
+    health: (baseHealth + t.stamina * MODEL.hpPerStamina) * staminaMult,
     spellPower: t.spellDamage,
     blockValue: t.blockValue,
     _raw: t,
