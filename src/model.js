@@ -13,6 +13,7 @@
 // (e.g. base dodge from the unbuffed↔buffed agility pair) and are documented as such.
 
 import { RATING, BASE } from './constants.js';
+import { setCounts } from './sets.js';
 
 // Race/class base intercepts (L70 Blood Elf Paladin, no gear, no talents, no buffs).
 export const CHARACTER = {
@@ -95,10 +96,11 @@ export function aggregate(items, opts = {}) {
   };
 }
 
-// Justicar (T4) set-bonus detection. Under the spell-power threat objective these
-// don't change the ranking (they add flat threat); they matter for a computed-TPS
-// objective, and we surface them in the readout regardless.
+// Justicar (T4) set-bonus detection (by item ID via the set DB). Under the spell-power
+// threat objective these don't change the ranking (they add flat threat); they matter
+// for a computed-TPS objective, and we surface them in the readout regardless. For the
+// full per-set breakdown (incl. Crystalforge T5) use setBonuses() from ./sets.js.
 export function justicarBonuses(items) {
-  const pieces = items.filter((i) => i.set === 'Justicar').length;
+  const pieces = setCounts(items).Justicar || 0;
   return { pieces, twoPc: pieces >= 2, fourPc: pieces >= 4 };
 }

@@ -100,6 +100,8 @@ export function blessingOfSanctuaryTPS({ blocksPerSec = 3 / 8 } = {}) {
 }
 
 // Retribution Aura Rank 6: 26 Holy * 1.9 per hit taken (not avoided/blocked-out).
-export function retributionAuraPerHit() {
-  return 26 * RF;
+// 2pc Crystalforge (T5) adds +15 damage per hit before RF.
+export function retributionAuraPerHit({ crystalforge2pc = false } = {}) {
+  const flat = crystalforge2pc ? THREAT.crystalforge2pcRetAura : 0;
+  return (26 + flat) * RF;
 }

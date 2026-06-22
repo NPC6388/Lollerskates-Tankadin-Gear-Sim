@@ -46,6 +46,8 @@ export const THREAT = {
   holyShieldActive: 30,   // +30% block chance while Holy Shield is up (guide: 1552)
   justicar2pcSeal: 1.10,  // +10% SoR/SoV/SoC seal damage (guide: 633)
   justicar4pcHolyShield: 15, // +15 flat per Holy Shield block (guide: 634)
+  crystalforge2pcRetAura: 15, // +15 Retribution Aura damage per hit (T5 2pc)
+  crystalforge4pcBlockValue: 100, // +100 block value for 6s after Holy Shield (T5 4pc)
   improvedHolyShieldDmg: 1.20, // 2/2 Improved Holy Shield damage multiplier (guide: 878)
 };
 
