@@ -37,8 +37,18 @@ local function characterLine()
   add("dodge", string.format("%.4f", safe(GetDodgeChance) or 0))
   add("parry", string.format("%.4f", safe(GetParryChance) or 0))
   add("block", string.format("%.4f", safe(GetBlockChance) or 0))
-  local defBonus = (CR_DEFENSE_SKILL and safe(GetCombatRatingBonus, CR_DEFENSE_SKILL)) or 0
-  add("defenseSkill", string.format("%.2f", level * 5 + defBonus))
+  -- Total defense skill straight from the game (matches the character sheet). This
+  -- includes raw +defense from enchants that the rating-only calc would miss.
+  local defTotal
+  if type(UnitDefense) == "function" then
+    local b, m = UnitDefense("player")
+    if b then defTotal = (b or 0) + (m or 0) end
+  end
+  if not defTotal then
+    local defBonus = (CR_DEFENSE_SKILL and safe(GetCombatRatingBonus, CR_DEFENSE_SKILL)) or 0
+    defTotal = level * 5 + defBonus
+  end
+  add("defenseSkill", string.format("%.2f", defTotal))
   if CR_DEFENSE_SKILL then add("defenseRating", safe(GetCombatRating, CR_DEFENSE_SKILL)) end
   if CR_CRIT_TAKEN_MELEE then add("resilience", safe(GetCombatRating, CR_CRIT_TAKEN_MELEE)) end
   add("agility", safe(stat, 2))

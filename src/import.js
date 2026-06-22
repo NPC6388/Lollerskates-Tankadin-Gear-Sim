@@ -4,32 +4,54 @@
 //   v1 item line: I:item:<id>:<enchant>:<g1..4>:<suffix>:...
 //   v2 item line: I:<itemString>|<equipLoc>|ilvl=N;<GetItemStats key>=val;...
 
-// GetItemStats keys -> our internal stat names. Unknown keys are ignored.
+// GetItemStats keys -> our internal stat names. This client emits ratings/spell-power
+// WITHOUT the _SHORT suffix (e.g. ITEM_MOD_DODGE_RATING) but primary stats WITH it
+// (ITEM_MOD_STAMINA_SHORT), so both forms are mapped. Unknown keys are ignored.
+const STAT_BASE_MAP = {
+  ITEM_MOD_STAMINA: 'stamina',
+  ITEM_MOD_STRENGTH: 'strength',
+  ITEM_MOD_AGILITY: 'agility',
+  ITEM_MOD_INTELLECT: 'intellect',
+  ITEM_MOD_DEFENSE_SKILL_RATING: 'defenseRating',
+  ITEM_MOD_DODGE_RATING: 'dodgeRating',
+  ITEM_MOD_PARRY_RATING: 'parryRating',
+  ITEM_MOD_BLOCK_RATING: 'blockRating',
+  ITEM_MOD_BLOCK_VALUE: 'blockValue',
+  ITEM_MOD_SPELL_POWER: 'spellDamage',
+  ITEM_MOD_SPELL_DAMAGE_DONE: 'spellDamage',
+  ITEM_MOD_HIT_RATING: 'hitRating',
+  ITEM_MOD_HIT_MELEE_RATING: 'hitRating',
+  ITEM_MOD_HIT_SPELL_RATING: 'spellHitRating',
+  ITEM_MOD_EXPERTISE_RATING: 'expertiseRating',
+  ITEM_MOD_RESILIENCE_RATING: 'resilienceRating',
+  ITEM_MOD_CRIT_RATING: 'critRating',
+  ITEM_MOD_CRIT_MELEE_RATING: 'critRating',
+  ITEM_MOD_CRIT_SPELL_RATING: 'spellCritRating',
+  ITEM_MOD_HASTE_RATING: 'hasteRating',
+  ITEM_MOD_ATTACK_POWER: 'attackPower',
+};
+
 const STAT_KEY_MAP = {
-  ITEM_MOD_STAMINA_SHORT: 'stamina',
-  ITEM_MOD_STRENGTH_SHORT: 'strength',
-  ITEM_MOD_AGILITY_SHORT: 'agility',
-  ITEM_MOD_INTELLECT_SHORT: 'intellect',
-  ITEM_MOD_DEFENSE_SKILL_RATING_SHORT: 'defenseRating',
-  ITEM_MOD_DODGE_RATING_SHORT: 'dodgeRating',
-  ITEM_MOD_PARRY_RATING_SHORT: 'parryRating',
-  ITEM_MOD_BLOCK_RATING_SHORT: 'blockRating',
-  ITEM_MOD_BLOCK_VALUE_SHORT: 'blockValue',
-  ITEM_MOD_SPELL_DAMAGE_DONE_SHORT: 'spellDamage',
-  ITEM_MOD_SPELL_POWER_SHORT: 'spellDamage',
-  ITEM_MOD_HIT_RATING_SHORT: 'hitRating',
-  ITEM_MOD_HIT_MELEE_RATING_SHORT: 'hitRating',
-  ITEM_MOD_HIT_SPELL_RATING_SHORT: 'spellHitRating',
-  ITEM_MOD_EXPERTISE_RATING_SHORT: 'expertiseRating',
-  ITEM_MOD_RESILIENCE_RATING_SHORT: 'resilienceRating',
-  ITEM_MOD_CRIT_RATING_SHORT: 'critRating',
-  ITEM_MOD_CRIT_MELEE_RATING_SHORT: 'critRating',
-  ITEM_MOD_CRIT_SPELL_RATING_SHORT: 'spellCritRating',
-  ITEM_MOD_HASTE_RATING_SHORT: 'hasteRating',
-  ITEM_MOD_ATTACK_POWER_SHORT: 'attackPower',
+  // armor, per-school resistance, and sockets (fixed key names)
   RESISTANCE0_NAME: 'armor',
   ARMOR: 'armor',
+  RESISTANCE1_NAME: 'holyResist',
+  RESISTANCE2_NAME: 'fireResist',
+  RESISTANCE3_NAME: 'natureResist',
+  RESISTANCE4_NAME: 'frostResist',
+  RESISTANCE5_NAME: 'shadowResist',
+  RESISTANCE6_NAME: 'arcaneResist',
+  EMPTY_SOCKET_RED: 'socketRed',
+  EMPTY_SOCKET_YELLOW: 'socketYellow',
+  EMPTY_SOCKET_BLUE: 'socketBlue',
+  EMPTY_SOCKET_META: 'socketMeta',
+  EMPTY_SOCKET_PRISMATIC: 'socketPrismatic',
 };
+// Register each ITEM_MOD_* in both its bare and _SHORT form.
+for (const [k, v] of Object.entries(STAT_BASE_MAP)) {
+  STAT_KEY_MAP[k] = v;
+  STAT_KEY_MAP[k + '_SHORT'] = v;
+}
 
 // WoW equip locations -> our slot keys (paired slots share a key).
 const SLOT_MAP = {

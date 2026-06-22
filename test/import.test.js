@@ -11,12 +11,13 @@ const V1 = [
   'I:item:28516::::::::70::::::::::',
 ].join('\n');
 
+// Real lines from a live TGS2 export (this client omits _SHORT on ratings/spell power).
 const V2 = [
   'TGS2',
-  'C:name=Lollerskate;level=70;dodge=16.5920;defenseSkill=481.06;spellPower=690',
-  'I:item:29068:3002:24062:25896:::::70|INVTYPE_HEAD|ilvl=120;ITEM_MOD_STAMINA_SHORT=33;ITEM_MOD_DEFENSE_SKILL_RATING_SHORT=25;ITEM_MOD_DODGE_RATING_SHORT=20;ITEM_MOD_SPELL_DAMAGE_DONE_SHORT=21;RESISTANCE0_NAME=950',
-  'I:item:28825:1071:24033:::::70|INVTYPE_CHEST|ilvl=125;ITEM_MOD_BLOCK_RATING_SHORT=24;ITEM_MOD_BLOCK_VALUE_SHORT=35;ITEM_MOD_STAMINA_SHORT=30',
-  'I:item:12344::::::::70|INVTYPE_TRINKET|ilvl=1', // junk-ish, no mapped stats
+  'C:name=Lollerskate;level=70;dodge=16.5920;defenseSkill=501.00;spellPower=690',
+  'I:item:29068:3002:24062:25896:::::70::::::::::|INVTYPE_HEAD|ilvl=120;ITEM_MOD_INTELLECT_SHORT=24;EMPTY_SOCKET_YELLOW=1;EMPTY_SOCKET_META=1;ITEM_MOD_STAMINA_SHORT=43;ITEM_MOD_DEFENSE_SKILL_RATING=29;ITEM_MOD_DODGE_RATING=24;ITEM_MOD_SPELL_POWER=26;RESISTANCE0_NAME=1227',
+  'I:item:28825:1071:24033::::::70::::::::::|INVTYPE_SHIELD|ilvl=125;ITEM_MOD_DEFENSE_SKILL_RATING=19;ITEM_MOD_HIT_RATING=15;EMPTY_SOCKET_BLUE=1;ITEM_MOD_STAMINA_SHORT=39',
+  'I:item:12344::::::::70::::::::::|INVTYPE_FINGER|ilvl=61', // no mapped stats
 ].join('\n');
 
 test('v1: header, character, and items parse', () => {
@@ -29,17 +30,20 @@ test('v1: header, character, and items parse', () => {
   assert.deepEqual(p.items[0].gems, [24062, 25896]);
 });
 
-test('v2: per-item stats map to internal names', () => {
+test('v2: ratings without _SHORT map correctly (real-client keys)', () => {
   const p = parseExport(V2);
   assert.equal(p.version, 2);
   const head = p.items[0];
   assert.equal(head.slot, 'head');
   assert.equal(head.itemLevel, 120);
-  assert.equal(head.stats.stamina, 33);
-  assert.equal(head.stats.defenseRating, 25);
-  assert.equal(head.stats.dodgeRating, 20);
-  assert.equal(head.stats.spellDamage, 21);
-  assert.equal(head.stats.armor, 950);
+  assert.equal(head.stats.stamina, 43);
+  assert.equal(head.stats.intellect, 24);
+  assert.equal(head.stats.defenseRating, 29); // ITEM_MOD_DEFENSE_SKILL_RATING (no _SHORT)
+  assert.equal(head.stats.dodgeRating, 24);   // ITEM_MOD_DODGE_RATING
+  assert.equal(head.stats.spellDamage, 26);   // ITEM_MOD_SPELL_POWER
+  assert.equal(head.stats.armor, 1227);
+  assert.equal(head.stats.socketYellow, 1);
+  assert.equal(head.stats.socketMeta, 1);
 });
 
 test('v2: equip locations map to slots', () => {
@@ -50,11 +54,10 @@ test('v2: equip locations map to slots', () => {
   assert.equal(equipLocToSlot('INVTYPE_BAG'), null);
 });
 
-test('v2: equippableItems keeps gear, drops unmapped/stat-less', () => {
+test('v2: equippableItems keeps gear, drops stat-less', () => {
   const eq = equippableItems(parseExport(V2));
-  // head + chest have stats+slot; the trinket line has a slot but no mapped stats
   const slots = eq.map((i) => i.slot).sort();
-  assert.deepEqual(slots, ['chest', 'head']);
+  assert.deepEqual(slots, ['head', 'offhand']); // ring 12344 has no mapped stats -> dropped
 });
 
 test('parseItemString pulls id / enchant / gems / suffix', () => {
