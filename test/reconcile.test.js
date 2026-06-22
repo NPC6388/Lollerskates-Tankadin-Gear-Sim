@@ -41,11 +41,8 @@ test('the equipped set is raid crit-immune (defense >= 490)', () => {
   assert.equal(evaluateSet(a).raidCritImmune, true);
 });
 
-// KNOWN GAP (documented, not yet fixed): block value is short by ~142. The addon does
-// not capture a shield's base "N Block" line (Aldori Legacy Defender = 137), and the
-// Strength->block-value contribution isn't modeled. When that's fixed this should equal
-// the sheet's 258; for now we pin the gear-suffix-only value so the gap is visible.
-test('block value is gear-suffix only until shield base block is captured', () => {
-  assert.equal(a.blockValue, 116);
-  assert.ok(c.blockValue - a.blockValue > 130, 'documents the ~142 shield-block gap');
+test('block value reproduces the sheet (shield base block + suffixes + Str/20)', () => {
+  // addon v6 reads the shield's "137 Block" line; model adds floor(Str/20).
+  // 137 (shield) + 116 (suffixes) + floor(106/20)=5 = 258.
+  assert.ok(near(a.blockValue, c.blockValue, 1), `blockValue ${a.blockValue} vs ${c.blockValue}`);
 });

@@ -7,7 +7,7 @@
 -- (GetItemStats alone returns the base item with empty sockets). Empty-socket counts are
 -- still taken from GetItemStats for the gem optimizer. Everything read defensively.
 
-local VERSION = "5"
+local VERSION = "6"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -49,8 +49,10 @@ local function characterLine()
   add("defenseSkill", string.format("%.2f", defTotal))
   if CR_DEFENSE_SKILL then add("defenseRating", safe(GetCombatRating, CR_DEFENSE_SKILL)) end
   if CR_CRIT_TAKEN_MELEE then add("resilience", safe(GetCombatRating, CR_CRIT_TAKEN_MELEE)) end
+  add("strength", safe(stat, 1))
   add("agility", safe(stat, 2))
   add("stamina", safe(stat, 3))
+  add("intellect", safe(stat, 4))
   add("health", safe(UnitHealthMax, "player"))
   add("armor", select(2, UnitArmor("player")))
   add("spellPower", safe(GetSpellBonusDamage, 2))
@@ -166,6 +168,9 @@ local function parseTooltipStats(link)
       -- armor: "1227 armor" (whole-line)
       local arm = l:match("^([%d,]+) armor")
       if arm then add("RESISTANCE0_NAME", tonumber((arm:gsub(",", "")))) end
+      -- shield base block value: "137 block" (whole-line; not "block rating/value ... by N")
+      local blk = l:match("^([%d,]+) block%s*$")
+      if blk then add("ITEM_MOD_BLOCK_VALUE", tonumber((blk:gsub(",", "")))) end
       -- Split combined stat lines into single-stat clauses so BOTH stats are read:
       --   "+22 Spell Power and +14 Spell Hit Rating" (Glyph of Power)
       --   "+35 Spell Damage and +20 Stamina" (Runic Spellthread)

@@ -18,6 +18,7 @@ import { setCounts } from './sets.js';
 // Race/class base intercepts (L70 Blood Elf Paladin, no gear, no talents, no buffs).
 export const CHARACTER = {
   baseAgility: 79,          // sheet agility 85 - 6 (chest gem) = 79 base
+  baseStrength: 100,        // L70 BE pally base str; blockValue Str-term lands on 258 (verify w/ v6 capture)
   baseStamina: 115,         // (sheet 981 / 1.16 stam-talents) - 731 gear ≈ 115
   baseDodgePct: 0.649,      // dodge at 0 agility; from the unbuffed↔buffed sheet pair
   baseParryPct: 5.0,        // class base parry
@@ -74,6 +75,7 @@ export function aggregate(items, opts = {}) {
   const defBonus = (defenseSkill - BASE.baseDefenseSkill) * BASE.defenseBenefitPerSkill;
 
   const agility = C.baseAgility + b('agility');
+  const strength = C.baseStrength + b('strength');
   const stamina = (C.baseStamina + b('stamina')) * T.staminaMult;
 
   return {
@@ -88,10 +90,11 @@ export function aggregate(items, opts = {}) {
     health: C.baseHealth + healthFromStamina(stamina),
     stamina,
     agility,
+    strength,
     spellPower: b('spellDamage'),
-    // NOTE: a shield's base "N Block" line is not yet captured by the addon, nor is the
-    // Strength→block-value contribution modeled, so this is gear-suffix block value only.
-    blockValue: b('blockValue'),
+    // Block value = shield base block + item block-value suffixes (both in b('blockValue')
+    // once addon v6 reads the shield's "N Block" line) + Strength/20 (TBC: 1 BV per 20 Str).
+    blockValue: b('blockValue') + Math.floor(strength / 20),
     _raw: t,
   };
 }
