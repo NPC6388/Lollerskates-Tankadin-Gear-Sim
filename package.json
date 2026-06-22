@@ -1,0 +1,14 @@
+{
+  "name": "lollerskates-tankadin-gear-sim",
+  "version": "0.1.0",
+  "description": "Client-side gear simulator for WoW Classic TBC Anniversary Protection Paladins",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim.git"
+  }
+}

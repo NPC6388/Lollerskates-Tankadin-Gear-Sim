@@ -164,9 +164,12 @@ flow into this module (and vice-versa).
 
 ## 10. Phasing (milestones)
 
-1. **M1 — Core engine, no UI polish.** Math module + character model + constraint engine
-   + scoring. **Validation gate:** must reproduce the guide's 709 SP reference-profile
-   numbers exactly before M1 is "done."
+1. **M1 — Core engine, no UI polish. ✅ DONE.** Math module (`src/constants.js`,
+   `src/threat.js`, `src/combat.js`, `src/weights.js`, `src/scoring.js`) + constraint
+   engine + scoring. **Validation gate met:** `npm test` (29 tests) reproduces the guide's
+   709 SP reference-profile numbers exactly — all threat formulas, combat-table avoidance
+   (67.79%), the 490 crit-immunity gate, the 102.4 crush threshold, and the 244/365
+   resistance targets.
 2. **M2 — Manual collection + heuristic optimizer + goal picker.** Usable end-to-end with
    hand-entered gear.
 3. **M3 — Item/gem/enchant databases + gem/enchant solver + professions + buff toggle.**
