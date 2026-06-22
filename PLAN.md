@@ -170,8 +170,13 @@ flow into this module (and vice-versa).
    709 SP reference-profile numbers exactly — all threat formulas, combat-table avoidance
    (67.79%), the 490 crit-immunity gate, the 102.4 crush threshold, and the 244/365
    resistance targets.
-2. **M2 — Manual collection + heuristic optimizer + goal picker.** Usable end-to-end with
-   hand-entered gear.
+2. **M2 — Optimizer + objectives. ✅ CORE DONE.** `src/character.js` (set evaluator with
+   spreadsheet parity), `src/model.js` (item ratings → final stats), `src/optimizer.js`
+   (exhaustive + greedy/efficiency-repair heuristic), `src/sample-items.js` (demo pool).
+   Threat objective = **Spell Power** (matches the sheet), survival = **EHP**, with
+   uncrittable always + uncrushable per goal as hard gates. Heuristic matches exhaustive
+   on the sample pool; 53/53 tests. **Remaining for M2:** real item DB + the goal-picker UI
+   (currently driven via the API).
 3. **M3 — Item/gem/enchant databases + gem/enchant solver + professions + buff toggle.**
 4. **M4 — Companion addon (bulk import).**
 5. **M5 — Exhaustive toggle, resistance-set UI, "why this piece" explanations, polish,
