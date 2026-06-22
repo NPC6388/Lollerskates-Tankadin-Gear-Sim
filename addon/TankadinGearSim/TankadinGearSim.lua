@@ -2,12 +2,12 @@
 -- /tgs (or /tankadin) opens a copy box with:
 --   line 1: TGS<version>
 --   line 2: C:key=val;... — current character-sheet finals (for calibration)
---   then:   I:<itemString>|<equipLoc>|<statKey>=<val>;... — one per owned item, with
---           exact per-item stats from GetItemStats (so no external item DB is needed,
---           and custom/Anniversary items work). Equipped + bags + bank + reagent bank.
--- Everything read defensively (pcall) so a missing API degrades gracefully.
+--   then:   I:<itemString>|<equipLoc>|ilvl=N;<ITEM_MOD key>=val;... — one per owned item.
+-- Per-item stats are scanned from the item's TOOLTIP, so they INCLUDE gems + enchants
+-- (GetItemStats alone returns the base item with empty sockets). Empty-socket counts are
+-- still taken from GetItemStats for the gem optimizer. Everything read defensively.
 
-local VERSION = "2"
+local VERSION = "3"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -37,8 +37,6 @@ local function characterLine()
   add("dodge", string.format("%.4f", safe(GetDodgeChance) or 0))
   add("parry", string.format("%.4f", safe(GetParryChance) or 0))
   add("block", string.format("%.4f", safe(GetBlockChance) or 0))
-  -- Total defense skill straight from the game (matches the character sheet). This
-  -- includes raw +defense from enchants that the rating-only calc would miss.
   local defTotal
   if type(UnitDefense) == "function" then
     local b, m = UnitDefense("player")
@@ -60,17 +58,111 @@ local function characterLine()
   return "C:" .. table.concat(p, ";")
 end
 
--- Build the stat segment for one item link: raw GetItemStats keys + equip slot + ilvl.
-local function itemStatsSegment(link)
-  local pairs_ = {}
-  local stats = safe(GetItemStatsFn, link)
-  if type(stats) == "table" then
-    for k, v in pairs(stats) do pairs_[#pairs_ + 1] = k .. "=" .. tostring(v) end
+-- ---- Tooltip scanning (includes gems + enchants) ----
+local scanTip
+local function tooltipLines(link)
+  local out = {}
+  if C_TooltipInfo and C_TooltipInfo.GetHyperlink then
+    local data = safe(C_TooltipInfo.GetHyperlink, link)
+    if data and data.lines then
+      for _, ln in ipairs(data.lines) do
+        if ln.leftText then out[#out + 1] = ln.leftText end
+      end
+      if #out > 0 then return out end
+    end
   end
+  if not scanTip then scanTip = CreateFrame("GameTooltip", "TGSScanTip", nil, "GameTooltipTemplate") end
+  scanTip:SetOwner(UIParent, "ANCHOR_NONE")
+  scanTip:ClearLines()
+  if pcall(scanTip.SetHyperlink, scanTip, link) then
+    for i = 1, scanTip:NumLines() do
+      local fs = _G["TGSScanTipTextLeft" .. i]
+      local t = fs and fs:GetText()
+      if t then out[#out + 1] = t end
+    end
+  end
+  return out
+end
+
+-- Ordered phrase patterns (lowercased line) -> ITEM_MOD key. More specific first so e.g.
+-- "spell hit rating" wins over "hit rating". Handles both "...by N" (equip/enchant) and
+-- "+N ... rating" (gem) wordings.
+local PHRASES = {
+  { "defense rating by (%d+)", "ITEM_MOD_DEFENSE_SKILL_RATING" },
+  { "%+(%d+) defense rating", "ITEM_MOD_DEFENSE_SKILL_RATING" },
+  { "increased defense %+(%d+)", "ITEM_MOD_DEFENSE_SKILL_RATING" },
+  { "dodge rating by (%d+)", "ITEM_MOD_DODGE_RATING" },
+  { "%+(%d+) dodge rating", "ITEM_MOD_DODGE_RATING" },
+  { "parry rating by (%d+)", "ITEM_MOD_PARRY_RATING" },
+  { "%+(%d+) parry rating", "ITEM_MOD_PARRY_RATING" },
+  { "block rating by (%d+)", "ITEM_MOD_BLOCK_RATING" },
+  { "%+(%d+) block rating", "ITEM_MOD_BLOCK_RATING" },
+  { "block value of your shield by (%d+)", "ITEM_MOD_BLOCK_VALUE" },
+  { "%+(%d+) block value", "ITEM_MOD_BLOCK_VALUE" },
+  { "spell hit rating by (%d+)", "ITEM_MOD_HIT_SPELL_RATING" },
+  { "%+(%d+) spell hit rating", "ITEM_MOD_HIT_SPELL_RATING" },
+  { "hit rating by (%d+)", "ITEM_MOD_HIT_RATING" },
+  { "%+(%d+) hit rating", "ITEM_MOD_HIT_RATING" },
+  { "resilience rating by (%d+)", "ITEM_MOD_RESILIENCE_RATING" },
+  { "%+(%d+) resilience rating", "ITEM_MOD_RESILIENCE_RATING" },
+  { "expertise rating by (%d+)", "ITEM_MOD_EXPERTISE_RATING" },
+  { "%+(%d+) expertise rating", "ITEM_MOD_EXPERTISE_RATING" },
+  { "spell critical strike rating by (%d+)", "ITEM_MOD_CRIT_SPELL_RATING" },
+  { "critical strike rating by (%d+)", "ITEM_MOD_CRIT_RATING" },
+  { "%+(%d+) critical strike rating", "ITEM_MOD_CRIT_RATING" },
+  { "haste rating by (%d+)", "ITEM_MOD_HASTE_RATING" },
+  { "spell power by (%d+)", "ITEM_MOD_SPELL_POWER" },
+  { "%+(%d+) spell power", "ITEM_MOD_SPELL_POWER" },
+  { "magical spells and effects by up to (%d+)", "ITEM_MOD_SPELL_POWER" },
+  { "attack power by (%d+)", "ITEM_MOD_ATTACK_POWER" },
+  { "%+(%d+) attack power", "ITEM_MOD_ATTACK_POWER" },
+}
+
+local PRIMARY = { stamina = "ITEM_MOD_STAMINA_SHORT", strength = "ITEM_MOD_STRENGTH_SHORT",
+  agility = "ITEM_MOD_AGILITY_SHORT", intellect = "ITEM_MOD_INTELLECT_SHORT" }
+
+local RESIST = { fire = "RESISTANCE2_NAME", nature = "RESISTANCE3_NAME", frost = "RESISTANCE4_NAME",
+  shadow = "RESISTANCE5_NAME", arcane = "RESISTANCE6_NAME", holy = "RESISTANCE1_NAME" }
+
+local function parseTooltipStats(link)
+  local s = {}
+  local function add(k, v) if k and v then s[k] = (s[k] or 0) + v end end
+  for _, raw in ipairs(tooltipLines(link)) do
+    local l = raw:lower()
+    -- armor: "1227 armor"
+    local arm = l:match("^([%d,]+) armor")
+    if arm then add("RESISTANCE0_NAME", tonumber((arm:gsub(",", "")))) end
+    -- primary stats: "+43 stamina"
+    local n, word = l:match("^%+(%d+) (%a+)")
+    if n and PRIMARY[word] then add(PRIMARY[word], tonumber(n)) end
+    -- resistances: "+21 fire resistance"
+    local rn, rword = l:match("%+(%d+) (%a+) resistance")
+    if rn and RESIST[rword] then add(RESIST[rword], tonumber(rn)) end
+    -- ratings / spell power / attack power: first matching phrase wins
+    for _, pair in ipairs(PHRASES) do
+      local v = l:match(pair[1])
+      if v then add(pair[2], tonumber(v)); break end
+    end
+  end
+  return s
+end
+
+local function itemSegment(link)
+  local stats = parseTooltipStats(link)
+  -- empty-socket counts come from GetItemStats (reliable, structured)
+  local base = safe(GetItemStatsFn, link)
+  if type(base) == "table" then
+    for _, k in ipairs({ "EMPTY_SOCKET_RED", "EMPTY_SOCKET_YELLOW", "EMPTY_SOCKET_BLUE",
+      "EMPTY_SOCKET_META", "EMPTY_SOCKET_PRISMATIC" }) do
+      if base[k] then stats[k] = base[k] end
+    end
+  end
+  local parts = {}
+  for k, v in pairs(stats) do parts[#parts + 1] = k .. "=" .. tostring(v) end
   local equipLoc = select(9, GetItemInfo(link)) or ""
   local ilvl = select(4, GetItemInfo(link)) or 0
   return equipLoc .. "|ilvl=" .. tostring(ilvl) ..
-    (#pairs_ > 0 and (";" .. table.concat(pairs_, ";")) or "")
+    (#parts > 0 and (";" .. table.concat(parts, ";")) or "")
 end
 
 local function scanGear()
@@ -79,7 +171,7 @@ local function scanGear()
     local s = extractItemString(link)
     if not s or seen[s] then return end
     seen[s] = true
-    list[#list + 1] = "I:" .. s .. "|" .. itemStatsSegment(link)
+    list[#list + 1] = "I:" .. s .. "|" .. itemSegment(link)
   end
   for slot = 1, 19 do addLink(safe(GetInventoryItemLink, "player", slot)) end
   local bags = { 0, 1, 2, 3, 4, -1, 5, 6, 7, 8, 9, 10, 11, -3 }
@@ -100,41 +192,23 @@ local function showExport(text)
   local f = _G["TGSExportFrame"]
   if not f then
     f = CreateFrame("Frame", "TGSExportFrame", UIParent)
-    f:SetSize(560, 420)
-    f:SetPoint("CENTER")
-    f:SetFrameStrata("DIALOG")
-    f:EnableMouse(true)
-    f:SetMovable(true)
-    f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
-    f:SetScript("OnDragStop", f.StopMovingOrSizing)
-    local bg = f:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(0, 0, 0, 0.88)
+    f:SetSize(560, 420); f:SetPoint("CENTER"); f:SetFrameStrata("DIALOG")
+    f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    local bg = f:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(0, 0, 0, 0.88)
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOP", 0, -10)
-    title:SetText("Tankadin Gear Sim Export")
+    title:SetPoint("TOP", 0, -10); title:SetText("Tankadin Gear Sim Export")
     local hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    hint:SetPoint("TOP", 0, -32)
-    hint:SetText("Ctrl+A to select all, Ctrl+C to copy, then paste into the sim.")
-    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", 2, 2)
+    hint:SetPoint("TOP", 0, -32); hint:SetText("Ctrl+A to select all, Ctrl+C to copy, then paste into the sim.")
+    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", 2, 2)
     local scroll = CreateFrame("ScrollFrame", "TGSExportScroll", f, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 16, -50)
-    scroll:SetPoint("BOTTOMRIGHT", -34, 14)
+    scroll:SetPoint("TOPLEFT", 16, -50); scroll:SetPoint("BOTTOMRIGHT", -34, 14)
     local eb = CreateFrame("EditBox", "TGSExportEdit", scroll)
-    eb:SetMultiLine(true)
-    eb:SetFontObject(ChatFontNormal)
-    eb:SetWidth(500)
-    eb:SetAutoFocus(false)
+    eb:SetMultiLine(true); eb:SetFontObject(ChatFontNormal); eb:SetWidth(500); eb:SetAutoFocus(false)
     eb:SetScript("OnEscapePressed", function() f:Hide() end)
-    scroll:SetScrollChild(eb)
-    f.editBox = eb
+    scroll:SetScrollChild(eb); f.editBox = eb
   end
-  f.editBox:SetText(text)
-  f.editBox:HighlightText()
-  f.editBox:SetFocus()
-  f:Show()
+  f.editBox:SetText(text); f.editBox:HighlightText(); f.editBox:SetFocus(); f:Show()
 end
 
 SLASH_TANKADINGEARSIM1 = "/tgs"
@@ -143,5 +217,5 @@ SlashCmdList["TANKADINGEARSIM"] = function()
   local text, count = buildExport()
   showExport(text)
   DEFAULT_CHAT_FRAME:AddMessage("|cff7ee787Tankadin Gear Sim:|r exported " .. count ..
-    " items + character stats. Open your bank first to include banked gear.")
+    " items (stats incl. gems/enchants) + character. Open your bank first for banked gear.")
 end

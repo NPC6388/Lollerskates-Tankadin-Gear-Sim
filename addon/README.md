@@ -20,7 +20,10 @@ character stats for [Lollerskate's Tankadin Gear Sim](../README.md).
   defense skill, spell power, armor, stamina, etc.). The sim uses these to **calibrate**
   its base-stat model to your character exactly.
 - **Then:** one `I:item:...` line per owned item (equipped + bags + bank + reagent bank),
-  de-duplicated, preserving gems/enchants.
+  de-duplicated. Per-item stats are read from the item's **tooltip**, so they include
+  **gems and enchants** (not just the base item), plus empty-socket counts for the gem
+  optimizer. Item stats are English-tooltip parsed; if a stat looks missing, tell the dev
+  which item so the phrase pattern can be added.
 
 Everything is read defensively, so a missing API on a given client build is skipped
 rather than erroring. If a stat comes through blank, tell the dev which one and it'll
