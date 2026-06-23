@@ -6,7 +6,9 @@
 > enchants — into the best legal set for that goal, enforcing the hard caps from the
 > [Prot Paladin Tanking Guide](https://github.com/NPC6388/wow-tbc-prot-paladin-guide).
 
-**Status:** Planning (this doc preserved before any code). Last updated 2026-06-22.
+**Status:** Engine in progress — M1, M2-core, M4 done; model de-calibrated to a
+first-principles forward calc; set bonuses in; M3 underway. See `CHANGELOG.md`.
+Last updated 2026-06-22.
 **Math source of truth:** the Prot Paladin Tanking Guide (`index.html`) and its
 `tankadin sixtyupgrades weights.md` companion.
 
@@ -177,12 +179,22 @@ flow into this module (and vice-versa).
    uncrittable always + uncrushable per goal as hard gates. Heuristic matches exhaustive
    on the sample pool; 53/53 tests. **Remaining for M2:** real item DB + the goal-picker UI
    (currently driven via the API).
-3. **M3 — Item/gem/enchant databases + gem/enchant solver + professions + buff toggle.**
-4. **M4 — Companion addon (bulk import). ✅ DONE.** `addon/TankadinGearSim` exports
-   equipped + bags + bank + reagent bank as `I:item:...` lines (gems/enchants preserved),
-   plus a `C:...` line of current character-sheet finals so the sim can **self-calibrate**
-   its base-stat model. `src/import.js` parses the format; 6 tests cover it. Reads all WoW
-   APIs defensively (pcall) for client-build resilience.
+3. **M3 — Item/gem/enchant databases + gem/enchant solver + professions + buff toggle.
+   🚧 IN PROGRESS.** Gem DB (`src/gems.js`) + enchant DB (`src/enchants.js`) + solver
+   (`src/gemsolver.js`: ideal gems/enchants per goal, socket-bonus-worth-it, meta
+   activation, profession toggles) + professions model (`src/professions.js`). Buff toggle
+   already landed as `aggregate()`'s optional `buffs` block (de-calibration commit).
+   The bundled full item DB for *manual* search is the remaining heavy data task; the
+   optimizer already runs over the addon-imported collection without it.
+4. **M4 — Companion addon (bulk import). ✅ DONE (v7).** `addon/TankadinGearSim` exports
+   equipped (`E:`) + bags + bank + reagent bank (`I:`) lines (gems/enchants folded in via
+   tooltip scan), plus a `C:...` line of character-sheet finals the sim uses to **reconcile**
+   its forward calc. v5–v7 fixed capture accuracy: "Spell Damage" wording, combined-line
+   splitting, socketed-gem primaries, shield base block, and skipping inactive socket
+   bonuses. `src/import.js` parses the format. Reads all WoW APIs defensively (pcall).
+
+   *Note:* the model no longer self-calibrates — the old back-fit was removed in favor of a
+   documented first-principles forward calc (see `src/model.js`, `CHANGELOG.md`).
 5. **M5 — Exhaustive toggle, resistance-set UI, "why this piece" explanations, polish,
    and a link from the guide.**
 

@@ -10,7 +10,18 @@ caps (uncrittable, uncrushable, resistance targets).
 All the math comes from the
 [WoW TBC Prot Paladin Tanking Guide](https://github.com/NPC6388/wow-tbc-prot-paladin-guide).
 
-> **Status:** early planning — see [`PLAN.md`](PLAN.md) for the full design.
+> **Status:** engine in progress — core math, optimizer, and the companion addon are
+> built; gem/enchant DBs + UI are next. See [`PLAN.md`](PLAN.md) for the design and
+> [`CHANGELOG.md`](CHANGELOG.md) for what's landed.
+
+## Status
+- **Done:** core math + constraint engine (M1), optimizer + objectives (M2 core),
+  companion export addon (M4, currently **v7**).
+- **Model:** a first-principles forward calc (race/class base + Avenger's Shield talents +
+  gear) that reproduces the live character sheet to rounding — no back-fitting.
+- **Set bonuses:** Justicar (T4) and Crystalforge (T5) detected by item ID.
+- **In progress (M3):** item/gem/enchant databases, gem/enchant solver, professions.
+- **Next (M5):** goal-picker UI, "why this piece" explanations, guide link.
 
 ## Planned features
 - Goal-driven set optimization mapped to the guide's threat & survival weight scales
