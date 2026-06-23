@@ -11,6 +11,13 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   parity), `model.js`, `optimizer.js` (exhaustive + greedy/repair heuristic),
   `sample-items.js`. Threat objective = Spell Power; survival = EHP; uncrittable always +
   uncrushable per goal as hard gates.
+- **M3 (in progress) — gem/enchant solver + professions.** `professions.js` (TBC-accurate
+  perks: BS sockets, JC gems, Enchanting ring enchants, LW bracer), `gems.js` + `enchants.js`
+  (curated tank seed DBs scored by the weight scales), `gemsolver.js` (weight-driven gem +
+  enchant recommendations, profession-gated; ring enchants count for both rings). The
+  buff toggle landed earlier as `aggregate()`'s `buffs` block. Remaining: the bundled full
+  item DB for manual search, and socket-bonus-worth-it matching (needs the addon to export
+  per-item socket-bonus values).
 - **M4 — companion export addon.** `/tgs` exports equipped + bags + bank as `I:`/`E:`
   lines plus a `C:` character-sheet line.
 
