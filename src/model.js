@@ -20,7 +20,7 @@ export const CHARACTER = {
   baseAgility: 79,          // sheet agility 85 - 6 (chest gem) = 79 base
   baseStrength: 123,        // sheet strength 129 - 6 (chest gem) = 123 base (v6 capture)
   baseIntellect: 87,        // sheet intellect 289 - 202 gear = 87 base (v6 capture)
-  baseStamina: 115,         // (sheet 981 / 1.16 stam-talents) - 731 gear ≈ 115
+  baseStamina: 122,         // (sheet 981 / 1.16 stam-talents) - 724 clean gear ≈ 122
   baseDodgePct: 0.649,      // dodge at 0 agility; from the unbuffed↔buffed sheet pair
   baseParryPct: 5.0,        // class base parry
   baseBlockPct: 5.0,        // class base block

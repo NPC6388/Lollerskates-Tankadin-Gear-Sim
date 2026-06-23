@@ -25,12 +25,12 @@ test('agility/strength/intellect reproduced exactly (race base + gear)', () => {
 });
 
 test('avoidance & defense reproduce the sheet within rounding', () => {
-  // defenseSkill carries a small (+~1.75) overshoot: the addon sums 314 defense rating
-  // off item tooltips vs the sheet's 310, so dodge/parry/block inherit ~+0.07%.
-  assert.ok(near(a.defenseSkill, c.defenseSkill, 2), `defenseSkill ${a.defenseSkill} vs ${c.defenseSkill}`);
-  assert.ok(near(a.dodgePct, c.dodge, 0.12), `dodge ${a.dodgePct} vs ${c.dodge}`);
-  assert.ok(near(a.parryPct, c.parry, 0.12), `parry ${a.parryPct} vs ${c.parry}`);
-  assert.ok(near(a.blockPct, c.block, 0.12), `block ${a.blockPct} vs ${c.block}`);
+  // With addon v7 (inactive socket bonuses excluded) item defense sums to 310 = sheet,
+  // so defenseSkill and the avoidance it drives are now exact to rounding.
+  assert.ok(near(a.defenseSkill, c.defenseSkill, 0.1), `defenseSkill ${a.defenseSkill} vs ${c.defenseSkill}`);
+  assert.ok(near(a.dodgePct, c.dodge, 0.02), `dodge ${a.dodgePct} vs ${c.dodge}`);
+  assert.ok(near(a.parryPct, c.parry, 0.02), `parry ${a.parryPct} vs ${c.parry}`);
+  assert.ok(near(a.blockPct, c.block, 0.02), `block ${a.blockPct} vs ${c.block}`);
 });
 
 test('armor, stamina, and health reproduce the sheet within rounding', () => {
