@@ -18,8 +18,10 @@ test('spell power is reproduced exactly (gear sum, no base)', () => {
   assert.equal(a.spellPower, c.spellPower); // 676
 });
 
-test('agility is reproduced exactly (race base + gem)', () => {
-  assert.equal(a.agility, c.agility); // 85
+test('agility/strength/intellect reproduced exactly (race base + gear)', () => {
+  assert.equal(a.agility, c.agility);     // 85
+  assert.equal(a.strength, c.strength);   // 129
+  assert.equal(a.intellect, c.intellect); // 289
 });
 
 test('avoidance & defense reproduce the sheet within rounding', () => {
