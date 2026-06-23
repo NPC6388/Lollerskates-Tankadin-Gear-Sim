@@ -7,7 +7,7 @@
 -- (GetItemStats alone returns the base item with empty sockets). Empty-socket counts are
 -- still taken from GetItemStats for the gem optimizer. Everything read defensively.
 
-local VERSION = "6"
+local VERSION = "7"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -61,14 +61,27 @@ local function characterLine()
 end
 
 -- ---- Tooltip scanning (includes gems + enchants) ----
+-- Each line is { text, r, g, b }; the color lets us tell an ACTIVE socket bonus (green)
+-- from an INACTIVE one (grey) so we don't count bonuses the player's gems don't satisfy.
 local scanTip
+local function colorOf(ln)
+  local c = ln.leftColor
+  if c then
+    if c.GetRGB then local ok, r, g, b = pcall(c.GetRGB, c); if ok then return r, g, b end end
+    if c.r then return c.r, c.g, c.b end
+  end
+  return nil
+end
 local function tooltipLines(link)
   local out = {}
   if C_TooltipInfo and C_TooltipInfo.GetHyperlink then
     local data = safe(C_TooltipInfo.GetHyperlink, link)
     if data and data.lines then
       for _, ln in ipairs(data.lines) do
-        if ln.leftText then out[#out + 1] = ln.leftText end
+        if ln.leftText then
+          local r, g, b = colorOf(ln)
+          out[#out + 1] = { text = ln.leftText, r = r, g = g, b = b }
+        end
       end
       if #out > 0 then return out end
     end
@@ -80,10 +93,22 @@ local function tooltipLines(link)
     for i = 1, scanTip:NumLines() do
       local fs = _G["TGSScanTipTextLeft" .. i]
       local t = fs and fs:GetText()
-      if t then out[#out + 1] = t end
+      if t then
+        local r, g, b = fs:GetTextColor()
+        out[#out + 1] = { text = t, r = r, g = g, b = b }
+      end
     end
   end
   return out
+end
+
+-- A socket bonus applies only when its tooltip line is green; grey means the gem colors
+-- don't match. Unknown color -> treat as active (don't silently drop real stats).
+local function inactiveSocketBonus(l, ln)
+  if not l:find("socket bonus", 1, true) then return false end
+  if not ln.r or not ln.g or not ln.b then return false end
+  local green = ln.g > 0.6 and ln.r < 0.5 and ln.b < 0.5
+  return not green
 end
 
 -- Ordered phrase patterns (matched against a single-stat CLAUSE, see parseTooltipStats)
@@ -154,11 +179,12 @@ end
 local function parseTooltipStats(link)
   local s = {}
   local function add(k, v) if k and v then s[k] = (s[k] or 0) + v end end
-  for _, raw in ipairs(tooltipLines(link)) do
-    local l = raw:lower()
-    -- skip on-use / proc effects: their big activated numbers are not passive stats
+  for _, ln in ipairs(tooltipLines(link)) do
+    local l = ln.text:lower()
+    -- skip on-use / proc effects (activated numbers aren't passive stats) and socket
+    -- bonuses the gems don't activate (grey lines).
     if l:match("^use:") or l:find("chance on", 1, true) or l:find("chance when", 1, true)
-      or l:find("when struck", 1, true) or l:find("for %d+ sec") then
+      or l:find("when struck", 1, true) or l:find("for %d+ sec") or inactiveSocketBonus(l, ln) then
       -- skip this line
     else
       -- equip spell-power phrase FIRST: it contains " and " (which we split on below),
