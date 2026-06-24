@@ -10,9 +10,9 @@ import { parseExport, equippableItems } from '../src/import.js';
 import { UNBUFFED_EXPORT } from './fixtures/lollerskate-unbuffed.js';
 
 test('best gem follows the goal: spell damage for threat, stamina/defense for survival', () => {
-  assert.equal(bestGem(SCALES.threatAOE).gem.name, 'Runed Crimson Spinel');     // spell damage
-  assert.equal(bestGem(SCALES.survivalEHP).gem.name, 'Solid Empyrean Sapphire'); // stamina
-  assert.equal(bestGem(SCALES.survivalUncrushable).gem.name, 'Thick Lionseye');  // defense (2.0 wt)
+  assert.equal(bestGem(SCALES.threatAOE).gem.name, 'Runed Living Ruby');          // spell damage
+  assert.equal(bestGem(SCALES.survivalEHP).gem.name, 'Solid Star of Elune');       // stamina
+  assert.equal(bestGem(SCALES.survivalUncrushable).gem.name, 'Stalwart Fire Opal'); // defense + dodge
 });
 
 test('best head enchant follows the goal', () => {

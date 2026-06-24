@@ -18,6 +18,17 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   buff toggle landed earlier as `aggregate()`'s `buffs` block. Remaining: the bundled full
   item DB for manual search, and socket-bonus-worth-it matching (needs the addon to export
   per-item socket-bonus values).
+  - **Gem/enchant DBs validated** against in-game tooltips (`GEM_ENCHANT_REVIEW.md`). Rebuilt
+    `gems.js` as a lean Pareto pool with corrected stats (rare gems are +8 not +10; fixed
+    Sovereign Nightseye to +4 Str; dropped Brutal Earthstorm Diamond — it's +3 *melee*, not
+    spell, damage), added a `phase` field + `CURRENT_PHASE` gate so later-content gems
+    (Seaspray Emerald p3, Charmed Amani Jewel/ZA) are recorded but not recommended, and added
+    the threat gems (Potent Noble Topaz/Fire Opal, Imbued Unstable Diamond meta). Per the
+    guide's weights, stats with no scale entry (attack power, spell crit, meta crit-damage)
+    are noted but not scored. `enchants.js`: removed Boots-Dodge/Boar's-Speed and
+    Weapon-Savagery; added Boots-Dexterity/Fortitude, Bracer/Gloves Spellpower, Shield-Block,
+    Cloak-Dodge, and the spell-power shoulder inscriptions; corrected Greater Inscription of
+    Warding to +15 Dodge/+10 Def.
 - **M4 — companion export addon.** `/tgs` exports equipped + bags + bank as `I:`/`E:`
   lines plus a `C:` character-sheet line.
 
