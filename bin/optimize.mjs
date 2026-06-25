@@ -30,7 +30,7 @@ if (!fs.existsSync(exportPath)) {
 
 const parsed = parseExport(toExportText(fs.readFileSync(exportPath, 'utf8')));
 const items = equippableItems(parsed);
-const results = optimizeSets(items, { professions: PROFESSIONS, buffed: BUFFED, maxPhase: PHASE, faction: FACTION, useImbuedMeta: USE_IMBUED });
+const results = optimizeSets(items, { professions: PROFESSIONS, buffed: BUFFED, maxPhase: PHASE, faction: FACTION, useImbuedMeta: USE_IMBUED, talentRanks: parsed.talentRanks });
 
 const ORDER = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'weapon', 'offhand', 'relic'];
 

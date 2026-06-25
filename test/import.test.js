@@ -127,6 +127,20 @@ test('older exports have an empty talents string (defensive)', () => {
   assert.equal(parseExport(V2).talents, '');
 });
 
+test('v11: talent ranks by name (TR:) parse into a map', () => {
+  const v11 = [
+    'TGS11',
+    'C:name=Lollerskate;level=70',
+    'TR:Anticipation=5;Toughness=3;Sacred Duty=2;Combat Expertise=2;Deflection=5',
+    'E:item:29068::::::::70::::::::::|INVTYPE_HEAD|ilvl=120;ITEM_MOD_STAMINA_SHORT=43|ITEM_MOD_STAMINA_SHORT=43|',
+  ].join('\n');
+  const p = parseExport(v11);
+  assert.equal(p.talentRanks.Toughness, 3);
+  assert.equal(p.talentRanks['Combat Expertise'], 2);
+  assert.equal(p.items.length, 1);
+  assert.deepEqual(parseExport(V2).talentRanks, {}); // older exports -> empty map
+});
+
 test('v2: equip locations map to slots', () => {
   assert.equal(equipLocToSlot('INVTYPE_HEAD'), 'head');
   assert.equal(equipLocToSlot('INVTYPE_FINGER'), 'ring');

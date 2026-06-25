@@ -2,7 +2,7 @@
 ## Title: Tankadin Gear Sim Exporter
 ## Notes: Exports your gear (equipped + bags + bank) for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.6.0
+## Version: 0.7.0
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB
 

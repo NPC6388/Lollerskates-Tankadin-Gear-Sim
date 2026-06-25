@@ -125,10 +125,17 @@ export function parseExport(text) {
   if (!lines.length || !/^TGS\d+$/.test(lines[0])) {
     throw new Error('Not a Tankadin Gear Sim export (missing TGS header)');
   }
-  const out = { version: Number(lines[0].slice(3)), character: {}, items: [], talents: '' };
+  const out = { version: Number(lines[0].slice(3)), character: {}, items: [], talents: '', talentRanks: {} };
 
   for (const line of lines.slice(1)) {
-    if (line.startsWith('T:')) {
+    if (line.startsWith('TR:')) {
+      for (const kv of line.slice(3).split(';')) { // v11 talent ranks by name
+        if (!kv) continue;
+        const eq = kv.lastIndexOf('=');
+        if (eq < 0) continue;
+        out.talentRanks[kv.slice(0, eq)] = Number(kv.slice(eq + 1)) || 0;
+      }
+    } else if (line.startsWith('T:')) {
       out.talents = line.slice(2); // v10 talent string (per-talent ranks, "-" between trees)
     } else if (line.startsWith('C:')) {
       for (const kv of line.slice(2).split(';')) {

@@ -148,7 +148,7 @@ function runOptimize() {
       const results = optimizeSets(items, {
         professions, buffed: $('buffed').checked, maxPhase: +$('phase').value,
         faction: $('faction').value, useImbuedMeta: $('imbuedMeta').checked,
-        trinketLocks, goals: currentGoals(),
+        talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
       });
       render(results);
     } catch (err) {
@@ -184,7 +184,13 @@ function buildExport(r) {
   });
   const c = parsed && parsed.character || {};
   const talents = ($('talents') && $('talents').value.trim()) || '';
-  return JSON.stringify({ name: c.name || 'Tankadin', race: 'BloodElf', class: 'paladin', level: c.level || 70, talents, spec: 'protection', gear: { items } });
+  const obj = { name: c.name || 'Tankadin', race: 'BloodElf', class: 'paladin', level: c.level || 70, talents, spec: 'protection', gear: { items } };
+  if ($('buffed') && $('buffed').checked) {
+    // Blessing of Kings (IndividualBuffs) + base Mark of the Wild (RaidBuffs giftOfTheWild=1,
+    // TristateEffectRegular) in the wowsims proto-JSON shape.
+    obj.buffs = { blessingOfKings: true, giftOfTheWild: 1 };
+  }
+  return JSON.stringify(obj);
 }
 function exportSet(r, btn) {
   const json = buildExport(r);

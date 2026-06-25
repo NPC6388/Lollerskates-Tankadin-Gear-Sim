@@ -50,6 +50,28 @@ export const BUFFS = {
   markOfTheWild: { stamina: 14, strength: 14, agility: 14, intellect: 14 },
 };
 
+// Compute the stat-affecting talent modifiers from a scanned rank map (talent name -> points,
+// from the addon's TR: line). Absent ranks fall back to the guide's Avenger's Shield (0/43/18)
+// build, so an export without talents reproduces the existing model exactly. Per-rank values are
+// the guide's talent sheet: Anticipation +4 def, Deflection +1% parry, Toughness +2% item armor,
+// Sacred Duty +3% stam, Combat Expertise +2% stam +1 expertise, Precision +1% melee/spell hit.
+export function talentsFromRanks(ranks) {
+  if (!ranks || !Object.keys(ranks).length) return { ...TALENTS };
+  const r = (name, def) => (ranks[name] != null ? ranks[name] : def);
+  const sacredDuty = r('Sacred Duty', 2), combatExpertise = r('Combat Expertise', 5);
+  const toughness = r('Toughness', 5), anticipation = r('Anticipation', 5);
+  const deflection = r('Deflection', 5), precision = r('Precision', 3);
+  return {
+    anticipationDefenseSkill: anticipation * 4,
+    deflectionParryPct: deflection * 1,
+    toughnessItemArmorMult: 1 + toughness * 0.02,
+    staminaMult: 1 + sacredDuty * 0.03 + combatExpertise * 0.02,
+    combatExpertise: combatExpertise * 1,
+    precisionSpellHitPct: precision * 1,
+    precisionMeleeHitPct: precision * 1,
+  };
+}
+
 export const STAT_KEYS = [
   'stamina', 'strength', 'agility', 'intellect',
   'defenseRating', 'dodgeRating', 'parryRating', 'blockRating',
@@ -78,7 +100,8 @@ export function aggregate(items, opts = {}) {
   const { hsBlockBonus = 30, buffs = {} } = opts;
   // Blessing of Kings: +10% to the four primaries, applied AFTER flat buffs (base+gear+MotW).
   const kMult = opts.kings ? BUFFS.kingsMult : 1.0;
-  const C = CHARACTER, T = TALENTS;
+  // opts.talents (from talentsFromRanks) overrides the default build's talent modifiers.
+  const C = CHARACTER, T = opts.talents ? { ...TALENTS, ...opts.talents } : TALENTS;
   const t = sumStats(items);
   const b = (k) => (t[k] || 0) + (buffs[k] || 0);
 

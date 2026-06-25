@@ -6,7 +6,7 @@
 // item and gem IT for defense when that beats a tankier swap. Final gems are recomputed
 // socket-bonus-aware via solveLoadout.
 
-import { aggregate, BUFFS, TALENTS } from './model.js';
+import { aggregate, BUFFS, TALENTS, talentsFromRanks } from './model.js';
 import { evaluateSet } from './character.js';
 import { bestGem, bestMeta, gemColors } from './gems.js';
 import { bestEnchant } from './enchants.js';
@@ -78,11 +78,12 @@ function lockFor(goal, locks) {
 }
 
 function runGoal(goal, items, ctx) {
-  const { perks, buff, maxPhase, faction, locks } = ctx;
+  const { perks, buff, maxPhase, faction, locks, talents } = ctx;
+  const aggOpts = { hsBlockBonus: HS, ...buff, ...(talents ? { talents } : {}) };
   const objScale = blendScale(goal.ratio);
   const prepared = items.flatMap((it) => itemVariants(it, objScale, ctx));
   const { pool, distinct, locked } = buildPool(prepared, { lock: lockFor(goal, locks) });
-  const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, hsBlockBonus: HS, ...buff };
+  const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, ...aggOpts };
   const res = optimizeHeuristic(pool, oGoal, { distinct, locked });
 
   // Final gemming, socket-bonus-aware, PER ITEM so we can report gems/enchant by slot. Focus
@@ -113,7 +114,7 @@ function runGoal(goal, items, ctx) {
     p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, effectId: en.enchant.enchant || null } : null;
     p.metas = pMetas;
   }
-  const agg = aggregate([...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }], { hsBlockBonus: HS, ...buff });
+  const agg = aggregate([...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }], aggOpts);
 
   // Per-slot gem/enchant detail for the UI's paper-doll display.
   const perSlot = {};
@@ -136,6 +137,8 @@ export function optimizeSets(items, options = {}) {
     faction: options.faction || null,
     // Imbued Unstable Diamond is opt-in (like buffs); excluded from meta choices when off.
     metaExclude: options.useImbuedMeta === false ? ['Imbued Unstable Diamond'] : [],
+    // Talent-driven stat modifiers from the scanned build (TR: line); null = default 0/43/18.
+    talents: options.talentRanks && Object.keys(options.talentRanks).length ? talentsFromRanks(options.talentRanks) : null,
     locks: options.trinketLocks || DEFAULT_TRINKET_LOCKS,
   };
   const goals = options.goals || GOAL_PRESETS;

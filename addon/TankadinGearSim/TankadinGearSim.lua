@@ -3,6 +3,7 @@
 --   line 1: TGS<version>
 --   line 2: C:key=val;... — current character-sheet finals (for calibration)
 --   line 3: T:<talentString> — per-talent ranks, "-" between trees (v10; Sixty Upgrades format)
+--   line 4: TR:name=rank;... — talent ranks by NAME (v11), for the sim's talent→stat model
 --   then:   I:<itemString>|<equipLoc>|<resolved>|<base>|<socketBonus>|<name> — one per item.
 --     resolved = "ilvl=N;<ITEM_MOD key>=val;..." scanned from the item's TOOLTIP, so it
 --       INCLUDES the gems + enchants CURRENTLY applied (the gear "as worn").
@@ -14,7 +15,7 @@
 --     name = the item's display name (v9), from GetItemInfo. Plain text, last field.
 -- v1–v7 lines had only the first three fields (resolved). Everything read defensively.
 
-local VERSION = "10"
+local VERSION = "11"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -291,26 +292,49 @@ local function scanGear()
   return list
 end
 
--- v10: the talent build as a per-talent rank string with "-" between the three trees, e.g.
--- "00000...-05003203...-05000...". This is the WowSimsExporter/Sixty Upgrades format, so the
--- sim importer reads it directly. Order is GetTalentInfo's (tier, then column) within each tree.
+-- v10/v11: the talent build as a per-talent rank string with "-" between the three trees, e.g.
+-- "00000...-05003203...-05000...". This is the WowSimsExporter/Sixty Upgrades format. The ranks
+-- MUST be in canonical (tier, then column) order — GetTalentInfo's raw index order isn't always
+-- that, which scrambles the import — so we sort each tree by (tier, column) before emitting.
 local function talentString()
   local out = {}
   local tabs = (type(GetNumTalentTabs) == "function" and GetNumTalentTabs()) or 3
   for t = 1, tabs do
     local n = (type(GetNumTalents) == "function" and GetNumTalents(t)) or 0
+    local rows = {}
     for i = 1, n do
-      out[#out + 1] = tostring(select(5, GetTalentInfo(t, i)) or 0) -- 5th return = current rank
+      local _, _, tier, column, rank = GetTalentInfo(t, i)
+      rows[#rows + 1] = { tier = tier or 0, column = column or 0, rank = rank or 0 }
     end
+    table.sort(rows, function(a, b)
+      if a.tier ~= b.tier then return a.tier < b.tier end
+      return a.column < b.column
+    end)
+    for _, r in ipairs(rows) do out[#out + 1] = tostring(r.rank) end
     if t < tabs then out[#out + 1] = "-" end
   end
   return table.concat(out)
 end
 
+-- v11: talent ranks keyed by NAME (e.g. "Anticipation=5;Toughness=3;..."). The sim reads the
+-- stat-affecting talents from this by name, so it never depends on positional ordering.
+local function talentRanks()
+  local parts = {}
+  local tabs = (type(GetNumTalentTabs) == "function" and GetNumTalentTabs()) or 3
+  for t = 1, tabs do
+    local n = (type(GetNumTalents) == "function" and GetNumTalents(t)) or 0
+    for i = 1, n do
+      local name, _, _, _, rank = GetTalentInfo(t, i)
+      if name then parts[#parts + 1] = name .. "=" .. tostring(rank or 0) end
+    end
+  end
+  return table.concat(parts, ";")
+end
+
 local function buildExport()
-  local lines = { "TGS" .. VERSION, characterLine(), "T:" .. talentString() }
+  local lines = { "TGS" .. VERSION, characterLine(), "T:" .. talentString(), "TR:" .. talentRanks() }
   for _, l in ipairs(scanGear()) do lines[#lines + 1] = l end
-  return table.concat(lines, "\n"), #lines - 3
+  return table.concat(lines, "\n"), #lines - 4
 end
 
 local function showExport(text)

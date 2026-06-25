@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseExport, equippableItems } from '../src/import.js';
-import { aggregate, BUFFS } from '../src/model.js';
+import { aggregate, BUFFS, talentsFromRanks, TALENTS } from '../src/model.js';
 import { evaluateSet } from '../src/character.js';
 import { UNBUFFED_EXPORT } from './fixtures/lollerskate-unbuffed.js';
 
@@ -51,6 +51,19 @@ test('Kings (+10%) and MotW (+14) raise the primaries; spell power untouched', (
   assert.ok(near(buffed.agility, (a.agility + 14) * 1.10, 0.01), `agi ${buffed.agility}`);
   // Kings/MotW do not touch spell power
   assert.equal(buffed.spellPower, a.spellPower);
+});
+
+test('talentsFromRanks: empty -> default 0/43/18 build; Sanctity -> lower stam/armor mult', () => {
+  assert.deepEqual(talentsFromRanks({}), { ...TALENTS }); // no scan -> the guide's build
+  // Sanctity 0/38/23: Sacred Duty 2/2, Combat Expertise 2/5, Toughness 3/5.
+  const sanctity = talentsFromRanks({ 'Sacred Duty': 2, 'Combat Expertise': 2, Toughness: 3, Anticipation: 5, Deflection: 5, Precision: 3 });
+  assert.ok(Math.abs(sanctity.staminaMult - 1.10) < 1e-9, `stamMult ${sanctity.staminaMult}`); // 1 + .06 + .04
+  assert.ok(Math.abs(sanctity.toughnessItemArmorMult - 1.06) < 1e-9); // 3/5
+  // Fewer stamina/armor talents -> strictly less health and armor than the default build.
+  const a43 = aggregate(items);
+  const a38 = aggregate(items, { talents: sanctity });
+  assert.ok(a38.health < a43.health, `${a38.health} < ${a43.health}`);
+  assert.ok(a38.armor < a43.armor, `${a38.armor} < ${a43.armor}`);
 });
 
 test('block value reproduces the sheet (shield base block + suffixes + Str/20)', () => {
