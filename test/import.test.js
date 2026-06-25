@@ -46,6 +46,32 @@ test('v2: ratings without _SHORT map correctly (real-client keys)', () => {
   assert.equal(head.stats.socketMeta, 1);
 });
 
+// v8 adds two |-fields after the resolved stats: base stats (gem/enchant-free, with the
+// FULL socket-color layout) and the socket bonus "ITEM_MOD_xxx:val".
+const V8 = [
+  'TGS8',
+  'C:name=Lollerskate;level=70',
+  // currently gemmed gloves: resolved has the gems baked in (no empty sockets); base carries
+  // both sockets as EMPTY_SOCKET_* and the bonus is +4 stamina.
+  'E:item:30124:2937:24033:24058::::70::::::::::|INVTYPE_HAND|ilvl=133;ITEM_MOD_STAMINA_SHORT=52;ITEM_MOD_DEFENSE_SKILL_RATING=27|ITEM_MOD_STAMINA_SHORT=28;ITEM_MOD_DEFENSE_SKILL_RATING=27;EMPTY_SOCKET_RED=1;EMPTY_SOCKET_YELLOW=1|ITEM_MOD_STAMINA_SHORT:4',
+  // no-bonus, no-socket item still parses (empty trailing fields)
+  'E:item:28789::::::::70::::::::::|INVTYPE_TRINKET|ilvl=125;ITEM_MOD_SPELL_POWER=54||',
+].join('\n');
+
+test('v8: base stats, full socket layout, and socket bonus parse', () => {
+  const p = parseExport(V8);
+  assert.equal(p.version, 8);
+  const gloves = p.items[0];
+  assert.equal(gloves.stats.stamina, 52);           // resolved (gems baked in)
+  assert.equal(gloves.baseStats.stamina, 28);       // base (gem-free)
+  assert.deepEqual(gloves.sockets, { red: 1, yellow: 1 }); // both, even though filled
+  assert.deepEqual(gloves.socketBonus, { stat: 'stamina', value: 4 });
+  const trinket = p.items[1];
+  assert.equal(trinket.stats.spellDamage, 54);
+  assert.deepEqual(trinket.sockets, {});            // no sockets
+  assert.equal(trinket.socketBonus, null);          // empty bonus field -> null
+});
+
 test('v2: equip locations map to slots', () => {
   assert.equal(equipLocToSlot('INVTYPE_HEAD'), 'head');
   assert.equal(equipLocToSlot('INVTYPE_FINGER'), 'ring');

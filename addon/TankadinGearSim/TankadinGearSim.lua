@@ -2,12 +2,17 @@
 -- /tgs (or /tankadin) opens a copy box with:
 --   line 1: TGS<version>
 --   line 2: C:key=val;... — current character-sheet finals (for calibration)
---   then:   I:<itemString>|<equipLoc>|ilvl=N;<ITEM_MOD key>=val;... — one per owned item.
--- Per-item stats are scanned from the item's TOOLTIP, so they INCLUDE gems + enchants
--- (GetItemStats alone returns the base item with empty sockets). Empty-socket counts are
--- still taken from GetItemStats for the gem optimizer. Everything read defensively.
+--   then:   I:<itemString>|<equipLoc>|<resolved>|<base>|<socketBonus> — one per owned item.
+--     resolved = "ilvl=N;<ITEM_MOD key>=val;..." scanned from the item's TOOLTIP, so it
+--       INCLUDES the gems + enchants CURRENTLY applied (the gear "as worn").
+--     base     = "<ITEM_MOD key>=val;..." from GetItemStats on the gem/enchant-STRIPPED
+--       base link, so it carries the clean item stats AND the FULL socket-color layout
+--       (EMPTY_SOCKET_* for every socket, even ones currently filled). For the gem solver.
+--     socketBonus = "<ITEM_MOD key>:val" — the item's socket bonus (the prize for matching
+--       all its socket colors), captured whether or not it's currently active. May be empty.
+-- v1–v7 lines had only the first three fields (resolved). Everything read defensively.
 
-local VERSION = "7"
+local VERSION = "8"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -176,11 +181,32 @@ local function parseClause(clause, add)
   end
 end
 
+-- The socket bonus line ("Socket Bonus: +4 Stamina") -> "ITEM_MOD_STAMINA_SHORT:4", a
+-- discrete stat:value captured whether the bonus is currently active or not. The gem solver
+-- decides whether color-matching the sockets to earn it beats slotting raw gems.
+local function parseSocketBonus(l)
+  local clause = l:match("socket bonus:?%s*(.+)") or l
+  local rn, rword = clause:match("%+(%d+)%s+(%a+)%s+resistance")
+  if rn and RESIST[rword] then return RESIST[rword] .. ":" .. rn end
+  local n, word = clause:match("%+(%d+)%s+(%a+)")
+  if n and PRIMARY[word] then return PRIMARY[word] .. ":" .. n end
+  for _, pair in ipairs(PHRASES) do
+    local v = clause:match(pair[1])
+    if v then return pair[2] .. ":" .. v end
+  end
+  return nil
+end
+
 local function parseTooltipStats(link)
   local s = {}
+  local socketBonus = nil
   local function add(k, v) if k and v then s[k] = (s[k] or 0) + v end end
   for _, ln in ipairs(tooltipLines(link)) do
     local l = ln.text:lower()
+    -- capture the socket bonus discretely (active or grey) before any skip/fold logic
+    if not socketBonus and l:find("socket bonus", 1, true) then
+      socketBonus = parseSocketBonus(l)
+    end
     -- skip on-use / proc effects (activated numbers aren't passive stats) and socket
     -- bonuses the gems don't activate (grey lines).
     if l:match("^use:") or l:find("chance on", 1, true) or l:find("chance when", 1, true)
@@ -208,25 +234,37 @@ local function parseTooltipStats(link)
       end
     end -- end of non-skipped line
   end
-  return s
+  return s, socketBonus
+end
+
+local function serializeStats(t)
+  local parts = {}
+  if type(t) == "table" then
+    for k, v in pairs(t) do parts[#parts + 1] = k .. "=" .. tostring(v) end
+  end
+  return table.concat(parts, ";")
 end
 
 local function itemSegment(link)
-  local stats = parseTooltipStats(link)
-  -- empty-socket counts come from GetItemStats (reliable, structured)
-  local base = safe(GetItemStatsFn, link)
-  if type(base) == "table" then
+  local stats, socketBonus = parseTooltipStats(link)
+  -- empty-socket counts on the LIVE link come from GetItemStats (only currently-empty ones);
+  -- kept in the resolved field for backward compatibility with v7 consumers.
+  local liveBase = safe(GetItemStatsFn, link)
+  if type(liveBase) == "table" then
     for _, k in ipairs({ "EMPTY_SOCKET_RED", "EMPTY_SOCKET_YELLOW", "EMPTY_SOCKET_BLUE",
       "EMPTY_SOCKET_META", "EMPTY_SOCKET_PRISMATIC" }) do
-      if base[k] then stats[k] = base[k] end
+      if liveBase[k] then stats[k] = liveBase[k] end
     end
   end
-  local parts = {}
-  for k, v in pairs(stats) do parts[#parts + 1] = k .. "=" .. tostring(v) end
   local equipLoc = select(9, GetItemInfo(link)) or ""
   local ilvl = select(4, GetItemInfo(link)) or 0
-  return equipLoc .. "|ilvl=" .. tostring(ilvl) ..
-    (#parts > 0 and (";" .. table.concat(parts, ";")) or "")
+  local resolvedSeg = "ilvl=" .. tostring(ilvl) ..
+    (next(stats) and (";" .. serializeStats(stats)) or "")
+  -- v8 base field: GetItemStats on the gem/enchant-STRIPPED base link gives clean item stats
+  -- plus the FULL socket-color layout (every socket as EMPTY_SOCKET_*, even filled ones).
+  local id = link:match("item:(%d+)")
+  local baseSeg = id and serializeStats(safe(GetItemStatsFn, "item:" .. id)) or ""
+  return equipLoc .. "|" .. resolvedSeg .. "|" .. baseSeg .. "|" .. (socketBonus or "")
 end
 
 local function scanGear()

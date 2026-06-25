@@ -82,6 +82,27 @@ export function parseItemString(s) {
   };
 }
 
+// socket-count stat keys -> color, for exposing a per-item socket layout
+const SOCKET_STAT_KEYS = { socketRed: 'red', socketYellow: 'yellow', socketBlue: 'blue', socketMeta: 'meta' };
+function socketsFromStats(stats = {}) {
+  const out = {};
+  for (const [k, color] of Object.entries(SOCKET_STAT_KEYS)) {
+    if (stats[k]) out[color] = stats[k];
+  }
+  return out;
+}
+
+// v8 socket-bonus field "ITEM_MOD_STAMINA_SHORT:4" -> { stat:'stamina', value:4 }.
+// Empty / unmapped -> null.
+function parseSocketBonus(seg) {
+  if (!seg) return null;
+  const i = seg.indexOf(':');
+  if (i < 0) return null;
+  const stat = STAT_KEY_MAP[seg.slice(0, i)];
+  const value = Number(seg.slice(i + 1)) || 0;
+  return stat && value ? { stat, value } : null;
+}
+
 // "ilvl=86;ITEM_MOD_STAMINA_SHORT=30;..." -> { stats:{stamina:30,...}, itemLevel:86 }
 function parseStatSegment(seg) {
   const stats = {};
@@ -118,7 +139,7 @@ export function parseExport(text) {
     } else if (line.startsWith('I:') || line.startsWith('E:')) {
       const equipped = line.startsWith('E:');
       const body = line.slice(2);
-      const [itemStr, equipLoc = '', statSeg = ''] = body.split('|');
+      const [itemStr, equipLoc = '', statSeg = '', baseSeg, bonusSeg] = body.split('|');
       const item = parseItemString(itemStr);
       item.equipped = equipped;
       if (equipLoc || statSeg) {
@@ -127,6 +148,12 @@ export function parseExport(text) {
         item.slot = equipLocToSlot(equipLoc);
         item.itemLevel = itemLevel;
         item.stats = stats;
+        // v8: gem/enchant-free base stats carry the full socket-color layout
+        if (baseSeg !== undefined) item.baseStats = parseStatSegment(baseSeg).stats;
+        // sockets: prefer the base layout (every socket); v1–v7 fall back to the resolved
+        // field, which only lists currently-EMPTY sockets.
+        item.sockets = socketsFromStats(item.baseStats || stats);
+        item.socketBonus = parseSocketBonus(bonusSeg);
       }
       out.items.push(item);
     }

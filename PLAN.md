@@ -7,8 +7,9 @@
 > [Prot Paladin Tanking Guide](https://github.com/NPC6388/wow-tbc-prot-paladin-guide).
 
 **Status:** Engine in progress — M1, M2-core, M4 done; model de-calibrated to a
-first-principles forward calc; set bonuses in; M3 underway. See `CHANGELOG.md`.
-Last updated 2026-06-22.
+first-principles forward calc; set bonuses in; M3 underway (gem/enchant solver with
+per-item socket-bonus matching done; only the bundled full item DB remains). See
+`CHANGELOG.md`. Last updated 2026-06-24.
 **Math source of truth:** the Prot Paladin Tanking Guide (`index.html`) and its
 `tankadin sixtyupgrades weights.md` companion.
 
@@ -181,17 +182,21 @@ flow into this module (and vice-versa).
    (currently driven via the API).
 3. **M3 — Item/gem/enchant databases + gem/enchant solver + professions + buff toggle.
    🚧 IN PROGRESS.** Gem DB (`src/gems.js`) + enchant DB (`src/enchants.js`) + solver
-   (`src/gemsolver.js`: ideal gems/enchants per goal, socket-bonus-worth-it, meta
-   activation, profession toggles) + professions model (`src/professions.js`). Buff toggle
-   already landed as `aggregate()`'s optional `buffs` block (de-calibration commit).
-   The bundled full item DB for *manual* search is the remaining heavy data task; the
-   optimizer already runs over the addon-imported collection without it.
-4. **M4 — Companion addon (bulk import). ✅ DONE (v7).** `addon/TankadinGearSim` exports
+   (`src/gemsolver.js`: ideal gems/enchants per goal, **per-item socket-bonus-worth-it**,
+   meta activation, profession toggles) + professions model (`src/professions.js`). Buff
+   toggle already landed as `aggregate()`'s optional `buffs` block (de-calibration commit).
+   Socket-bonus matching landed with addon **v8** (base stats + full socket-color layout +
+   discrete socket bonus per item; see `CHANGELOG.md`). The bundled full item DB for
+   *manual* search is the remaining heavy data task; the optimizer already runs over the
+   addon-imported collection without it.
+4. **M4 — Companion addon (bulk import). ✅ DONE (v8).** `addon/TankadinGearSim` exports
    equipped (`E:`) + bags + bank + reagent bank (`I:`) lines (gems/enchants folded in via
    tooltip scan), plus a `C:...` line of character-sheet finals the sim uses to **reconcile**
    its forward calc. v5–v7 fixed capture accuracy: "Spell Damage" wording, combined-line
    splitting, socketed-gem primaries, shield base block, and skipping inactive socket
-   bonuses. `src/import.js` parses the format. Reads all WoW APIs defensively (pcall).
+   bonuses. **v8** adds per-item base stats + full socket-color layout + the discrete socket
+   bonus, closing the socket-bonus export gap for the gem solver. `src/import.js` parses the
+   format. Reads all WoW APIs defensively (pcall).
 
    *Note:* the model no longer self-calibrates — the old back-fit was removed in favor of a
    documented first-principles forward calc (see `src/model.js`, `CHANGELOG.md`).

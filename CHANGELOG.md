@@ -29,6 +29,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     Weapon-Savagery; added Boots-Dexterity/Fortitude, Bracer/Gloves Spellpower, Shield-Block,
     Cloak-Dodge, and the spell-power shoulder inscriptions; corrected Greater Inscription of
     Warding to +15 Dodge/+10 Def.
+  - **Socket-bonus-worth-it landed (needs addon v8).** `gemsolver.js` now plans gems *per
+    item*: for each socketed piece it compares filling every socket with the globally best
+    gem (ignore color, forfeit the bonus) against matching each socket's color to activate
+    the bonus and adding it, keeping whichever scores higher by the goal's weights. This
+    confirmed the old "tank gemming is all-stamina, ignore bonuses" shortcut is wrong under
+    the real weights — for avoidance-leaning survival gear, a stamina+avoidance hybrid plus
+    the socket bonus often beats a pure-stamina gem; for threat gear the raw spell-damage gem
+    usually wins. `import.js` exposes `item.baseStats`, `item.sockets` (full color layout),
+    and `item.socketBonus`; gem stats are added relative to `baseStats` (not the resolved,
+    already-gemmed stats) so a recommended re-gem doesn't double-count.
 - **M4 — companion export addon.** `/tgs` exports equipped + bags + bank as `I:`/`E:`
   lines plus a `C:` character-sheet line.
 
@@ -44,6 +54,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **v7** — skip *inactive* (grey) socket bonuses via tooltip line color, so bonuses the
   player's gems don't satisfy are no longer counted (fixed a +4 phantom defense rating and
   hidden phantom stamina).
+- **v8** — each item line gains two fields after the resolved stats: **base** stats from
+  `GetItemStats` on the gem/enchant-stripped base link (clean item + the full socket-color
+  layout, every socket even when filled) and the discrete **socket bonus**
+  (`ITEM_MOD_*:val`, captured active or grey). Closes the socket-bonus export gap so the gem
+  solver can do per-item worth-it matching and recommend re-gems from a clean base.
 
 ## Model
 - **De-calibration.** Removed the old `calibrate()` back-fit (it masked capture bugs).

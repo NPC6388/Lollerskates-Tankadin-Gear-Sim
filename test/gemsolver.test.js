@@ -44,6 +44,31 @@ test('ring enchant is applied to both rings (counts twice)', () => {
   assert.equal(r.stats.spellDamage, 24); // 12 per ring x2
 });
 
+test('socket bonus: matches the color when the bonus beats raw gems', () => {
+  // A lone yellow socket with a +5 spell-damage bonus. The globally best threat gem is a red
+  // gem; matching yellow gives up a little raw value but earns the bonus, which wins here.
+  const item = { slot: 'hands', stats: {}, sockets: { yellow: 1 },
+    socketBonus: { stat: 'spellDamage', value: 5 } };
+  const out = solveLoadout([item], SCALES.threatAOE, { names: [] });
+  const match = bestGem(SCALES.threatAOE, { socketColor: 'yellow', matchColor: true });
+  assert.notEqual(match.gem.name, bestGem(SCALES.threatAOE).gem.name); // sanity: differs from raw
+  assert.equal(out.gems.choices[0].socket, 'yellow');
+  assert.equal(out.gems.choices[0].name, match.gem.name);            // chose the matching gem
+  assert.equal(out.gems.stats.spellDamage, (match.gem.stats.spellDamage || 0) + 5); // bonus applied
+});
+
+test('socket bonus: keeps the raw gem when the bonus is not worth it', () => {
+  // Threat goal, a BLUE socket, and only a +4 defense bonus (near-worthless for threat). The
+  // raw +9 spell-damage gem in an off-color socket beats any blue-fitting gem + the bonus.
+  const raw = bestGem(SCALES.threatAOE); // Runed Living Ruby (red, +9 spell damage)
+  const item = { slot: 'hands', stats: {}, sockets: { blue: 1 },
+    socketBonus: { stat: 'defenseRating', value: 4 } };
+  const out = solveLoadout([item], SCALES.threatAOE, { names: [] });
+  assert.equal(out.gems.choices[0].name, raw.gem.name);              // kept the raw best gem
+  assert.equal(out.gems.stats.spellDamage, raw.gem.stats.spellDamage); // its +9
+  assert.equal(out.gems.stats.defenseRating, undefined);             // bonus forfeited
+});
+
 test('solveLoadout produces gem + enchant recommendations for the real set', () => {
   const set = equippableItems(parseExport(UNBUFFED_EXPORT)).filter((i) => i.equipped);
   const out = solveLoadout(set, SCALES.threatAOE, professionPerks(['Jewelcrafting', 'Enchanting']));
