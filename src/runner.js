@@ -115,6 +115,25 @@ function runGoal(goal, items, ctx) {
     p.metas = pMetas;
   }
   const agg = aggregate([...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }], aggOpts);
+  const evald = evaluateSet(agg);
+
+  // What Kings + MotW actually contribute to this set (buffed minus the same set unbuffed), so
+  // the UI can annotate the gates: buffs add stamina/agi (EHP + a little dodge toward uncrush)
+  // but no defense/resilience, so they don't move crit immunity.
+  let buffImpact = null;
+  if (buff && buff.kings) {
+    const baseStats = [...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }];
+    const aggU = aggregate(baseStats, { hsBlockBonus: HS, ...(talents ? { talents } : {}) });
+    const eU = evaluateSet(aggU);
+    buffImpact = {
+      stamina: agg.stamina - aggU.stamina,
+      agility: agg.agility - aggU.agility,
+      armor: agg.armor - aggU.armor,
+      health: agg.health - aggU.health,
+      crushAvoid: evald.totalAvoidanceWithHS - eU.totalAvoidanceWithHS, // dodge gained, toward uncrush
+      critReduction: evald.critReduction - eU.critReduction,            // ~0 (no def/resil from buffs)
+    };
+  }
 
   // Per-slot gem/enchant detail for the UI's paper-doll display.
   const perSlot = {};
@@ -122,7 +141,7 @@ function runGoal(goal, items, ctx) {
     const p = plans.find((x) => x.v === it);
     perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap' } : { gems: [], enchant: null, metas: [], defGemmed: false };
   }
-  return { goal, selection: res.selection, items: res.items, legal: res.legal, evald: evaluateSet(agg), agg, gemChoices, metas, perSlot };
+  return { goal, selection: res.selection, items: res.items, legal: res.legal, evald, agg, gemChoices, metas, perSlot, buffImpact };
 }
 
 // Main entry. items = equippableItems(parseExport(text)). options:
