@@ -4,7 +4,8 @@
   "description": "Client-side gear simulator for WoW Classic TBC Anniversary Protection Paladins",
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "optimize": "node bin/optimize.mjs"
   },
   "license": "MIT",
   "repository": {
