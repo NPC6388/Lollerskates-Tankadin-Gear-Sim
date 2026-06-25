@@ -174,6 +174,33 @@ export function optimizeHeuristic(pool, goal, { distinct = [], locked = {} } = {
     cur = bestSwap.trial;
   }
 
+  // Climb: once legal, convert any SURPLUS (e.g. avoidance overshooting the uncrush cap) into
+  // objective. Repeatedly apply the single swap that most increases the objective while keeping
+  // every gate satisfied — i.e. trade excess avoidance back for threat/EHP, staying >= cap. This
+  // is what fixes a set that the repair left several % over the cap.
+  if (gatesPass(cur.evald, goal.gates).all) {
+    for (let guard = 0; guard < 300; guard++) {
+      const curObj = objFn(cur.evald, cur.agg, cur.items);
+      let bestSwap = null;
+      for (const s of slots) {
+        if (locked[s]) continue;
+        for (const cand of pool[s]) {
+          if (cand === sel[s]) continue;
+          const trialSel = { ...sel, [s]: cand };
+          if (!distinctOk(trialSel, distinct)) continue;
+          const trial = build(trialSel, goal);
+          if (!gatesPass(trial.evald, goal.gates).all) continue; // must stay legal
+          const gain = objFn(trial.evald, trial.agg, trial.items) - curObj;
+          if (gain <= 1e-9) continue;
+          if (!bestSwap || gain > bestSwap.gain) bestSwap = { s, cand, gain, trial };
+        }
+      }
+      if (!bestSwap) break;
+      sel[bestSwap.s] = bestSwap.cand;
+      cur = bestSwap.trial;
+    }
+  }
+
   const legal = gatesPass(cur.evald, goal.gates).all && distinctOk(sel, distinct);
   return { ...cur, objectiveValue: objFn(cur.evald, cur.agg, cur.items), legal };
 }
