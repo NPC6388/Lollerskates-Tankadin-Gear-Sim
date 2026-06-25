@@ -313,17 +313,34 @@ local function showExport(text)
     scroll:SetPoint("TOPLEFT", 16, -50); scroll:SetPoint("BOTTOMRIGHT", -34, 14)
     local eb = CreateFrame("EditBox", "TGSExportEdit", scroll)
     eb:SetMultiLine(true); eb:SetFontObject(ChatFontNormal); eb:SetWidth(500); eb:SetAutoFocus(false)
+    eb:SetMaxLetters(0); eb:SetHeight(360)
     eb:SetScript("OnEscapePressed", function() f:Hide() end)
     scroll:SetScrollChild(eb); f.editBox = eb
   end
-  f.editBox:SetText(text); f.editBox:HighlightText(); f.editBox:SetFocus(); f:Show()
+  -- Show the frame BEFORE setting text/focus: an EditBox in a ScrollFrame can render blank
+  -- if HighlightText/SetFocus run while the frame is still hidden.
+  f:Show()
+  f.editBox:SetText(text or "")
+  f.editBox:SetCursorPosition(0)
+  f.editBox:SetFocus()
+  f.editBox:HighlightText()
 end
 
 SLASH_TANKADINGEARSIM1 = "/tgs"
 SLASH_TANKADINGEARSIM2 = "/tankadin"
 SlashCmdList["TANKADINGEARSIM"] = function()
   local text, count = buildExport()
+  -- Primary, copy-box-free path: stash the full export in a SavedVariable. WoW flushes it to
+  -- WTF/Account/<ACCT>/SavedVariables/TankadinGearSim.lua on the next /reload or logout, so the
+  -- sim can read it straight off disk regardless of whether the copy box renders.
+  TankadinGearSimDB = {
+    version = VERSION,
+    count = count,
+    exportedAt = (date and date("%Y-%m-%d %H:%M:%S")) or (time and time()) or 0,
+    export = text,
+  }
   showExport(text)
   DEFAULT_CHAT_FRAME:AddMessage("|cff7ee787Tankadin Gear Sim:|r exported " .. count ..
-    " items (stats incl. gems/enchants) + character. Open your bank first for banked gear.")
+    " items (stats incl. gems/enchants) + character. Saved to SavedVariables \226\128\148 " ..
+    "type |cffffd200/reload|r now to flush it to disk. Open your bank first for banked gear.")
 end
