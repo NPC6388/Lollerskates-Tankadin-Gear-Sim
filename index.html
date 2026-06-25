@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tankadin Gear Sim — TBC Prot Paladin BiS optimizer</title>
+  <meta name="description" content="Paste your in-game gear export and get optimized Protection Paladin sets — raid threat, survival, AOE trash, and balanced — each crit/crush capped, gemmed and enchanted." />
+  <link rel="stylesheet" href="web/style.css" />
+  <!-- Wowhead tooltips: color + icon + correct names on item links -->
+  <script>const whTooltips = { colorLinks: true, iconizeLinks: true, renameLinks: true };</script>
+  <script defer src="https://wow.zamimg.com/widgets/power.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Tankadin Gear Sim</h1>
+    <p class="tag">TBC Protection Paladin — paste your gear, get four optimized sets. Runs entirely in your browser.</p>
+  </header>
+
+  <main>
+    <section class="panel" id="input-panel">
+      <h2>1 · Your gear</h2>
+      <details class="how">
+        <summary>How to get your export</summary>
+        <ol>
+          <li>Install the <strong>TankadinGearSim</strong> addon, <code>/reload</code>.</li>
+          <li><strong>Open your bank</strong> (so banked gear is included), then run <code>/tgs</code>.</li>
+          <li>Either <strong>copy</strong> the text from the box, or run <code>/reload</code> and grab the file
+            <code>WTF/Account/&lt;acct&gt;/SavedVariables/TankadinGearSim.lua</code>.</li>
+          <li>Paste the text below, or upload the <code>.lua</code> file. Both work.</li>
+        </ol>
+      </details>
+      <textarea id="exportText" spellcheck="false" placeholder="Paste your TGS export here (starts with TGS9 …) — or upload the SavedVariables .lua file below"></textarea>
+      <div class="row">
+        <label class="file">Upload SavedVariables .lua
+          <input type="file" id="exportFile" accept=".lua,.txt" />
+        </label>
+        <button id="loadSample" class="ghost" type="button">Load example</button>
+        <span id="inputStatus" class="status"></span>
+      </div>
+    </section>
+
+    <section class="panel" id="config-panel">
+      <h2>2 · Setup</h2>
+      <div class="config-grid">
+        <div class="field">
+          <label>Professions</label>
+          <div class="inline">
+            <select id="prof1"></select>
+            <select id="prof2"></select>
+          </div>
+          <small>Drives gem/enchant perks (JC gems, BS sockets, ring enchant).</small>
+        </div>
+        <div class="field">
+          <label>Buffs</label>
+          <label class="check"><input type="checkbox" id="buffed" checked /> Raid-buffed (Blessing of Kings + Mark of the Wild)</label>
+          <small>Off = unbuffed character-sheet values.</small>
+        </div>
+        <div class="field">
+          <label for="phase">Gem phase</label>
+          <select id="phase">
+            <option value="1">Phase 1</option>
+            <option value="2" selected>Phase 2</option>
+            <option value="3">Phase 3</option>
+          </select>
+          <small>Caps gem choices to that content phase.</small>
+        </div>
+        <div class="field">
+          <label>Locked trinkets</label>
+          <div class="inline">
+            <select id="lockIcon" title="Locked in every set"></select>
+            <select id="lockEye" title="Locked in all but the survival set"></select>
+          </div>
+          <small>Proc/on-use trinkets the model can't score — forced in. Edit after loading gear.</small>
+        </div>
+      </div>
+      <div class="field">
+        <label>Goal tuning <small>— ratio of the focus beyond the uncrit/uncrush caps</small></label>
+        <div id="goalConfig" class="goal-config"></div>
+      </div>
+      <button id="optimizeBtn" class="primary" type="button" disabled>Optimize</button>
+    </section>
+
+    <section class="panel" id="results-panel" hidden>
+      <h2>3 · Optimized sets</h2>
+      <div id="summary"></div>
+      <div id="tabs" class="tabs"></div>
+      <div id="sets"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Client-side. Your gear data never leaves your browser. ·
+      <a href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim">Source on GitHub</a></p>
+  </footer>
+
+  <script type="module" src="web/app.js"></script>
+</body>
+</html>

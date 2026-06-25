@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "optimize": "node bin/optimize.mjs"
+    "optimize": "node bin/optimize.mjs",
+    "serve": "node bin/serve.mjs"
   },
   "license": "MIT",
   "repository": {
