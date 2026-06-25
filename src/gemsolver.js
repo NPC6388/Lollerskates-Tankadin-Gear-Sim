@@ -8,7 +8,7 @@
 // by the goal's weights. This needs the v8 addon export (item.sockets = full color layout,
 // item.socketBonus = the prize); v7 imports fall back to currently-empty sockets only.
 
-import { bestGem, bestMeta } from './gems.js';
+import { bestGem, bestMeta, gemColors } from './gems.js';
 import { bestEnchant, ENCHANTS } from './enchants.js';
 import { score } from './scoring.js';
 import { aggregate, STAT_KEYS } from './model.js';
@@ -44,10 +44,18 @@ export function recommendGems(socketCounts = {}, weights, perks = {}) {
     }
   }
   if (socketCounts.socketMeta) {
-    const m = bestMeta(weights);
+    const counts = colorCounts(choices); // meta requirement is judged on the colored gems above
+    const m = bestMeta(weights, { counts });
     if (m) { choices.push({ socket: 'meta', ...m.gem }); addStats(stats, m.gem.stats); }
   }
   return { choices, stats };
+}
+
+// Tally the colors of the chosen (non-meta) gems for meta-activation checks.
+function colorCounts(choices) {
+  const counts = { red: 0, yellow: 0, blue: 0 };
+  for (const c of choices) for (const col of gemColors(c)) if (counts[col] != null) counts[col]++;
+  return counts;
 }
 
 // Recommend an enchant per enchantable slot present in `slots` (an array of slot names).
@@ -125,16 +133,9 @@ function planItemGems(item, weights, perks = {}) {
     }
   }
 
-  // Meta socket: always the best meta for the goal (separate from the color-bonus decision).
-  const metaN = sockets.meta || 0;
-  if (metaN) {
-    const m = bestMeta(weights);
-    if (m) {
-      for (let i = 0; i < metaN; i++) choices.push({ socket: 'meta', ...m.gem });
-      addStats(stats, m.gem.stats, metaN);
-    }
-  }
-  return { choices, stats };
+  // Meta is chosen later (in solveLoadout), once ALL items' colored gems are known, so the
+  // meta's activation requirement can be judged against the whole set's gem colors.
+  return { choices, stats, metaCount: sockets.meta || 0 };
 }
 
 // Full loadout recommendation: gems for each item's sockets (with per-item socket-bonus
@@ -150,10 +151,26 @@ export function solveLoadout(set, weights, perks = { names: [] }, opts = {}) {
   }
   const gemChoices = [];
   const gemStats = {};
+  let metaSlots = 0;
   for (const it of set) {
     const plan = planItemGems(it, w, perks);
     gemChoices.push(...plan.choices);
     addStats(gemStats, plan.stats);
+    metaSlots += plan.metaCount;
+  }
+  // Meta gems last: pick the best meta the set's colored gems can ACTIVATE (a meta grants its
+  // stats only when its color requirement is met). If none can activate, still socket the best
+  // meta but flag it inactive and DON'T count its stats. `metas` lets the readout warn.
+  const counts = colorCounts(gemChoices);
+  const metas = [];
+  for (let i = 0; i < metaSlots; i++) {
+    let m = bestMeta(w, { counts }); let active = true;
+    if (!m) { m = bestMeta(w); active = false; }
+    if (m) {
+      gemChoices.push({ socket: 'meta', ...m.gem });
+      if (active) addStats(gemStats, m.gem.stats);
+      metas.push({ name: m.gem.name, requires: m.gem.requires, active });
+    }
   }
   const slots = [...new Set(set.map((i) => i.slot).filter(Boolean))];
   const enchants = recommendEnchants(slots, w, perks);
@@ -162,5 +179,5 @@ export function solveLoadout(set, weights, perks = { names: [] }, opts = {}) {
     const v = (gemStats[k] || 0) + (enchants.stats[k] || 0);
     if (v) added[k] = v;
   }
-  return { gems: { choices: gemChoices, stats: gemStats }, enchants, addedStats: added };
+  return { gems: { choices: gemChoices, stats: gemStats, metas }, enchants, addedStats: added };
 }

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SCALES } from '../src/weights.js';
-import { bestGem, bestMeta } from '../src/gems.js';
+import { bestGem, bestMeta, metaActivated, gemColors } from '../src/gems.js';
 import { bestEnchant } from '../src/enchants.js';
 import { professionPerks } from '../src/professions.js';
 import { recommendEnchants, solveLoadout, gemWeights } from '../src/gemsolver.js';
@@ -36,6 +36,36 @@ test('professionPerks resolves a chosen pair', () => {
 test('meta gem follows the goal', () => {
   assert.equal(bestMeta(SCALES.survivalEHP).gem.name, 'Powerful Earthstorm Diamond'); // +18 stam
   assert.equal(bestMeta(SCALES.survivalUncrushable).gem.name, 'Eternal Earthstorm Diamond'); // +12 def
+});
+
+test('meta activation: requirements parse; hybrids count for both colors', () => {
+  const powerful = { requires: '3+ blue' };       // Powerful Earthstorm Diamond
+  const imbued = { requires: 'more red than blue' }; // Imbued Unstable Diamond
+  assert.equal(metaActivated(powerful, { blue: 3 }), true);
+  assert.equal(metaActivated(powerful, { blue: 2 }), false);
+  assert.equal(metaActivated(imbued, { red: 5, blue: 2 }), true);
+  assert.equal(metaActivated(imbued, { red: 2, blue: 2 }), false);
+  // a purple (red+blue) gem contributes to BOTH counts
+  assert.deepEqual(gemColors({ color: 'purple' }).sort(), ['blue', 'red']);
+  assert.deepEqual(gemColors({ color: 'blue' }), ['blue']);
+});
+
+test('bestMeta with counts skips a meta the set cannot activate', () => {
+  // Only 2 blue gems: Powerful (3+ blue) is unreachable, so the survival pick falls to the
+  // best meta that DOES activate (Eternal, 2+ blue) instead of recommending a dark Powerful.
+  assert.equal(bestMeta(SCALES.survivalEHP).gem.name, 'Powerful Earthstorm Diamond'); // no counts
+  assert.equal(bestMeta(SCALES.survivalEHP, { counts: { blue: 2 } }).gem.name, 'Eternal Earthstorm Diamond');
+  assert.equal(bestMeta(SCALES.survivalEHP, { counts: { blue: 3 } }).gem.name, 'Powerful Earthstorm Diamond');
+});
+
+test('solveLoadout only counts meta stats when the colored gems activate it', () => {
+  // 2 red sockets get the stamina gem (Solid Star, blue) for survival -> 2 blue gems, so the
+  // meta socket gets Eternal (2+ blue), not Powerful (3+ blue). Reported active.
+  const item = { slot: 'hands', stats: {}, sockets: { meta: 1, red: 2 } };
+  const out = solveLoadout([item], SCALES.survivalEHP, { names: [] });
+  const meta = out.gems.choices.find((c) => c.socket === 'meta');
+  assert.equal(meta.name, 'Eternal Earthstorm Diamond');
+  assert.equal(out.gems.metas[0].active, true);
 });
 
 test('ring enchant is applied to both rings (counts twice)', () => {

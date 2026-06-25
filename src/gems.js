@@ -110,10 +110,34 @@ export function bestGem(weights, { socketColor = null, matchColor = false, jewel
   return best;
 }
 
-export function bestMeta(weights, { maxPhase = CURRENT_PHASE } = {}) {
+// Colors a gem contributes toward META activation. A hybrid counts for BOTH of its colors
+// (TBC: a purple red+blue gem is 1 red AND 1 blue for a "3 blue" / "more red than blue" meta).
+export function gemColors(gem) { return FITS[gem.color] || (gem.color ? [gem.color] : []); }
+
+// Does a meta's `requires` hold for the set's gem color counts {red,yellow,blue}? Meta gems
+// only grant their stats once activated, so the solver must respect this. Unknown requirement
+// strings are treated as met (don't silently drop a real meta).
+export function metaActivated(meta, counts = {}) {
+  const red = counts.red || 0, blue = counts.blue || 0, yellow = counts.yellow || 0;
+  const r = meta.requires;
+  if (!r) return true;
+  let m;
+  if ((m = r.match(/(\d+)\+\s*blue/))) return blue >= +m[1];
+  if ((m = r.match(/(\d+)\+\s*red/))) return red >= +m[1];
+  if ((m = r.match(/(\d+)\+\s*yellow/))) return yellow >= +m[1];
+  if (/more red than blue/.test(r)) return red > blue;
+  if (/more blue than red/.test(r)) return blue > red;
+  return true;
+}
+
+// Best meta for a goal. When `counts` (the set's gem colors) is given, only metas whose
+// activation requirement those colors satisfy are considered, so we never recommend a meta
+// that would sit dark. Returns null if no meta can activate.
+export function bestMeta(weights, { maxPhase = CURRENT_PHASE, counts = null } = {}) {
   let best = null;
   for (const g of META_GEMS) {
     if (g.phase > maxPhase) continue;
+    if (counts && !metaActivated(g, counts)) continue;
     const s = score(g.stats, weights);
     if (!best || s > best.score) best = { gem: g, score: s };
   }
