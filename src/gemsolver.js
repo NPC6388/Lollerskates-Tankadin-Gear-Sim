@@ -90,7 +90,8 @@ function itemSockets(item) {
 // socket bonus beats slotting the globally best gem in every socket. Returns the chosen
 // gems and the stats they add (relative to empty sockets — combine with item.baseStats, not
 // the resolved item.stats, to avoid double-counting the gems already worn).
-function planItemGems(item, weights, perks = {}) {
+function planItemGems(item, weights, perks = {}, maxPhase) {
+  const gemOpts = (extra) => ({ jewelcrafting: !!perks.jcGems, ...(maxPhase ? { maxPhase } : {}), ...extra });
   const sockets = itemSockets(item);
   const colored = [];
   for (const color of ['red', 'yellow', 'blue']) {
@@ -101,7 +102,7 @@ function planItemGems(item, weights, perks = {}) {
 
   if (colored.length) {
     // Option A — ignore the bonus: globally best gem in every socket.
-    const raw = bestGem(weights, { jewelcrafting: !!perks.jcGems });
+    const raw = bestGem(weights, gemOpts());
     const scoreA = raw ? raw.score * colored.length : 0;
 
     // Option B — chase the bonus: best color-fitting gem per socket, then add the bonus.
@@ -110,7 +111,7 @@ function planItemGems(item, weights, perks = {}) {
       let sB = 0, feasible = true;
       const bChoices = [], bStats = {};
       for (const color of colored) {
-        const pick = bestGem(weights, { socketColor: color, matchColor: true, jewelcrafting: !!perks.jcGems });
+        const pick = bestGem(weights, gemOpts({ socketColor: color, matchColor: true }));
         if (!pick) { feasible = false; break; }
         sB += pick.score;
         bChoices.push({ socket: color, ...pick.gem });
@@ -149,11 +150,13 @@ export function solveLoadout(set, weights, perks = { names: [] }, opts = {}) {
     const { uncrushable } = evaluateSet(aggregate(set));
     w = gemWeights(weights, { atCapWeights: opts.atCapWeights, uncrushable });
   }
+  const maxPhase = opts.maxPhase; // cap gem choices to a content phase (default: gems.js CURRENT_PHASE)
+  const metaOpts = maxPhase ? { maxPhase } : {};
   const gemChoices = [];
   const gemStats = {};
   let metaSlots = 0;
   for (const it of set) {
-    const plan = planItemGems(it, w, perks);
+    const plan = planItemGems(it, w, perks, maxPhase);
     gemChoices.push(...plan.choices);
     addStats(gemStats, plan.stats);
     metaSlots += plan.metaCount;
@@ -164,8 +167,8 @@ export function solveLoadout(set, weights, perks = { names: [] }, opts = {}) {
   const counts = colorCounts(gemChoices);
   const metas = [];
   for (let i = 0; i < metaSlots; i++) {
-    let m = bestMeta(w, { counts }); let active = true;
-    if (!m) { m = bestMeta(w); active = false; }
+    let m = bestMeta(w, { counts, ...metaOpts }); let active = true;
+    if (!m) { m = bestMeta(w, metaOpts); active = false; }
     if (m) {
       gemChoices.push({ socket: 'meta', ...m.gem });
       if (active) addStats(gemStats, m.gem.stats);

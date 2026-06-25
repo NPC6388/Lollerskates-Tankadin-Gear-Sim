@@ -78,23 +78,30 @@ export const SCALES = {
 // component (1 stamina-point of EHP, 1 spell-power-point of threat); the blend weights set the
 // cross-component ratio (e.g. 2:1). Avoidance/defense are intentionally ~absent — once the
 // uncrush/crit gates are met they add nothing, and the gates already pull the set to the cap.
-const EHP_PART = { stamina: 1, health: 0.08, armor: 0.06, agility: 0.30, intellect: 0.05 };
-const THREAT_PART = { spellDamage: 1, spellHitRating: 1.1, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 };
-const THREAT_AOE_PART = { spellDamage: 1.4, spellHitRating: 1.3, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12 };
-const STA_PART = { stamina: 1 };
-
-const blend = (...parts) => {
-  const out = { ...ZERO };
-  for (const [w, m] of parts) for (const [k, v] of Object.entries(m)) out[k] = (out[k] || 0) + w * v;
-  return out;
+// Component sub-weights, exported so a UI can rebuild scales from tunable ratios (see blendScale).
+export const PARTS = {
+  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 0.30, intellect: 0.05 },
+  threat: { spellDamage: 1, spellHitRating: 1.1, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },
+  aoeThreat: { spellDamage: 1.4, spellHitRating: 1.3, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12 },
+  sta: { stamina: 1 },
 };
+
+// Blend components into a scale. `ratio` maps PARTS keys -> weight, e.g. { threat: 2, sta: 1 }.
+export function blendScale(ratio = {}) {
+  const out = { ...ZERO };
+  for (const [part, w] of Object.entries(ratio)) {
+    const m = PARTS[part]; if (!m || !w) continue;
+    for (const [k, v] of Object.entries(m)) out[k] = (out[k] || 0) + w * v;
+  }
+  return out;
+}
 
 // Beyond-cap objective scales for the optimizer's 'scale' objective.
 export const GOAL_SCALES = {
-  raidThreat: blend([2, THREAT_PART], [1, STA_PART]),     // threat : stamina = 2 : 1
-  survival:   blend([2, EHP_PART], [1, THREAT_PART]),     // EHP : threat = 2 : 1
-  aoeThreat:  blend([2, THREAT_AOE_PART], [1, STA_PART]), // threat : stamina = 2 : 1 (AOE threat)
-  balanced2:  blend([1, EHP_PART], [1, THREAT_PART]),     // EHP : threat = 1 : 1
+  raidThreat: blendScale({ threat: 2, sta: 1 }),     // threat : stamina = 2 : 1
+  survival:   blendScale({ ehp: 2, threat: 1 }),     // EHP : threat = 2 : 1
+  aoeThreat:  blendScale({ aoeThreat: 2, sta: 1 }),  // threat : stamina = 2 : 1 (AOE threat)
+  balanced2:  blendScale({ ehp: 1, threat: 1 }),     // EHP : threat = 1 : 1
 };
 
 // Goal -> scale mapping used by the goal picker ("the agent"). Resistance goals reuse
