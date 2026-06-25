@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseExport, equippableItems } from '../src/import.js';
-import { aggregate } from '../src/model.js';
+import { aggregate, BUFFS } from '../src/model.js';
 import { evaluateSet } from '../src/character.js';
 import { UNBUFFED_EXPORT } from './fixtures/lollerskate-unbuffed.js';
 
@@ -41,6 +41,16 @@ test('armor, stamina, and health reproduce the sheet within rounding', () => {
 
 test('the equipped set is raid crit-immune (defense >= 490)', () => {
   assert.equal(evaluateSet(a).raidCritImmune, true);
+});
+
+test('Kings (+10%) and MotW (+14) raise the primaries; spell power untouched', () => {
+  const buffed = aggregate(items, { kings: true, buffs: BUFFS.markOfTheWild });
+  // stamina: (baseStam + gearStam + 14) * staminaMult * 1.10 — strictly above the unbuffed value
+  assert.ok(buffed.stamina > a.stamina, `buffed stamina ${buffed.stamina} > ${a.stamina}`);
+  // agility: (unbuffedAgility + 14) * 1.10 — flat MotW added before the Kings multiplier
+  assert.ok(near(buffed.agility, (a.agility + 14) * 1.10, 0.01), `agi ${buffed.agility}`);
+  // Kings/MotW do not touch spell power
+  assert.equal(buffed.spellPower, a.spellPower);
 });
 
 test('block value reproduces the sheet (shield base block + suffixes + Str/20)', () => {

@@ -41,6 +41,15 @@ export const TALENTS = {
   precisionMeleeHitPct: 3,      // Precision 3/3: +3% melee hit
 };
 
+// Party/raid buffs the player runs with. Blessing of Kings is a +10% MULTIPLIER on the four
+// primary stats (applied after flat buffs); Mark of the Wild / Gift of the Wild is a FLAT
+// +14 to each (rank-3 raid value). MotW armor/resistances are omitted (small, and MotW armor
+// bypasses Toughness — not worth the complication). Adjust if the player's druid differs.
+export const BUFFS = {
+  kingsMult: 1.10,
+  markOfTheWild: { stamina: 14, strength: 14, agility: 14, intellect: 14 },
+};
+
 export const STAT_KEYS = [
   'stamina', 'strength', 'agility', 'intellect',
   'defenseRating', 'dodgeRating', 'parryRating', 'blockRating',
@@ -67,6 +76,8 @@ function healthFromStamina(stam) {
 // Fortitude, Wizard Oil); omit it for the unbuffed sheet.
 export function aggregate(items, opts = {}) {
   const { hsBlockBonus = 30, buffs = {} } = opts;
+  // Blessing of Kings: +10% to the four primaries, applied AFTER flat buffs (base+gear+MotW).
+  const kMult = opts.kings ? BUFFS.kingsMult : 1.0;
   const C = CHARACTER, T = TALENTS;
   const t = sumStats(items);
   const b = (k) => (t[k] || 0) + (buffs[k] || 0);
@@ -75,10 +86,10 @@ export function aggregate(items, opts = {}) {
     BASE.baseDefenseSkill + b('defenseRating') / RATING.defensePerSkill + T.anticipationDefenseSkill;
   const defBonus = (defenseSkill - BASE.baseDefenseSkill) * BASE.defenseBenefitPerSkill;
 
-  const agility = C.baseAgility + b('agility');
-  const strength = C.baseStrength + b('strength');
-  const intellect = C.baseIntellect + b('intellect');
-  const stamina = (C.baseStamina + b('stamina')) * T.staminaMult;
+  const agility = (C.baseAgility + b('agility')) * kMult;
+  const strength = (C.baseStrength + b('strength')) * kMult;
+  const intellect = (C.baseIntellect + b('intellect')) * kMult;
+  const stamina = (C.baseStamina + b('stamina')) * T.staminaMult * kMult;
 
   return {
     defenseSkill,
