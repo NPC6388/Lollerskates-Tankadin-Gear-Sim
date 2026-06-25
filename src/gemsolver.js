@@ -11,7 +11,17 @@
 import { bestGem, bestMeta } from './gems.js';
 import { bestEnchant, ENCHANTS } from './enchants.js';
 import { score } from './scoring.js';
-import { STAT_KEYS } from './model.js';
+import { aggregate, STAT_KEYS } from './model.js';
+import { evaluateSet } from './character.js';
+
+// Cap-aware weight selection. The survival "uncrushable" scale loads a crush-removal PREMIUM
+// onto avoidance/defense (block 2.54, defense 2.0, dodge 1.76) that only pays off while you're
+// BELOW the crush cap. Once the set is already uncrushable, that premium is wasted — gemming
+// more avoidance does nothing — so switch to the face-value (EHP) scale. Mirrors the threat
+// below-cap/at-cap switch. With no atCapWeights given, weights pass through unchanged.
+export function gemWeights(weights, { atCapWeights, uncrushable } = {}) {
+  return atCapWeights && uncrushable ? atCapWeights : weights;
+}
 
 const SOCKET_COLORS = { socketRed: 'red', socketYellow: 'yellow', socketBlue: 'blue' };
 
@@ -130,16 +140,23 @@ function planItemGems(item, weights, perks = {}) {
 // Full loadout recommendation: gems for each item's sockets (with per-item socket-bonus
 // worth-it) + enchants for its slots. `set` is the list of owned/equipped items. Returns gem
 // + enchant choices and the combined added stats (relative to base — see planItemGems).
-export function solveLoadout(set, weights, perks = { names: [] }) {
+// `opts.atCapWeights` (the face-value/EHP scale) is used in place of `weights` once the set
+// is ALREADY uncrushable, so the solver stops over-gemming capped avoidance/defense.
+export function solveLoadout(set, weights, perks = { names: [] }, opts = {}) {
+  let w = weights;
+  if (opts.atCapWeights) {
+    const { uncrushable } = evaluateSet(aggregate(set));
+    w = gemWeights(weights, { atCapWeights: opts.atCapWeights, uncrushable });
+  }
   const gemChoices = [];
   const gemStats = {};
   for (const it of set) {
-    const plan = planItemGems(it, weights, perks);
+    const plan = planItemGems(it, w, perks);
     gemChoices.push(...plan.choices);
     addStats(gemStats, plan.stats);
   }
   const slots = [...new Set(set.map((i) => i.slot).filter(Boolean))];
-  const enchants = recommendEnchants(slots, weights, perks);
+  const enchants = recommendEnchants(slots, w, perks);
   const added = {};
   for (const k of STAT_KEYS) {
     const v = (gemStats[k] || 0) + (enchants.stats[k] || 0);

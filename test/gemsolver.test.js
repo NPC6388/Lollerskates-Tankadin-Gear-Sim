@@ -5,7 +5,7 @@ import { SCALES } from '../src/weights.js';
 import { bestGem, bestMeta } from '../src/gems.js';
 import { bestEnchant } from '../src/enchants.js';
 import { professionPerks } from '../src/professions.js';
-import { recommendEnchants, solveLoadout } from '../src/gemsolver.js';
+import { recommendEnchants, solveLoadout, gemWeights } from '../src/gemsolver.js';
 import { parseExport, equippableItems } from '../src/import.js';
 import { UNBUFFED_EXPORT } from './fixtures/lollerskate-unbuffed.js';
 
@@ -67,6 +67,21 @@ test('socket bonus: keeps the raw gem when the bonus is not worth it', () => {
   assert.equal(out.gems.choices[0].name, raw.gem.name);              // kept the raw best gem
   assert.equal(out.gems.stats.spellDamage, raw.gem.stats.spellDamage); // its +9
   assert.equal(out.gems.stats.defenseRating, undefined);             // bonus forfeited
+});
+
+test('cap-aware: drops the crush-removal premium once already uncrushable', () => {
+  // Below the cap, the uncrushable scale's avoidance premium picks a defense/avoidance gem.
+  assert.notEqual(bestGem(SCALES.survivalUncrushable).gem.name, 'Solid Star of Elune');
+  // Once uncrushable, gemWeights switches to the face-value (EHP) scale -> stamina wins,
+  // so the solver stops stacking now-worthless avoidance/defense.
+  const w = gemWeights(SCALES.survivalUncrushable, { atCapWeights: SCALES.survivalEHP, uncrushable: true });
+  assert.equal(w, SCALES.survivalEHP);
+  assert.equal(bestGem(w).gem.name, 'Solid Star of Elune');
+  // Still below the cap -> premium scale unchanged.
+  assert.equal(
+    gemWeights(SCALES.survivalUncrushable, { atCapWeights: SCALES.survivalEHP, uncrushable: false }),
+    SCALES.survivalUncrushable,
+  );
 });
 
 test('solveLoadout produces gem + enchant recommendations for the real set', () => {
