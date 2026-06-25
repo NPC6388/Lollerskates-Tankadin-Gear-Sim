@@ -110,6 +110,23 @@ test('v9: trailing name field is captured', () => {
   assert.equal(p.items[0].socketBonus.stat, 'dodgeRating'); // earlier fields still parse
 });
 
+test('v10: talent string line is captured', () => {
+  const v10 = [
+    'TGS10',
+    'C:name=Lollerskate;level=70',
+    'T:00000000000000000-05032030500000000000-0500000000000',
+    'E:item:29068::::::::70::::::::::|INVTYPE_HEAD|ilvl=120;ITEM_MOD_STAMINA_SHORT=43|ITEM_MOD_STAMINA_SHORT=43|',
+  ].join('\n');
+  const p = parseExport(v10);
+  assert.equal(p.version, 10);
+  assert.equal(p.talents, '00000000000000000-05032030500000000000-0500000000000');
+  assert.equal(p.items.length, 1); // the T: line is not an item
+});
+
+test('older exports have an empty talents string (defensive)', () => {
+  assert.equal(parseExport(V2).talents, '');
+});
+
 test('v2: equip locations map to slots', () => {
   assert.equal(equipLocToSlot('INVTYPE_HEAD'), 'head');
   assert.equal(equipLocToSlot('INVTYPE_FINGER'), 'ring');

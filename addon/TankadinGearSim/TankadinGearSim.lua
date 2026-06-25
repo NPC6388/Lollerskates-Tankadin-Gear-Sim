@@ -2,6 +2,7 @@
 -- /tgs (or /tankadin) opens a copy box with:
 --   line 1: TGS<version>
 --   line 2: C:key=val;... — current character-sheet finals (for calibration)
+--   line 3: T:<talentString> — per-talent ranks, "-" between trees (v10; Sixty Upgrades format)
 --   then:   I:<itemString>|<equipLoc>|<resolved>|<base>|<socketBonus>|<name> — one per item.
 --     resolved = "ilvl=N;<ITEM_MOD key>=val;..." scanned from the item's TOOLTIP, so it
 --       INCLUDES the gems + enchants CURRENTLY applied (the gear "as worn").
@@ -13,7 +14,7 @@
 --     name = the item's display name (v9), from GetItemInfo. Plain text, last field.
 -- v1–v7 lines had only the first three fields (resolved). Everything read defensively.
 
-local VERSION = "9"
+local VERSION = "10"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -290,10 +291,26 @@ local function scanGear()
   return list
 end
 
+-- v10: the talent build as a per-talent rank string with "-" between the three trees, e.g.
+-- "00000...-05003203...-05000...". This is the WowSimsExporter/Sixty Upgrades format, so the
+-- sim importer reads it directly. Order is GetTalentInfo's (tier, then column) within each tree.
+local function talentString()
+  local out = {}
+  local tabs = (type(GetNumTalentTabs) == "function" and GetNumTalentTabs()) or 3
+  for t = 1, tabs do
+    local n = (type(GetNumTalents) == "function" and GetNumTalents(t)) or 0
+    for i = 1, n do
+      out[#out + 1] = tostring(select(5, GetTalentInfo(t, i)) or 0) -- 5th return = current rank
+    end
+    if t < tabs then out[#out + 1] = "-" end
+  end
+  return table.concat(out)
+end
+
 local function buildExport()
-  local lines = { "TGS" .. VERSION, characterLine() }
+  local lines = { "TGS" .. VERSION, characterLine(), "T:" .. talentString() }
   for _, l in ipairs(scanGear()) do lines[#lines + 1] = l end
-  return table.concat(lines, "\n"), #lines - 2
+  return table.concat(lines, "\n"), #lines - 3
 end
 
 local function showExport(text)

@@ -70,7 +70,15 @@ function init() {
   $('exportText').addEventListener('input', () => tryParse($('exportText').value));
   $('exportFile').addEventListener('change', handleFile);
   $('loadSample').addEventListener('click', loadSample);
+  $('talents').addEventListener('input', updateTalentSummary);
   $('optimizeBtn').addEventListener('click', runOptimize);
+}
+
+// Talent string -> points per tree (split on "-", sum the rank digits in each segment).
+function updateTalentSummary() {
+  const trees = $('talents').value.trim().split('-');
+  const sums = trees.length >= 2 ? trees.map((t) => [...t].reduce((a, ch) => a + (+ch || 0), 0)) : null;
+  $('talentSummary').textContent = sums ? `— ${sums[0] || 0} / ${sums[1] || 0} / ${sums[2] || 0}` : '';
 }
 
 function setStatus(msg, kind = '') { const el = $('inputStatus'); el.textContent = msg; el.className = 'status ' + kind; }
@@ -82,6 +90,8 @@ function tryParse(text) {
     parsed = parseExport(toExportText(raw));
     items = equippableItems(parsed);
     populateTrinketLocks();
+    if (parsed.talents) $('talents').value = parsed.talents; // v10 export carries the talent string
+    updateTalentSummary();
     $('optimizeBtn').disabled = items.length === 0;
     setStatus(`Loaded ${parsed.character.name || 'character'} — ${items.length} equippable items (TGS${parsed.version}).`, 'ok');
   } catch (err) {
@@ -173,7 +183,8 @@ function buildExport(r) {
     return o;
   });
   const c = parsed && parsed.character || {};
-  return JSON.stringify({ name: c.name || 'Tankadin', race: 'BloodElf', class: 'paladin', level: c.level || 70, talents: '', spec: 'protection', gear: { items } });
+  const talents = ($('talents') && $('talents').value.trim()) || '';
+  return JSON.stringify({ name: c.name || 'Tankadin', race: 'BloodElf', class: 'paladin', level: c.level || 70, talents, spec: 'protection', gear: { items } });
 }
 function exportSet(r, btn) {
   const json = buildExport(r);

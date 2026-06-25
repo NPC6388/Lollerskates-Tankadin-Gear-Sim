@@ -42,11 +42,14 @@ textarea {
 .field small { color: var(--muted); font-size: 12px; font-weight: 400; }
 .inline { display: flex; gap: 8px; flex-wrap: wrap; }
 .check { font-weight: 400 !important; display: flex; align-items: center; gap: 8px; }
-select, input[type=number] {
+select, input[type=number], input[type=text] {
   background: var(--panel2); color: var(--text); border: 1px solid var(--line);
   border-radius: 6px; padding: 7px 8px; font-size: 14px;
 }
 select { flex: 1; min-width: 120px; }
+input[type=text] { width: 100%; font-family: ui-monospace, monospace; font-size: 13px; }
+.field.span2 { grid-column: 1 / -1; }
+.t-summary { color: var(--gold); font-weight: 400; font-size: 13px; margin-left: 6px; }
 
 .goal-config { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 24px; }
 .goal-row { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 10px; }
