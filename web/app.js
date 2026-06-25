@@ -8,9 +8,25 @@ import { CAPS } from '../src/constants.js';
 
 const $ = (id) => document.getElementById(id);
 const SLOT_ORDER = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'weapon', 'offhand', 'relic'];
-// Each goal exposes one slider: the primary component's weight vs a secondary fixed at 1.
-const GOAL_AXES = { raid: ['threat', 'sta'], survival: ['ehp', 'threat'], aoe: ['aoeThreat', 'sta'], balanced: ['ehp', 'threat'] };
+// Each goal exposes one trade-off slider between a defensive stat (left) and a threat stat
+// (right). Slider value v in [-3,3]: v>0 favors the right stat (weight 1+v), v<0 favors the
+// left (weight 1-v), 0 = even 1:1. blendScale turns the resulting ratio into the objective.
+const GOAL_SIDES = {
+  raid: { left: 'sta', right: 'threat' },
+  survival: { left: 'ehp', right: 'threat' },
+  aoe: { left: 'sta', right: 'aoeThreat' },
+  balanced: { left: 'ehp', right: 'threat' },
+};
 const AXIS_LABEL = { threat: 'threat', ehp: 'EHP', sta: 'stamina', aoeThreat: 'AOE threat' };
+const fmtW = (w) => (Number.isInteger(w) ? String(w) : w.toFixed(1));
+function ratioFor(id, v) {
+  const { left, right } = GOAL_SIDES[id];
+  const Lw = v < 0 ? 1 - v : 1, Rw = v > 0 ? 1 + v : 1;
+  return { left, right, Lw, Rw, ratio: { [left]: Lw, [right]: Rw } };
+}
+const ratioText = (id, v) => { const r = ratioFor(id, v); return `${AXIS_LABEL[r.left]} ${fmtW(r.Lw)} : ${fmtW(r.Rw)} ${AXIS_LABEL[r.right]}`; };
+// Default slider position from a preset's ratio (one side is always 1).
+const defaultV = (g) => { const { left, right } = GOAL_SIDES[g.id]; return (g.ratio[right] || 1) - (g.ratio[left] || 1); };
 
 let items = null;        // equippable items from the export
 let parsed = null;       // full parse (character + items)
@@ -24,16 +40,23 @@ function init() {
   $('prof1').value = 'Enchanting';
 
   $('goalConfig').innerHTML = GOAL_PRESETS.map((g) => {
-    const [primary] = GOAL_AXES[g.id];
-    const v = g.ratio[primary];
+    const { left, right } = GOAL_SIDES[g.id];
+    const v = defaultV(g);
     return `<div class="goal-row" data-goal="${g.id}">
       <span class="name">${g.name}</span>
-      <input type="range" min="1" max="4" step="0.5" value="${v}" />
-      <span class="ratio">${v.toFixed(1)}:1</span>
+      <div class="slider-cell">
+        <div class="slider-wrap">
+          <span class="end left">${AXIS_LABEL[left]}</span>
+          <input type="range" min="-3" max="3" step="0.5" value="${v}" />
+          <span class="end right">${AXIS_LABEL[right]}</span>
+        </div>
+        <div class="ratio">${ratioText(g.id, v)}</div>
+      </div>
     </div>`;
   }).join('');
   $('goalConfig').querySelectorAll('.goal-row input').forEach((r) => {
-    r.addEventListener('input', (e) => { e.target.nextElementSibling.textContent = (+e.target.value).toFixed(1) + ':1'; });
+    const id = r.closest('.goal-row').dataset.goal;
+    r.addEventListener('input', (e) => { e.target.closest('.slider-cell').querySelector('.ratio').textContent = ratioText(id, +e.target.value); });
   });
 
   $('exportText').addEventListener('input', () => tryParse($('exportText').value));
@@ -91,10 +114,9 @@ function populateTrinketLocks() {
 // ---- run --------------------------------------------------------------------
 function currentGoals() {
   return GOAL_PRESETS.map((g) => {
-    const [primary, secondary] = GOAL_AXES[g.id];
-    const row = $('goalConfig').querySelector(`.goal-row[data-goal="${g.id}"] input`);
-    const v = +row.value;
-    return { ...g, focus: `${AXIS_LABEL[primary]} : ${AXIS_LABEL[secondary]} ${v}:1`, ratio: { [primary]: v, [secondary]: 1 } };
+    const v = +$('goalConfig').querySelector(`.goal-row[data-goal="${g.id}"] input`).value;
+    const r = ratioFor(g.id, v);
+    return { ...g, focus: ratioText(g.id, v), ratio: r.ratio };
   });
 }
 

@@ -48,11 +48,15 @@ select, input[type=number] {
 }
 select { flex: 1; min-width: 120px; }
 
-.goal-config { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 18px; }
-.goal-row { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 10px; }
+.goal-config { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 24px; }
+.goal-row { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 10px; }
 .goal-row span.name { font-weight: 600; }
-.goal-row input[type=range] { width: 100%; }
-.goal-row .ratio { color: var(--gold); font-variant-numeric: tabular-nums; text-align: right; }
+.slider-cell { display: flex; flex-direction: column; gap: 3px; }
+.slider-wrap { display: flex; align-items: center; gap: 8px; }
+.slider-wrap input[type=range] { flex: 1; min-width: 70px; accent-color: var(--gold); }
+.slider-wrap .end { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.slider-wrap .end.left { text-align: right; }
+.goal-row .ratio { color: var(--gold); font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
 
 button {
   border: 1px solid var(--line); background: var(--panel2); color: var(--text);
