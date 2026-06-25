@@ -184,13 +184,10 @@ function buildExport(r) {
   });
   const c = parsed && parsed.character || {};
   const talents = ($('talents') && $('talents').value.trim()) || '';
-  const obj = { name: c.name || 'Tankadin', race: 'BloodElf', class: 'paladin', level: c.level || 70, talents, spec: 'protection', gear: { items } };
-  if ($('buffed') && $('buffed').checked) {
-    // Blessing of Kings (IndividualBuffs) + base Mark of the Wild (RaidBuffs giftOfTheWild=1,
-    // TristateEffectRegular) in the wowsims proto-JSON shape.
-    obj.buffs = { blessingOfKings: true, giftOfTheWild: 1 };
-  }
-  return JSON.stringify(obj);
+  // NOTE: the WowSimsExporter import format sixtyupgrades reads carries gear + talents only —
+  // it has no buff channel (sixtyupgrades stores buffs as its own array, set in its buffs panel).
+  // So Kings/MotW can't be carried here; toggle them in sixtyupgrades after importing.
+  return JSON.stringify({ name: c.name || 'Tankadin', race: 'BloodElf', class: 'paladin', level: c.level || 70, talents, spec: 'protection', gear: { items } });
 }
 function exportSet(r, btn) {
   const json = buildExport(r);
