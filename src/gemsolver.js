@@ -90,7 +90,7 @@ function itemSockets(item) {
 // socket bonus beats slotting the globally best gem in every socket. Returns the chosen
 // gems and the stats they add (relative to empty sockets — combine with item.baseStats, not
 // the resolved item.stats, to avoid double-counting the gems already worn).
-function planItemGems(item, weights, perks = {}, maxPhase) {
+export function planItemGems(item, weights, perks = {}, maxPhase) {
   const gemOpts = (extra) => ({ jewelcrafting: !!perks.jcGems, ...(maxPhase ? { maxPhase } : {}), ...extra });
   const sockets = itemSockets(item);
   const colored = [];

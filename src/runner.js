@@ -11,7 +11,7 @@ import { evaluateSet } from './character.js';
 import { bestGem, bestMeta, gemColors } from './gems.js';
 import { bestEnchant } from './enchants.js';
 import { SCALES, blendScale } from './weights.js';
-import { solveLoadout } from './gemsolver.js';
+import { planItemGems } from './gemsolver.js';
 import { buildPool, optimizeHeuristic } from './optimizer.js';
 import { professionPerks } from './professions.js';
 import { CAPS, RATING } from './constants.js';
@@ -20,11 +20,13 @@ const HS = 30;                               // Holy Shield +30% block in the un
 const CAP_SCALE = SCALES.survivalUncrushable; // gems that most cheaply buy avoidance/defense
 export const DEFAULT_TRINKET_LOCKS = { icon: 29370, eye: 28789 }; // Icon of the Silver Crescent / Eye of Magtheridon
 
-// Preset goals as TUNABLE ratios (blendScale builds the objective). `lockEye` adds Eye of Mag.
+// Preset goals as TUNABLE EHP:threat ratios (blendScale builds the objective). Every goal uses
+// the same EHP↔threat axis; AOE Trash differs only by a relaxed crush gate (trash can't crush).
+// `lockEye` adds Eye of Magtheridon to the locked trinkets.
 export const GOAL_PRESETS = [
-  { id: 'raid', name: 'Raid Threat', focus: 'threat : stamina 2:1', ratio: { threat: 2, sta: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: true },
+  { id: 'raid', name: 'Raid Threat', focus: 'EHP : threat 1:2', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true }, lockEye: true },
   { id: 'survival', name: 'Survival', focus: 'EHP : threat 2:1', ratio: { ehp: 2, threat: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: false },
-  { id: 'aoe', name: 'AOE Trash', focus: 'threat : stamina 2:1, crush ≥97.4%', ratio: { aoeThreat: 2, sta: 1 }, gates: { raid: true, requireUncrushable: true, uncrushableTarget: CAPS.uncrushableCombined - 5 }, lockEye: true },
+  { id: 'aoe', name: 'AOE Trash', focus: 'EHP : threat 1:2, crush ≥97.4%', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true, uncrushableTarget: CAPS.uncrushableCombined - 5 }, lockEye: true },
   { id: 'balanced', name: 'Balanced', focus: 'EHP : threat 1:1', ratio: { ehp: 1, threat: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: true },
 ];
 
@@ -78,19 +80,43 @@ function runGoal(goal, items, ctx) {
   const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, hsBlockBonus: HS, ...buff };
   const res = optimizeHeuristic(pool, oGoal, { distinct, locked });
 
-  // Final gemming, socket-bonus-aware: focus items by the goal scale, def-gemmed items by the
-  // cap scale; combine. Built from baseStats so there's no double-count.
-  const focusItems = res.items.filter((v) => v._gem !== 'cap');
-  const capItems = res.items.filter((v) => v._gem === 'cap');
-  const loadF = solveLoadout(focusItems, objScale, perks, { maxPhase });
-  const loadC = capItems.length ? solveLoadout(capItems, CAP_SCALE, perks, { maxPhase }) : null;
-  const added = {}; sumInto(added, loadF.addedStats); if (loadC) sumInto(added, loadC.addedStats);
+  // Final gemming, socket-bonus-aware, PER ITEM so we can report gems/enchant by slot. Focus
+  // items gem by the goal scale, def-gemmed items by the cap scale. Meta activation is judged
+  // set-wide (a meta on the helm counts blue gems from the legs, etc.). Built from baseStats so
+  // there's no double-count.
+  const maxPhaseOpt = maxPhase ? { maxPhase } : {};
+  const plans = res.items.map((v) => ({ v, scale: v._gem === 'cap' ? CAP_SCALE : objScale, plan: planItemGems(v, v._gem === 'cap' ? CAP_SCALE : objScale, perks, maxPhase) }));
+  const counts = { red: 0, yellow: 0, blue: 0 };
+  for (const p of plans) for (const c of p.plan.choices) for (const col of gemColors(c)) if (counts[col] != null) counts[col]++;
+
+  const added = {};
+  const gemChoices = [];
+  const metas = [];
+  for (const p of plans) {
+    const pMetas = [];
+    for (let i = 0; i < p.plan.metaCount; i++) {
+      let m = bestMeta(p.scale, { counts, ...maxPhaseOpt }); let active = true;
+      if (!m) { m = bestMeta(p.scale, maxPhaseOpt); active = false; }
+      if (m) { p.plan.choices.push({ socket: 'meta', ...m.gem }); if (active) sumInto(p.plan.stats, m.gem.stats); pMetas.push({ name: m.gem.name, active, requires: m.gem.requires }); }
+    }
+    const en = bestEnchant(p.v.slot, p.scale, perks);
+    if (en) sumInto(p.plan.stats, en.enchant.stats);
+    sumInto(added, p.plan.stats);
+    gemChoices.push(...p.plan.choices);
+    metas.push(...pMetas);
+    p.gems = p.plan.choices.map((c) => c.name);
+    p.enchant = en ? en.enchant.name : null;
+    p.metas = pMetas;
+  }
   const agg = aggregate([...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }], { hsBlockBonus: HS, ...buff });
 
-  const gemChoices = [...loadF.gems.choices, ...(loadC ? loadC.gems.choices : [])];
-  const enchants = { ...loadF.enchants.choices, ...(loadC ? loadC.enchants.choices : {}) };
-  const metas = [...(loadF.gems.metas || []), ...(loadC ? loadC.gems.metas : [])];
-  return { goal, selection: res.selection, items: res.items, legal: res.legal, evald: evaluateSet(agg), agg, gemChoices, enchants, metas };
+  // Per-slot gem/enchant detail for the UI's paper-doll display.
+  const perSlot = {};
+  for (const [slotKey, it] of Object.entries(res.selection)) {
+    const p = plans.find((x) => x.v === it);
+    perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap' } : { gems: [], enchant: null, metas: [], defGemmed: false };
+  }
+  return { goal, selection: res.selection, items: res.items, legal: res.legal, evald: evaluateSet(agg), agg, gemChoices, metas, perSlot };
 }
 
 // Main entry. items = equippableItems(parseExport(text)). options:

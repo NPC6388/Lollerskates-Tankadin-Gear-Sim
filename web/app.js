@@ -4,20 +4,28 @@ import { parseExport, equippableItems } from '../src/import.js';
 import { toExportText } from '../src/savedvars.js';
 import { optimizeSets, spellHitPct, GOAL_PRESETS, DEFAULT_TRINKET_LOCKS } from '../src/runner.js';
 import { PROFESSION_NAMES } from '../src/professions.js';
+import { GEMS, META_GEMS } from '../src/gems.js';
 import { CAPS } from '../src/constants.js';
 
 const $ = (id) => document.getElementById(id);
-const SLOT_ORDER = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'weapon', 'offhand', 'relic'];
+// Paper-doll columns, like the in-game character sheet.
+const LEFT_SLOTS = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'weapon', 'offhand'];
+const RIGHT_SLOTS = ['hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'relic'];
+const SLOT_LABEL = { head: 'Head', neck: 'Neck', shoulder: 'Shoulder', back: 'Back', chest: 'Chest', wrist: 'Wrist', weapon: 'Main Hand', offhand: 'Off Hand', hands: 'Hands', waist: 'Waist', legs: 'Legs', feet: 'Feet', ring1: 'Ring', ring2: 'Ring', trinket1: 'Trinket', trinket2: 'Trinket', relic: 'Relic' };
+const GEM_COLOR = {};
+for (const g of GEMS) GEM_COLOR[g.name] = g.color;
+for (const g of META_GEMS) GEM_COLOR[g.name] = 'meta';
 // Each goal exposes one trade-off slider between a defensive stat (left) and a threat stat
 // (right). Slider value v in [-3,3]: v>0 favors the right stat (weight 1+v), v<0 favors the
 // left (weight 1-v), 0 = even 1:1. blendScale turns the resulting ratio into the objective.
+// Every goal trades the same EHP ↔ threat axis (AOE differs only by a looser crush gate).
 const GOAL_SIDES = {
-  raid: { left: 'sta', right: 'threat' },
+  raid: { left: 'ehp', right: 'threat' },
   survival: { left: 'ehp', right: 'threat' },
-  aoe: { left: 'sta', right: 'aoeThreat' },
+  aoe: { left: 'ehp', right: 'threat' },
   balanced: { left: 'ehp', right: 'threat' },
 };
-const AXIS_LABEL = { threat: 'threat', ehp: 'EHP', sta: 'stamina', aoeThreat: 'AOE threat' };
+const AXIS_LABEL = { threat: 'Threat', ehp: 'EHP' };
 const fmtW = (w) => (Number.isInteger(w) ? String(w) : w.toFixed(1));
 function ratioFor(id, v) {
   const { left, right } = GOAL_SIDES[id];
@@ -143,8 +151,8 @@ const num = (v) => (v ? +v : null);
 
 // ---- render -----------------------------------------------------------------
 const fmt = (n) => Math.round(n).toLocaleString();
-const itemLink = (it) => it ? `<a href="https://www.wowhead.com/tbc/item=${it.itemId}" target="_blank" rel="noopener">${it.name || it.itemId}</a>` : '';
 const yesno = (b) => `<span class="badge ${b ? 'yes' : 'no'}">${b ? 'yes' : 'no'}</span>`;
+const gemSpan = (name) => `<span class="gem g-${GEM_COLOR[name] || 'meta'}">${name}</span>`;
 
 function render(results) {
   $('results-panel').hidden = false;
@@ -166,38 +174,55 @@ function render(results) {
   $('sets').innerHTML = setCard(results[activeTab]);
 }
 
+function slotHTML(r, slotKey, side) {
+  const it = r.selection[slotKey];
+  if (!it) return `<div class="ds-slot ${side} empty"><span class="ds-label">${SLOT_LABEL[slotKey]}</span></div>`;
+  const ps = r.perSlot[slotKey] || {};
+  const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : '';
+  const ench = ps.enchant ? `<div class="ds-ench">${ps.enchant}</div>` : '';
+  const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemSpan).join('')}</div>` : '';
+  return `<div class="ds-slot ${side}">
+    <a class="ds-item" href="https://www.wowhead.com/tbc/item=${it.itemId}" target="_blank" rel="noopener">${it.name || it.itemId}</a>${tag}
+    ${ench}${gems}
+  </div>`;
+}
+
+const panel = (title, rows) =>
+  `<div class="spanel"><h4>${title}</h4>${rows.map(([k, v]) => `<div class="srow"><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
+
 function setCard(r) {
   const e = r.evald, a = r.agg;
   const need = r.goal.gates.uncrushableTarget ?? CAPS.uncrushableCombined;
   const crushPass = e.totalAvoidanceWithHS + 1e-9 >= need;
-  const stats = [
-    ['EHP (physical)', fmt(e.ehpPhysical)], ['Spell damage', fmt(a.spellPower)],
-    ['Spell hit', spellHitPct(a).toFixed(2) + '%'], ['Stamina', fmt(a.stamina)],
-    ['Armor', fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)],
-    ['Resilience', fmt(a.resilienceRating)], ['Block value', fmt(a.blockValue)],
-  ];
-  const gemCount = {}; for (const g of r.gemChoices) gemCount[g.name] = (gemCount[g.name] || 0) + 1;
-  const gems = Object.entries(gemCount).map(([n, c]) => `${c}× ${n}`).join(', ') || 'none';
-  const ench = Object.entries(r.enchants).map(([slot, en]) => `${slot}: ${en.name}`).join(' · ') || 'none';
   const metaWarn = r.metas.filter((m) => !m.active)
     .map((m) => `⚠ ${m.name} won't activate — needs ${m.requires}`).join('<br>');
 
+  const doll = `<div class="doll">
+    <div class="col left">${LEFT_SLOTS.map((k) => slotHTML(r, k, 'left')).join('')}</div>
+    <div class="col right">${RIGHT_SLOTS.map((k) => slotHTML(r, k, 'right')).join('')}</div>
+  </div>`;
+
+  const panels = `<div class="panels">
+    ${panel('Primary', [['Health', fmt(a.health)], ['Stamina', fmt(a.stamina)], ['Strength', fmt(a.strength)], ['Agility', fmt(a.agility)], ['Intellect', fmt(a.intellect)]])}
+    ${panel('Spell', [['Spell Damage', fmt(a.spellPower)], ['Spell Hit', spellHitPct(a).toFixed(2) + '%'], ['Block Value', fmt(a.blockValue)]])}
+    ${panel('Defense', [['Armor', fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)], ['Resilience', fmt(a.resilienceRating)], ['Block', a.blockPct.toFixed(2) + '%'], ['Dodge', a.dodgePct.toFixed(2) + '%'], ['Parry', a.parryPct.toFixed(2) + '%'], ['Total Avoidance', e.totalAvoidanceNoHS.toFixed(2) + '%']])}
+    ${panel('Survival', [['EHP (physical)', fmt(e.ehpPhysical)], ['Uncrushable (w/ HS)', e.totalAvoidanceWithHS.toFixed(1) + '%'], ['Crit reduction', e.critReduction.toFixed(2) + '%']])}
+  </div>`;
+
   return `<div class="set">
-    <h3>${r.goal.name}</h3>
-    <p class="focus">Focus: ${r.goal.focus} · ${r.legal ? 'all gates met' : 'gates NOT fully met with this collection'}</p>
-    <div class="gates">
-      <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">Uncrittable — ${e.critReduction.toFixed(2)}% / ${5.6}%</span>
-      <span class="gate ${crushPass ? 'pass' : 'fail'}">Uncrushable — ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>
+    <div class="set-head">
+      <div>
+        <h3>${r.goal.name}</h3>
+        <p class="focus">Focus: ${r.goal.focus} · ${r.legal ? 'all gates met' : 'gates NOT fully met with this collection'}</p>
+      </div>
+      <div class="gates">
+        <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">Uncrittable ${e.critReduction.toFixed(2)}%</span>
+        <span class="gate ${crushPass ? 'pass' : 'fail'}">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>
+      </div>
     </div>
-    <div class="statline">${stats.map(([k, v]) => `<span class="stat">${k} <b>${v}</b></span>`).join('')}</div>
-    <ul class="slots">${SLOT_ORDER.map((k) => {
-      const it = r.selection[k]; if (!it) return '';
-      const tag = it._gem === 'cap' ? '<span class="defgem">def-gemmed</span>' : '';
-      return `<li><span class="slot">${k}</span> ${itemLink(it)}${tag}</li>`;
-    }).join('')}</ul>
-    <div class="gemline"><b>Gems:</b> ${gems}</div>
-    <div class="enchline"><b>Enchants:</b> ${ench}</div>
+    ${doll}
     ${metaWarn ? `<div class="metawarn">${metaWarn}</div>` : ''}
+    ${panels}
   </div>`;
 }
 
