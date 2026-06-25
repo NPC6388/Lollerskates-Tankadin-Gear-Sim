@@ -50,9 +50,9 @@ export const ENCHANTS = {
   offhand: [
     { name: 'Enchant Shield - Major Stamina', id: 28282, enchant: 1071, stats: { stamina: 18 } },
     { name: 'Enchant Shield - Resilience', id: 44383, enchant: 3229, stats: { resilienceRating: 12 } },
-    // Formula 22540 / enchanting spell 27946 (+15 block rating). No wowsims EffectID — the
-    // TBC sim DB doesn't model it — so it's omitted from the Sixty Upgrades export (flagged).
-    { name: 'Enchant Shield - Shield Block', id: 22540, stats: { blockRating: 15 } },
+    // Formula 22540 / spell 27946 (+15 block rating). EffectID 2655 = "+15 Shield Block Rating"
+    // (wago.tools DB2, verified against known enchants). wowsims doesn't model it; Sixty Upgrades does.
+    { name: 'Enchant Shield - Shield Block', id: 22540, enchant: 2655, stats: { blockRating: 15 } },
   ],
   // Ring enchants apply to BOTH rings but require Enchanting.
   ring: [
