@@ -30,15 +30,30 @@ Running handoff notes for resuming work. Newest session at the top.
 Decoded the live export → 212 items / **109 equippable**, all slots. Four goals, UNBUFFED + HS:
 Survival EHP 33.9k, Balanced 30.9k/SP646, Raid SP745/uncrush, AOE SP831 @97.4%. All uncrittable.
 
-### Pick up here — player feedback (the run can do MUCH better)
-1. **Lock trinkets (proc/on-use value the model can't see):** Icon of the Silver Crescent in
-   EVERY set; Eye of Magtheridon (→ Tome of Fiery Redemption later) in all but Survival. The
-   optimizer only scores their +43 passive SP, so it under-ranks them — lock them.
-2. **Evaluate BUFFED:** player always has Blessing of Kings (+10% stats) + Mark of the Wild.
-   Buffs ease uncrush (Kings agility→dodge), freeing budget for threat. Target the player gave:
-   **760 spell damage @ 6.73% spell hit while uncrit+uncrush** (a few gem swaps). Need to model
-   Kings (mult) + MotW (flat) and report spell hit % in the readout.
-3. `GOAL_SCALES` sub-weights are first-pass; tune once buffed/locked numbers are in.
+### Then shipped (committed + pushed) — addressing that feedback
+- **`62760b5` — buff model.** `aggregate` takes `opts.kings` (+10% primaries, after flat buffs)
+  and `opts.buffs` (MotW flat +14); `BUFFS` exports both. Defaults off (reconcile untouched).
+- **`35fb11f` — meta-gem activation.** `metaActivated()`/`gemColors()` (hybrids count for both
+  colors); `bestMeta(w,{counts})` only returns an activatable meta; `solveLoadout` tallies the
+  set's colors then picks the meta and flags any that can't activate.
+- **`f426a1b` — committed runner `bin/optimize.mjs`** (`npm run optimize [export.txt]`). Buffed,
+  locks Icon (all) + Eye (non-survival), four goals. **Gemming is a LEVER for the caps**: each
+  socketed item enters as a focus variant (goal gems) and a cap variant (avoidance/defense gems),
+  so the optimizer keeps a higher-threat item and def-gems IT when that beats a tankier swap
+  (triggers on the survival/balanced helm). Final gems socket-bonus-aware via `solveLoadout`.
+
+**Validated:** raid-threat hits **762 SP @ 7.04% spell hit, uncrit+uncrush** — matches the
+player's hand-built target (760 SP / 6.73%). Buffed four-set summary:
+Raid 762SP, Survival EHP 35.9k, AOE 840SP @97.5%, Balanced 680SP/EHP 33.3k.
+
+### Pick up here
+1. **Heuristic selection/final mismatch:** selection uses approximate raw-gem variant stats, the
+   final regems via `solveLoadout`; the survival/balanced helm gets def-gemmed even though the
+   set finishes ~104.7% uncrush (slight overshoot — could keep ~24 stamina). Tighten by gemming
+   during selection or feeding the cap-lever the real socket-bonus-aware stats.
+2. **`GOAL_SCALES` sub-weights are first-pass** — tune the ratios/spell-hit weighting now that
+   buffed/locked numbers are in (player may want more spell hit vs raw SP).
+3. **Tome of Fiery Redemption** swap into the lock list once acquired (replaces Eye of Mag).
 
 ---
 
