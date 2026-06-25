@@ -136,7 +136,9 @@ function runOptimize() {
       const professions = [$('prof1').value, $('prof2').value].filter(Boolean);
       const trinketLocks = { icon: num($('lockIcon').value), eye: num($('lockEye').value) };
       const results = optimizeSets(items, {
-        professions, buffed: $('buffed').checked, maxPhase: +$('phase').value, trinketLocks, goals: currentGoals(),
+        professions, buffed: $('buffed').checked, maxPhase: +$('phase').value,
+        faction: $('faction').value, useImbuedMeta: $('imbuedMeta').checked,
+        trinketLocks, goals: currentGoals(),
       });
       render(results);
     } catch (err) {

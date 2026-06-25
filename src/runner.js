@@ -37,8 +37,13 @@ const sumInto = (into, s, m = 1) => { for (const [k, v] of Object.entries(s || {
 const hasSockets = (it) => { const s = it.sockets || {}; return !!(s.red || s.yellow || s.blue || s.meta); };
 
 // Approximate (raw-gem) stats for one gem intent — drives SELECTION; final gems recomputed below.
-function buildVariant(it, gemScale, enchScale, perks, maxPhase) {
+// meta-selection options: phase cap + any excluded metas (e.g. Imbued Unstable when toggled off).
+const metaOptsFor = (ctx) => ({ ...(ctx.maxPhase ? { maxPhase: ctx.maxPhase } : {}), ...(ctx.metaExclude && ctx.metaExclude.length ? { exclude: ctx.metaExclude } : {}) });
+
+function buildVariant(it, gemScale, enchScale, ctx) {
+  const { perks, maxPhase, faction } = ctx;
   const gOpts = { jewelcrafting: !!perks.jcGems, ...(maxPhase ? { maxPhase } : {}) };
+  const metaOpts = metaOptsFor(ctx);
   const stats = {}; sumInto(stats, baseOf(it));
   const sock = it.sockets || {};
   const colored = [];
@@ -50,19 +55,19 @@ function buildVariant(it, gemScale, enchScale, perks, maxPhase) {
   if (sock.meta) {
     const counts = { red: 0, yellow: 0, blue: 0 };
     for (const g of colored) for (const col of gemColors(g)) if (counts[col] != null) counts[col]++;
-    const m = bestMeta(gemScale, { counts, ...(maxPhase ? { maxPhase } : {}) }) || bestMeta(gemScale, maxPhase ? { maxPhase } : {});
+    const m = bestMeta(gemScale, { counts, ...metaOpts }) || bestMeta(gemScale, metaOpts);
     if (m) sumInto(stats, m.gem.stats, sock.meta);
   }
-  const en = bestEnchant(it.slot, enchScale, perks);
+  const en = bestEnchant(it.slot, enchScale, perks, { faction });
   if (en) sumInto(stats, en.enchant.stats);
   return stats;
 }
 
-function itemVariants(it, objScale, perks, maxPhase) {
+function itemVariants(it, objScale, ctx) {
   const mk = (tag, stats) => ({ ...it, stats, _gem: tag });
-  const focus = mk('focus', buildVariant(it, objScale, objScale, perks, maxPhase));
+  const focus = mk('focus', buildVariant(it, objScale, objScale, ctx));
   if (!hasSockets(it)) return [focus];
-  return [focus, mk('cap', buildVariant(it, CAP_SCALE, objScale, perks, maxPhase))];
+  return [focus, mk('cap', buildVariant(it, CAP_SCALE, objScale, ctx))];
 }
 
 function lockFor(goal, locks) {
@@ -73,9 +78,9 @@ function lockFor(goal, locks) {
 }
 
 function runGoal(goal, items, ctx) {
-  const { perks, buff, maxPhase, locks } = ctx;
+  const { perks, buff, maxPhase, faction, locks } = ctx;
   const objScale = blendScale(goal.ratio);
-  const prepared = items.flatMap((it) => itemVariants(it, objScale, perks, maxPhase));
+  const prepared = items.flatMap((it) => itemVariants(it, objScale, ctx));
   const { pool, distinct, locked } = buildPool(prepared, { lock: lockFor(goal, locks) });
   const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, hsBlockBonus: HS, ...buff };
   const res = optimizeHeuristic(pool, oGoal, { distinct, locked });
@@ -84,7 +89,7 @@ function runGoal(goal, items, ctx) {
   // items gem by the goal scale, def-gemmed items by the cap scale. Meta activation is judged
   // set-wide (a meta on the helm counts blue gems from the legs, etc.). Built from baseStats so
   // there's no double-count.
-  const maxPhaseOpt = maxPhase ? { maxPhase } : {};
+  const metaOpts = metaOptsFor(ctx);
   const plans = res.items.map((v) => ({ v, scale: v._gem === 'cap' ? CAP_SCALE : objScale, plan: planItemGems(v, v._gem === 'cap' ? CAP_SCALE : objScale, perks, maxPhase) }));
   const counts = { red: 0, yellow: 0, blue: 0 };
   for (const p of plans) for (const c of p.plan.choices) for (const col of gemColors(c)) if (counts[col] != null) counts[col]++;
@@ -95,11 +100,11 @@ function runGoal(goal, items, ctx) {
   for (const p of plans) {
     const pMetas = [];
     for (let i = 0; i < p.plan.metaCount; i++) {
-      let m = bestMeta(p.scale, { counts, ...maxPhaseOpt }); let active = true;
-      if (!m) { m = bestMeta(p.scale, maxPhaseOpt); active = false; }
+      let m = bestMeta(p.scale, { counts, ...metaOpts }); let active = true;
+      if (!m) { m = bestMeta(p.scale, metaOpts); active = false; }
       if (m) { p.plan.choices.push({ socket: 'meta', ...m.gem }); if (active) sumInto(p.plan.stats, m.gem.stats); pMetas.push({ name: m.gem.name, active, requires: m.gem.requires }); }
     }
-    const en = bestEnchant(p.v.slot, p.scale, perks);
+    const en = bestEnchant(p.v.slot, p.scale, perks, { faction });
     if (en) sumInto(p.plan.stats, en.enchant.stats);
     sumInto(added, p.plan.stats);
     gemChoices.push(...p.plan.choices);
@@ -127,6 +132,10 @@ export function optimizeSets(items, options = {}) {
     perks: professionPerks(options.professions || []),
     buff: options.buffed ? { kings: true, buffs: BUFFS.markOfTheWild } : {},
     maxPhase: options.maxPhase,
+    // Aldor/Scryer for faction-locked shoulder inscriptions; null = consider both.
+    faction: options.faction || null,
+    // Imbued Unstable Diamond is opt-in (like buffs); excluded from meta choices when off.
+    metaExclude: options.useImbuedMeta === false ? ['Imbued Unstable Diamond'] : [],
     locks: options.trinketLocks || DEFAULT_TRINKET_LOCKS,
   };
   const goals = options.goals || GOAL_PRESETS;

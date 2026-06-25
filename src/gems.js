@@ -133,10 +133,11 @@ export function metaActivated(meta, counts = {}) {
 // Best meta for a goal. When `counts` (the set's gem colors) is given, only metas whose
 // activation requirement those colors satisfy are considered, so we never recommend a meta
 // that would sit dark. Returns null if no meta can activate.
-export function bestMeta(weights, { maxPhase = CURRENT_PHASE, counts = null } = {}) {
+export function bestMeta(weights, { maxPhase = CURRENT_PHASE, counts = null, exclude = null } = {}) {
   let best = null;
   for (const g of META_GEMS) {
     if (g.phase > maxPhase) continue;
+    if (exclude && exclude.includes(g.name)) continue;
     if (counts && !metaActivated(g, counts)) continue;
     const s = score(g.stats, weights);
     if (!best || s > best.score) best = { gem: g, score: s };

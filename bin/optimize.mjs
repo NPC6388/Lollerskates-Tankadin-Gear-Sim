@@ -18,6 +18,8 @@ import { CAPS } from '../src/constants.js';
 const PROFESSIONS = ['Enchanting']; // gear-relevant professions
 const BUFFED = true;                // Kings (+10%) + base MotW (+14)
 const PHASE = 2;                    // cap gems to this content phase
+const FACTION = 'Aldor';            // Aldor | Scryer (shoulder inscriptions)
+const USE_IMBUED = true;            // include the Imbued Unstable Diamond meta
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const exportPath = process.argv[2] || path.join(__dirname, '..', 'scratchpad', 'export.txt');
@@ -28,7 +30,7 @@ if (!fs.existsSync(exportPath)) {
 
 const parsed = parseExport(toExportText(fs.readFileSync(exportPath, 'utf8')));
 const items = equippableItems(parsed);
-const results = optimizeSets(items, { professions: PROFESSIONS, buffed: BUFFED, maxPhase: PHASE });
+const results = optimizeSets(items, { professions: PROFESSIONS, buffed: BUFFED, maxPhase: PHASE, faction: FACTION, useImbuedMeta: USE_IMBUED });
 
 const ORDER = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'weapon', 'offhand', 'relic'];
 

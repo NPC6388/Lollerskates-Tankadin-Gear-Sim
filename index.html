@@ -51,9 +51,10 @@
           <small>Drives gem/enchant perks (JC gems, BS sockets, ring enchant).</small>
         </div>
         <div class="field">
-          <label>Buffs</label>
+          <label>Buffs &amp; options</label>
           <label class="check"><input type="checkbox" id="buffed" checked /> Raid-buffed (Blessing of Kings + Mark of the Wild)</label>
-          <small>Off = unbuffed character-sheet values.</small>
+          <label class="check"><input type="checkbox" id="imbuedMeta" checked /> Use Imbued Unstable Diamond (spell-damage meta)</label>
+          <small>Off = unbuffed sheet / no spell-damage meta.</small>
         </div>
         <div class="field">
           <label for="phase">Gem phase</label>
@@ -63,6 +64,14 @@
             <option value="3">Phase 3</option>
           </select>
           <small>Caps gem choices to that content phase.</small>
+        </div>
+        <div class="field">
+          <label for="faction">Faction</label>
+          <select id="faction">
+            <option value="Aldor" selected>Aldor</option>
+            <option value="Scryer">Scryer</option>
+          </select>
+          <small>Which shoulder inscriptions are available.</small>
         </div>
         <div class="field">
           <label>Locked trinkets</label>

@@ -12,10 +12,10 @@ export const ENCHANTS = {
     { name: 'Glyph of the Defender', id: 29186, enchant: 2999, stats: { defenseRating: 16, dodgeRating: 17 } },
   ],
   shoulder: [
-    { name: 'Greater Inscription of the Knight', id: 28911, enchant: 2991, stats: { defenseRating: 15, dodgeRating: 10 } },      // Scryer exalted
-    { name: 'Greater Inscription of Warding', id: 28889, enchant: 2978, stats: { dodgeRating: 15, defenseRating: 10 } },          // Aldor exalted
-    { name: 'Greater Inscription of Discipline', id: 28886, enchant: 2982, stats: { spellDamage: 18 } },                          // Aldor exalted; note: +10 spell crit (unscored)
-    { name: 'Greater Inscription of the Orb', id: 28909, enchant: 2995, stats: { spellDamage: 12 } },                             // Scryer exalted; note: +15 spell crit (unscored)
+    { name: 'Greater Inscription of the Knight', id: 28911, enchant: 2991, faction: 'Scryer', stats: { defenseRating: 15, dodgeRating: 10 } },
+    { name: 'Greater Inscription of Warding', id: 28889, enchant: 2978, faction: 'Aldor', stats: { dodgeRating: 15, defenseRating: 10 } },
+    { name: 'Greater Inscription of Discipline', id: 28886, enchant: 2982, faction: 'Aldor', stats: { spellDamage: 18 } },          // note: +10 spell crit (unscored)
+    { name: 'Greater Inscription of the Orb', id: 28909, enchant: 2995, faction: 'Scryer', stats: { spellDamage: 12 } },           // note: +15 spell crit (unscored)
   ],
   back: [
     { name: 'Enchant Cloak - Steelweave', id: 35756, enchant: 2648, stats: { defenseRating: 12 } },
@@ -63,14 +63,16 @@ export const ENCHANTS = {
 
 import { score } from './scoring.js';
 
-// Best enchant for a slot under a goal. Enchants gated by a profession are excluded
-// unless the player has it (perks.names includes the profession).
-export function bestEnchant(slot, weights, perks = { names: [] }) {
+// Best enchant for a slot under a goal. Enchants gated by a profession are excluded unless the
+// player has it (perks.names). Faction-locked enchants (Aldor/Scryer shoulder inscriptions) are
+// excluded unless they match opts.faction; with no faction given, all are considered.
+export function bestEnchant(slot, weights, perks = { names: [] }, opts = {}) {
   const list = ENCHANTS[slot];
   if (!list) return null;
   let best = null;
   for (const e of list) {
     if (e.profession && !perks.names.includes(e.profession)) continue;
+    if (e.faction && opts.faction && e.faction !== opts.faction) continue;
     const s = score(e.stats, weights);
     if (!best || s > best.score) best = { enchant: e, score: s };
   }
