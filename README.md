@@ -1,5 +1,7 @@
 # Lollerskate's Tankadin Gear Sim
 
+### ▶ Live tool: https://npc6388.github.io/Lollerskates-Tankadin-Gear-Sim/
+
 A client-side gear simulator for **WoW Classic TBC Anniversary** Protection Paladins.
 
 Show it the gear you already own, pick a goal — *Raid AoE Threat*, *Single-Target
