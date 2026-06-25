@@ -32,7 +32,11 @@ export const GOAL_PRESETS = [
 
 export const spellHitPct = (a) => TALENTS.precisionSpellHitPct + ((a._raw && a._raw.spellHitRating) || 0) / RATING.spellHitPer1;
 
-const baseOf = (it) => it.baseStats || it.stats || {};
+// Use baseStats (gem/enchant-free) for re-gemming, but fall back to resolved stats when base is
+// EMPTY — GetItemStats returns nothing for librams/relics, so their base field is {} and would
+// otherwise drop real stats like a libram's block rating. Such items have no sockets/enchants,
+// so resolved == base (no double-count).
+const baseOf = (it) => (it.baseStats && Object.keys(it.baseStats).length) ? it.baseStats : (it.stats || {});
 const sumInto = (into, s, m = 1) => { for (const [k, v] of Object.entries(s || {})) into[k] = (into[k] || 0) + v * m; };
 const hasSockets = (it) => { const s = it.sockets || {}; return !!(s.red || s.yellow || s.blue || s.meta); };
 
