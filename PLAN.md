@@ -189,14 +189,15 @@ flow into this module (and vice-versa).
    discrete socket bonus per item; see `CHANGELOG.md`). The bundled full item DB for
    *manual* search is the remaining heavy data task; the optimizer already runs over the
    addon-imported collection without it.
-4. **M4 — Companion addon (bulk import). ✅ DONE (v8).** `addon/TankadinGearSim` exports
+4. **M4 — Companion addon (bulk import). ✅ DONE (v9).** `addon/TankadinGearSim` exports
    equipped (`E:`) + bags + bank + reagent bank (`I:`) lines (gems/enchants folded in via
    tooltip scan), plus a `C:...` line of character-sheet finals the sim uses to **reconcile**
    its forward calc. v5–v7 fixed capture accuracy: "Spell Damage" wording, combined-line
    splitting, socketed-gem primaries, shield base block, and skipping inactive socket
    bonuses. **v8** adds per-item base stats + full socket-color layout + the discrete socket
-   bonus, closing the socket-bonus export gap for the gem solver. `src/import.js` parses the
-   format. Reads all WoW APIs defensively (pcall).
+   bonus, closing the socket-bonus export gap for the gem solver. **v9** appends the item
+   **name** (from `GetItemInfo`), so readouts show real names for owned gear without a name
+   DB. `src/import.js` parses the format. Reads all WoW APIs defensively (pcall).
 
    *Note:* the model no longer self-calibrates — the old back-fit was removed in favor of a
    documented first-principles forward calc (see `src/model.js`, `CHANGELOG.md`).
@@ -206,7 +207,8 @@ flow into this module (and vice-versa).
 ---
 
 ## 11. Open items
-- [ ] Source and scope the item database.
+- [ ] Source and scope the item database. *(Names for OWNED gear are now covered by the addon
+  v9 export; the DB is needed for manual search of items the player doesn't own.)*
 - [ ] Decide GitHub Pages enablement once there's something to serve.
 
 Goals #1–5 are settled and profession selection is an in-sim UI input — both resolved.

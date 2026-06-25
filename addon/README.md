@@ -15,7 +15,7 @@ character stats for [Lollerskate's Tankadin Gear Sim](../README.md).
 3. In the window that opens: **Ctrl+A**, **Ctrl+C**, then paste the string into the sim.
 
 ## What it exports
-- **Line 1:** `TGS<version>` (format version; currently `TGS8`)
+- **Line 1:** `TGS<version>` (format version; currently `TGS9`)
 - **Line 2:** `C:...` — your current character-sheet finals (dodge/parry/block %,
   defense skill, spell power, armor, strength/agility/stamina/intellect, etc.). The sim
   uses these to **reconcile** its first-principles forward calc against your real sheet.
@@ -32,6 +32,7 @@ character stats for [Lollerskate's Tankadin Gear Sim](../README.md).
   - **socketBonus** (v8) — the item's socket bonus (the prize for matching all its socket
     colors), e.g. `ITEM_MOD_STAMINA_SHORT:4`, captured whether or not it's currently active.
     The solver decides per item whether matching colors to earn it beats raw gems.
+  - **name** (v9) — the item's display name, so the sim can show real names instead of IDs.
 
   Item stats are English-tooltip parsed; if a stat looks missing, tell the dev which item so
   the phrase pattern can be added.

@@ -59,6 +59,9 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   layout, every socket even when filled) and the discrete **socket bonus**
   (`ITEM_MOD_*:val`, captured active or grey). Closes the socket-bonus export gap so the gem
   solver can do per-item worth-it matching and recommend re-gems from a clean base.
+- **v9** — append the item's display **name** (from `GetItemInfo`) as a trailing field, so
+  optimization/readout can show real names instead of item IDs for owned gear (no name DB to
+  source or maintain — the client is the source of truth). `import.js` exposes `item.name`.
 
 ## Model
 - **De-calibration.** Removed the old `calibrate()` back-fit (it masked capture bugs).

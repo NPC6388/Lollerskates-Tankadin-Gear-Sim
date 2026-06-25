@@ -2,7 +2,7 @@
 -- /tgs (or /tankadin) opens a copy box with:
 --   line 1: TGS<version>
 --   line 2: C:key=val;... — current character-sheet finals (for calibration)
---   then:   I:<itemString>|<equipLoc>|<resolved>|<base>|<socketBonus> — one per owned item.
+--   then:   I:<itemString>|<equipLoc>|<resolved>|<base>|<socketBonus>|<name> — one per item.
 --     resolved = "ilvl=N;<ITEM_MOD key>=val;..." scanned from the item's TOOLTIP, so it
 --       INCLUDES the gems + enchants CURRENTLY applied (the gear "as worn").
 --     base     = "<ITEM_MOD key>=val;..." from GetItemStats on the gem/enchant-STRIPPED
@@ -10,9 +10,10 @@
 --       (EMPTY_SOCKET_* for every socket, even ones currently filled). For the gem solver.
 --     socketBonus = "<ITEM_MOD key>:val" — the item's socket bonus (the prize for matching
 --       all its socket colors), captured whether or not it's currently active. May be empty.
+--     name = the item's display name (v9), from GetItemInfo. Plain text, last field.
 -- v1–v7 lines had only the first three fields (resolved). Everything read defensively.
 
-local VERSION = "8"
+local VERSION = "9"
 
 local CC = _G.C_Container
 local GetContainerNumSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
@@ -256,15 +257,18 @@ local function itemSegment(link)
       if liveBase[k] then stats[k] = liveBase[k] end
     end
   end
-  local equipLoc = select(9, GetItemInfo(link)) or ""
-  local ilvl = select(4, GetItemInfo(link)) or 0
+  -- one GetItemInfo call: name, _, _, ilvl, _, _, _, _, equipLoc, ...
+  local ok, name, _, _, ilvl, _, _, _, _, equipLoc = pcall(GetItemInfo, link)
+  if not ok then name, ilvl, equipLoc = nil, 0, "" end
+  ilvl = ilvl or 0; equipLoc = equipLoc or ""
   local resolvedSeg = "ilvl=" .. tostring(ilvl) ..
     (next(stats) and (";" .. serializeStats(stats)) or "")
   -- v8 base field: GetItemStats on the gem/enchant-STRIPPED base link gives clean item stats
   -- plus the FULL socket-color layout (every socket as EMPTY_SOCKET_*, even filled ones).
   local id = link:match("item:(%d+)")
   local baseSeg = id and serializeStats(safe(GetItemStatsFn, "item:" .. id)) or ""
-  return equipLoc .. "|" .. resolvedSeg .. "|" .. baseSeg .. "|" .. (socketBonus or "")
+  -- v9: append the item NAME (plain text from GetItemInfo; never contains '|') as the last field.
+  return equipLoc .. "|" .. resolvedSeg .. "|" .. baseSeg .. "|" .. (socketBonus or "") .. "|" .. (name or "")
 end
 
 local function scanGear()

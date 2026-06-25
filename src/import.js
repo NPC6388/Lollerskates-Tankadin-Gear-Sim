@@ -3,6 +3,7 @@
 //   C:key=val;...                                   (character finals, for calibration)
 //   v1 item line: I:item:<id>:<enchant>:<g1..4>:<suffix>:...
 //   v2 item line: I:<itemString>|<equipLoc>|ilvl=N;<GetItemStats key>=val;...
+//   v8 adds: ...|<baseStats>|<socketBonus>   v9 adds a trailing: |<name>
 
 // GetItemStats keys -> our internal stat names. This client emits ratings/spell-power
 // WITHOUT the _SHORT suffix (e.g. ITEM_MOD_DODGE_RATING) but primary stats WITH it
@@ -139,9 +140,10 @@ export function parseExport(text) {
     } else if (line.startsWith('I:') || line.startsWith('E:')) {
       const equipped = line.startsWith('E:');
       const body = line.slice(2);
-      const [itemStr, equipLoc = '', statSeg = '', baseSeg, bonusSeg] = body.split('|');
+      const [itemStr, equipLoc = '', statSeg = '', baseSeg, bonusSeg, nameSeg] = body.split('|');
       const item = parseItemString(itemStr);
       item.equipped = equipped;
+      if (nameSeg) item.name = nameSeg; // v9: human-readable item name
       if (equipLoc || statSeg) {
         const { stats, itemLevel } = parseStatSegment(statSeg);
         item.equipLoc = equipLoc;

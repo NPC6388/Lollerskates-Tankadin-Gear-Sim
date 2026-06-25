@@ -72,6 +72,18 @@ test('v8: base stats, full socket layout, and socket bonus parse', () => {
   assert.equal(trinket.socketBonus, null);          // empty bonus field -> null
 });
 
+test('v9: trailing name field is captured', () => {
+  const v9 = [
+    'TGS9',
+    'C:name=Lollerskate;level=70',
+    'E:item:29068:3002:24062:25896:::::70::::::::::|INVTYPE_HEAD|ilvl=120;ITEM_MOD_STAMINA_SHORT=67|ITEM_MOD_STAMINA_SHORT=43;EMPTY_SOCKET_YELLOW=1|ITEM_MOD_DODGE_RATING:4|Crown of the Forgotten King',
+  ].join('\n');
+  const p = parseExport(v9);
+  assert.equal(p.version, 9);
+  assert.equal(p.items[0].name, 'Crown of the Forgotten King');
+  assert.equal(p.items[0].socketBonus.stat, 'dodgeRating'); // earlier fields still parse
+});
+
 test('v2: equip locations map to slots', () => {
   assert.equal(equipLocToSlot('INVTYPE_HEAD'), 'head');
   assert.equal(equipLocToSlot('INVTYPE_FINGER'), 'ring');
