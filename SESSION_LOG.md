@@ -4,6 +4,44 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-25 — Export box fixed → full-bank run; import + optimizer hardening
+
+**Goal:** get a real export off the live client, then run the full collection.
+
+### Shipped (committed + pushed)
+- **`d4d7cce` — Addon v0.5.0.** The `/tgs` copy box rendered blank on the `_anniversary_`
+  client (EditBox in a ScrollFrame, focused before shown, no height). Added a **SavedVariables
+  dump** (`TankadinGearSimDB`) as the primary path: `/tgs` then `/reload` flushes the full
+  export to `WTF/Account/<acct>/SavedVariables/TankadinGearSim.lua`, read straight off disk.
+  Also hardened the box (show before SetText/focus, explicit height). `.toc` bumped so the
+  AddOns list confirms the loaded version. Export VERSION stays `9` (no wire change).
+- **`cf35ab0` — import backfills shield armor.** `GetItemStats` (the `base` field) reports 0
+  armor for shields (live: base 0 vs resolved 5727). `parseExport` now copies resolved armor
+  into `baseStats` when base lacks it (exact, not a double-count — gems never add armor, TBC
+  shields take no armor enchant). Without this, re-gemming from `baseStats` lost ~5.7k armor.
+- **`0d30212` — optimizer: paired slots + four ratio goals.** Folded the scratch-harness logic
+  in: `buildPool(items,{lock,exclude2H})` expands ring/trinket → ring1/ring2 + trinket1/trinket2
+  (with distinct-groups), drops 2H, applies locks. Both solvers enforce distinctness; heuristic
+  honors locks. Gates take `uncrushableTarget` (AOE trash may sit ~5% under). Objectives are
+  pluggable (`spellPower`/`ehp`/`scale`/fn). `weights.js` `GOAL_SCALES`: raidThreat (threat:sta
+  2:1), survival (ehp:threat 2:1), aoeThreat, balanced2 (1:1). Tests 91/91.
+
+### Full-bank run (scratch harness `scratchpad/optimize.mjs`, NOT committed)
+Decoded the live export → 212 items / **109 equippable**, all slots. Four goals, UNBUFFED + HS:
+Survival EHP 33.9k, Balanced 30.9k/SP646, Raid SP745/uncrush, AOE SP831 @97.4%. All uncrittable.
+
+### Pick up here — player feedback (the run can do MUCH better)
+1. **Lock trinkets (proc/on-use value the model can't see):** Icon of the Silver Crescent in
+   EVERY set; Eye of Magtheridon (→ Tome of Fiery Redemption later) in all but Survival. The
+   optimizer only scores their +43 passive SP, so it under-ranks them — lock them.
+2. **Evaluate BUFFED:** player always has Blessing of Kings (+10% stats) + Mark of the Wild.
+   Buffs ease uncrush (Kings agility→dodge), freeing budget for threat. Target the player gave:
+   **760 spell damage @ 6.73% spell hit while uncrit+uncrush** (a few gem swaps). Need to model
+   Kings (mult) + MotW (flat) and report spell hit % in the readout.
+3. `GOAL_SCALES` sub-weights are first-pass; tune once buffed/locked numbers are in.
+
+---
+
 ## 2026-06-24 — Socket-bonus export gap → per-item gemming, cap-aware solver, item names
 
 **Goal of the session:** close the addon socket-bonus export gap (the open M3 item), then
