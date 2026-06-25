@@ -72,6 +72,32 @@ test('v8: base stats, full socket layout, and socket bonus parse', () => {
   assert.equal(trinket.socketBonus, null);          // empty bonus field -> null
 });
 
+test('shield base armor is backfilled from resolved (GetItemStats omits it)', () => {
+  // A shield: resolved field carries the real armor (5727); the base field has 0 armor
+  // (GetItemStats omits shield armor) but the block-value/defense it does report. The parser
+  // must copy resolved armor into baseStats so re-gemming from base keeps the armor.
+  const sv = [
+    'TGS9',
+    'C:name=Lollerskate;level=70',
+    'E:item:34185::::::::70::::::::::|INVTYPE_SHIELD|ilvl=136;ITEM_MOD_STAMINA_SHORT=51;ITEM_MOD_DEFENSE_SKILL_RATING=24;RESISTANCE0_NAME=5727|ITEM_MOD_STAMINA_SHORT=51;ITEM_MOD_DEFENSE_SKILL_RATING=24||Merciless Gladiator\'s Barrier',
+  ].join('\n');
+  const shield = parseExport(sv).items[0];
+  assert.equal(shield.stats.armor, 5727);     // resolved had it
+  assert.equal(shield.baseStats.armor, 5727); // backfilled into base (was absent)
+});
+
+test('non-shield base armor is NOT overwritten (no double-count with armor enchants)', () => {
+  // Head with a cloak-style armor bump baked into resolved (1347) over a base 1227: base armor
+  // is present, so the backfill must leave it alone (else re-applying an armor enchant double-counts).
+  const hd = [
+    'TGS9',
+    'C:name=Lollerskate;level=70',
+    'E:item:29068::::::::70::::::::::|INVTYPE_HEAD|ilvl=120;RESISTANCE0_NAME=1347|RESISTANCE0_NAME=1227|Faceguard',
+  ].join('\n');
+  const head = parseExport(hd).items[0];
+  assert.equal(head.baseStats.armor, 1227); // untouched (base already had armor)
+});
+
 test('v9: trailing name field is captured', () => {
   const v9 = [
     'TGS9',

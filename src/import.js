@@ -151,7 +151,15 @@ export function parseExport(text) {
         item.itemLevel = itemLevel;
         item.stats = stats;
         // v8: gem/enchant-free base stats carry the full socket-color layout
-        if (baseSeg !== undefined) item.baseStats = parseStatSegment(baseSeg).stats;
+        if (baseSeg !== undefined) {
+          item.baseStats = parseStatSegment(baseSeg).stats;
+          // GetItemStats (the base field) omits SHIELD armor — it reports 0 even though the
+          // shield's armor is real. Backfill it from the resolved (tooltip) field so anything
+          // re-gemming from baseStats doesn't undercount armor. Armor is never added by gems
+          // (and shields take no armor enchant in TBC), so copying resolved -> base is exact,
+          // not a double-count. Only fill when base is missing it (i.e. the shield case).
+          if (!item.baseStats.armor && stats.armor) item.baseStats.armor = stats.armor;
+        }
         // sockets: prefer the base layout (every socket); v1–v7 fall back to the resolved
         // field, which only lists currently-EMPTY sockets.
         item.sockets = socketsFromStats(item.baseStats || stats);
