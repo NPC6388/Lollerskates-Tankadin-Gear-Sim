@@ -104,8 +104,8 @@ function runGoal(goal, items, ctx) {
     sumInto(added, p.plan.stats);
     gemChoices.push(...p.plan.choices);
     metas.push(...pMetas);
-    p.gems = p.plan.choices.map((c) => c.name);
-    p.enchant = en ? en.enchant.name : null;
+    p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null }));
+    p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, effectId: en.enchant.enchant || null } : null;
     p.metas = pMetas;
   }
   const agg = aggregate([...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }], { hsBlockBonus: HS, ...buff });

@@ -152,7 +152,33 @@ const num = (v) => (v ? +v : null);
 // ---- render -----------------------------------------------------------------
 const fmt = (n) => Math.round(n).toLocaleString();
 const yesno = (b) => `<span class="badge ${b ? 'yes' : 'no'}">${b ? 'yes' : 'no'}</span>`;
-const gemSpan = (name) => `<span class="gem g-${GEM_COLOR[name] || 'meta'}">${name}</span>`;
+const wh = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/tbc/item=${id}" target="_blank" rel="noopener">${text}</a>`;
+// Wowhead's power.js adds the icon + hover tooltip to any item link; fall back to plain text
+// (color by gem color) when we have no id.
+const gemLink = (g) => g.id ? wh(g.id, g.name, 'gem') : `<span class="gem g-${GEM_COLOR[g.name] || 'meta'}">${g.name}</span>`;
+const enchLink = (e) => e.id ? wh(e.id, e.name, 'ds-ench') : `<span class="ds-ench">${e.name}</span>`;
+
+// WowSims/Sixty Upgrades slot order (Head…Ranged); ammo omitted.
+const WSE_SLOTS = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'weapon', 'offhand', 'relic'];
+function buildExport(r) {
+  const items = WSE_SLOTS.map((k) => {
+    const it = r.selection[k]; if (!it) return null;
+    const ps = r.perSlot[k] || {};
+    const o = { id: it.itemId };
+    if (ps.enchant && ps.enchant.effectId) o.enchant = ps.enchant.effectId;
+    const gems = (ps.gems || []).map((g) => g.id).filter(Boolean);
+    if (gems.length) o.gems = gems;
+    return o;
+  });
+  const c = parsed && parsed.character || {};
+  return JSON.stringify({ name: c.name || 'Tankadin', race: 'BloodElf', class: 'paladin', level: c.level || 70, talents: '', spec: 'protection', gear: { items } });
+}
+function exportSet(r, btn) {
+  const json = buildExport(r);
+  const ok = () => { const t = btn.textContent; btn.textContent = '✓ Copied — paste into Sixty Upgrades import'; setTimeout(() => { btn.textContent = t; }, 2200); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(json).then(ok, () => window.prompt('Copy, then import at sixtyupgrades.com:', json));
+  else window.prompt('Copy, then import at sixtyupgrades.com:', json);
+}
 
 function render(results) {
   $('results-panel').hidden = false;
@@ -172,6 +198,8 @@ function render(results) {
     b.addEventListener('click', () => { activeTab = +b.dataset.i; render(results); }));
 
   $('sets').innerHTML = setCard(results[activeTab]);
+  const eb = $('sets').querySelector('.export-btn');
+  if (eb) eb.addEventListener('click', () => exportSet(results[activeTab], eb));
 }
 
 function slotHTML(r, slotKey, side) {
@@ -179,10 +207,10 @@ function slotHTML(r, slotKey, side) {
   if (!it) return `<div class="ds-slot ${side} empty"><span class="ds-label">${SLOT_LABEL[slotKey]}</span></div>`;
   const ps = r.perSlot[slotKey] || {};
   const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : '';
-  const ench = ps.enchant ? `<div class="ds-ench">${ps.enchant}</div>` : '';
-  const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemSpan).join('')}</div>` : '';
+  const ench = ps.enchant ? `<div class="ds-ench-row">${enchLink(ps.enchant)}</div>` : '';
+  const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemLink).join('')}</div>` : '';
   return `<div class="ds-slot ${side}">
-    <a class="ds-item" href="https://www.wowhead.com/tbc/item=${it.itemId}" target="_blank" rel="noopener">${it.name || it.itemId}</a>${tag}
+    ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${tag}
     ${ench}${gems}
   </div>`;
 }
@@ -196,6 +224,8 @@ function setCard(r) {
   const crushPass = e.totalAvoidanceWithHS + 1e-9 >= need;
   const metaWarn = r.metas.filter((m) => !m.active)
     .map((m) => `⚠ ${m.name} won't activate — needs ${m.requires}`).join('<br>');
+  const noId = [...new Set(Object.values(r.perSlot).filter((ps) => ps.enchant && !ps.enchant.effectId).map((ps) => ps.enchant.name))];
+  const exportNote = noId.length ? `<div class="metawarn">Export: no Sixty Upgrades ID for ${noId.join(', ')} — omitted from the string.</div>` : '';
 
   const doll = `<div class="doll">
     <div class="col left">${LEFT_SLOTS.map((k) => slotHTML(r, k, 'left')).join('')}</div>
@@ -215,13 +245,17 @@ function setCard(r) {
         <h3>${r.goal.name}</h3>
         <p class="focus">Focus: ${r.goal.focus} · ${r.legal ? 'all gates met' : 'gates NOT fully met with this collection'}</p>
       </div>
-      <div class="gates">
-        <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">Uncrittable ${e.critReduction.toFixed(2)}%</span>
-        <span class="gate ${crushPass ? 'pass' : 'fail'}">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>
+      <div class="head-right">
+        <div class="gates">
+          <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">Uncrittable ${e.critReduction.toFixed(2)}%</span>
+          <span class="gate ${crushPass ? 'pass' : 'fail'}">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>
+        </div>
+        <button class="export-btn" type="button">⬇ Export to Sixty Upgrades</button>
       </div>
     </div>
     ${doll}
     ${metaWarn ? `<div class="metawarn">${metaWarn}</div>` : ''}
+    ${exportNote}
     ${panels}
   </div>`;
 }

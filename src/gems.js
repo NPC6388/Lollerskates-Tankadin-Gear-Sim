@@ -32,64 +32,64 @@ const FITS = {
 // { name, color, phase, stats, epic?, jcOnly? }
 export const GEMS = [
   // --- Red (pure) — phase 1 rares ---
-  { name: 'Bold Living Ruby', color: 'red', phase: 1, stats: { strength: 8 } },
-  { name: 'Delicate Living Ruby', color: 'red', phase: 1, stats: { agility: 8 } },
-  { name: 'Subtle Living Ruby', color: 'red', phase: 1, stats: { dodgeRating: 8 } },
-  { name: 'Flashing Living Ruby', color: 'red', phase: 1, stats: { parryRating: 8 } },
-  { name: 'Runed Living Ruby', color: 'red', phase: 1, stats: { spellDamage: 9 } },
+  { name: 'Bold Living Ruby', id: 24027, color: 'red', phase: 1, stats: { strength: 8 } },
+  { name: 'Delicate Living Ruby', id: 24028, color: 'red', phase: 1, stats: { agility: 8 } },
+  { name: 'Subtle Living Ruby', id: 24032, color: 'red', phase: 1, stats: { dodgeRating: 8 } },
+  { name: 'Flashing Living Ruby', id: 24036, color: 'red', phase: 1, stats: { parryRating: 8 } },
+  { name: 'Runed Living Ruby', id: 24030, color: 'red', phase: 1, stats: { spellDamage: 9 } },
 
   // --- Yellow (pure) — phase 1 rares (rare value is +8, not +10) ---
-  { name: 'Thick Dawnstone', color: 'yellow', phase: 1, stats: { defenseRating: 8 } },
-  { name: 'Rigid Dawnstone', color: 'yellow', phase: 1, stats: { hitRating: 8 } },
-  { name: 'Great Dawnstone', color: 'yellow', phase: 1, stats: { spellHitRating: 8 } },
-  { name: 'Brilliant Dawnstone', color: 'yellow', phase: 1, stats: { intellect: 8 } },
-  { name: 'Mystic Dawnstone', color: 'yellow', phase: 1, stats: { resilienceRating: 8 } },
+  { name: 'Thick Dawnstone', id: 24052, color: 'yellow', phase: 1, stats: { defenseRating: 8 } },
+  { name: 'Rigid Dawnstone', id: 24051, color: 'yellow', phase: 1, stats: { hitRating: 8 } },
+  { name: 'Great Dawnstone', id: 31861, color: 'yellow', phase: 1, stats: { spellHitRating: 8 } },
+  { name: 'Brilliant Dawnstone', id: 24047, color: 'yellow', phase: 1, stats: { intellect: 8 } },
+  { name: 'Mystic Dawnstone', id: 24053, color: 'yellow', phase: 1, stats: { resilienceRating: 8 } },
 
   // --- Blue (stamina) — phase 1 rare workhorse ---
-  { name: 'Solid Star of Elune', color: 'blue', phase: 1, stats: { stamina: 12 } },
+  { name: 'Solid Star of Elune', id: 24033, color: 'blue', phase: 1, stats: { stamina: 12 } },
 
   // --- Orange (red+yellow hybrids) ---
-  { name: 'Inscribed Noble Topaz', color: 'orange', phase: 1, stats: { strength: 4 } }, // note: +4 spell crit (unscored)
-  { name: 'Glinting Noble Topaz', color: 'orange', phase: 1, stats: { agility: 4, hitRating: 4 } },
-  { name: 'Potent Noble Topaz', color: 'orange', phase: 1, stats: { spellDamage: 5 } }, // note: +4 spell crit (unscored)
-  { name: 'Etched Fire Opal', color: 'orange', phase: 2, epic: true, stats: { strength: 5, hitRating: 4 } },
-  { name: 'Potent Fire Opal', color: 'orange', phase: 2, epic: true, stats: { spellDamage: 6 } }, // note: +4 spell crit (unscored)
-  { name: 'Glistening Fire Opal', color: 'orange', phase: 2, epic: true, stats: { defenseRating: 5, agility: 4 } },
-  { name: 'Stalwart Fire Opal', color: 'orange', phase: 2, epic: true, stats: { defenseRating: 5, dodgeRating: 4 } },
-  { name: 'Glimmering Fire Opal', color: 'orange', phase: 2, epic: true, stats: { defenseRating: 4, parryRating: 5 } },
+  { name: 'Inscribed Noble Topaz', id: 24058, color: 'orange', phase: 1, stats: { strength: 4 } }, // note: +4 spell crit (unscored)
+  { name: 'Glinting Noble Topaz', id: 24061, color: 'orange', phase: 1, stats: { agility: 4, hitRating: 4 } },
+  { name: 'Potent Noble Topaz', id: 24059, color: 'orange', phase: 1, stats: { spellDamage: 5 } }, // note: +4 spell crit (unscored)
+  { name: 'Etched Fire Opal', id: 30559, color: 'orange', phase: 2, epic: true, stats: { strength: 5, hitRating: 4 } },
+  { name: 'Potent Fire Opal', id: 30588, color: 'orange', phase: 2, epic: true, stats: { spellDamage: 6 } }, // note: +4 spell crit (unscored)
+  { name: 'Glistening Fire Opal', id: 30585, color: 'orange', phase: 2, epic: true, stats: { defenseRating: 5, agility: 4 } },
+  { name: 'Stalwart Fire Opal', id: 30554, color: 'orange', phase: 2, epic: true, stats: { defenseRating: 5, dodgeRating: 4 } },
+  { name: 'Glimmering Fire Opal', id: 30558, color: 'orange', phase: 2, epic: true, stats: { defenseRating: 4, parryRating: 5 } },
 
   // --- Purple (red+blue) — stamina + red-stat hybrids ---
-  { name: 'Sovereign Nightseye', color: 'purple', phase: 1, stats: { stamina: 6, strength: 4 } },
-  { name: 'Glowing Nightseye', color: 'purple', phase: 1, stats: { stamina: 6, spellDamage: 5 } },
-  { name: 'Regal Nightseye', color: 'purple', phase: 1, stats: { stamina: 6, dodgeRating: 4 } },
-  { name: 'Shifting Nightseye', color: 'purple', phase: 1, stats: { stamina: 6, agility: 4 } },
-  { name: 'Sovereign Tanzanite', color: 'purple', phase: 2, epic: true, stats: { stamina: 6, strength: 5 } },
-  { name: 'Glowing Tanzanite', color: 'purple', phase: 2, epic: true, stats: { stamina: 6, spellDamage: 6 } },
-  { name: 'Regal Tanzanite', color: 'purple', phase: 2, epic: true, stats: { stamina: 6, dodgeRating: 5 } },
-  { name: 'Shifting Tanzanite', color: 'purple', phase: 2, epic: true, stats: { stamina: 6, agility: 5 } },
-  { name: "Defender's Tanzanite", color: 'purple', phase: 2, epic: true, stats: { stamina: 6, parryRating: 5 } },
+  { name: 'Sovereign Nightseye', id: 24054, color: 'purple', phase: 1, stats: { stamina: 6, strength: 4 } },
+  { name: 'Glowing Nightseye', id: 24056, color: 'purple', phase: 1, stats: { stamina: 6, spellDamage: 5 } },
+  { name: 'Regal Nightseye', id: 35707, color: 'purple', phase: 1, stats: { stamina: 6, dodgeRating: 4 } },
+  { name: 'Shifting Nightseye', id: 24055, color: 'purple', phase: 1, stats: { stamina: 6, agility: 4 } },
+  { name: 'Sovereign Tanzanite', id: 30546, color: 'purple', phase: 2, epic: true, stats: { stamina: 6, strength: 5 } },
+  { name: 'Glowing Tanzanite', id: 30555, color: 'purple', phase: 2, epic: true, stats: { stamina: 6, spellDamage: 6 } },
+  { name: 'Regal Tanzanite', id: 30563, color: 'purple', phase: 2, epic: true, stats: { stamina: 6, dodgeRating: 5 } },
+  { name: 'Shifting Tanzanite', id: 30549, color: 'purple', phase: 2, epic: true, stats: { stamina: 6, agility: 5 } },
+  { name: "Defender's Tanzanite", id: 30566, color: 'purple', phase: 2, epic: true, stats: { stamina: 6, parryRating: 5 } },
 
   // --- Green (yellow+blue) — stamina + yellow-stat hybrids ---
-  { name: 'Enduring Talasite', color: 'green', phase: 1, stats: { stamina: 6, defenseRating: 4 } },
-  { name: 'Steady Talasite', color: 'green', phase: 1, stats: { stamina: 6, resilienceRating: 4 } },
-  { name: 'Unstable Peridot', color: 'green', phase: 1, stats: { stamina: 6, intellect: 4 } },
-  { name: 'Enduring Chrysoprase', color: 'green', phase: 2, epic: true, stats: { stamina: 6, defenseRating: 5 } },
-  { name: 'Steady Chrysoprase', color: 'green', phase: 2, epic: true, stats: { stamina: 6, resilienceRating: 5 } },
-  { name: 'Timeless Chrysoprase', color: 'green', phase: 2, epic: true, stats: { stamina: 6, intellect: 5 } },
-  { name: 'Vivid Chrysoprase', color: 'green', phase: 2, epic: true, stats: { stamina: 6, spellHitRating: 5 } },
+  { name: 'Enduring Talasite', id: 24062, color: 'green', phase: 1, stats: { stamina: 6, defenseRating: 4 } },
+  { name: 'Steady Talasite', id: 33782, color: 'green', phase: 1, stats: { stamina: 6, resilienceRating: 4 } },
+  { name: 'Unstable Peridot', id: 32635, color: 'green', phase: 1, stats: { stamina: 6, intellect: 4 } },
+  { name: 'Enduring Chrysoprase', id: 30590, color: 'green', phase: 2, epic: true, stats: { stamina: 6, defenseRating: 5 } },
+  { name: 'Steady Chrysoprase', id: 30592, color: 'green', phase: 2, epic: true, stats: { stamina: 6, resilienceRating: 5 } },
+  { name: 'Timeless Chrysoprase', id: 30583, color: 'green', phase: 2, epic: true, stats: { stamina: 6, intellect: 5 } },
+  { name: 'Vivid Chrysoprase', id: 30605, color: 'green', phase: 2, epic: true, stats: { stamina: 6, spellHitRating: 5 } },
 
   // --- Future content (recorded, gated out until that phase) ---
-  { name: 'Steady Seaspray Emerald', color: 'green', phase: 3, epic: true, stats: { stamina: 7, resilienceRating: 5 } },
-  { name: 'Charmed Amani Jewel', color: 'blue', phase: 3, epic: true, stats: { stamina: 15 } }, // Zul'Aman
+  { name: 'Steady Seaspray Emerald', id: 35758, color: 'green', phase: 3, epic: true, stats: { stamina: 7, resilienceRating: 5 } },
+  { name: 'Charmed Amani Jewel', id: 34256, color: 'blue', phase: 3, epic: true, stats: { stamina: 15 } }, // Zul'Aman
 ];
 
 // Meta gems (single meta socket). `requires` is the activation condition; the solver
 // assumes a typical stamina-heavy tank build meets it and flags if not.
 export const META_GEMS = [
-  { name: 'Powerful Earthstorm Diamond', meta: true, phase: 1, stats: { stamina: 18 }, requires: '3+ blue' },
-  { name: 'Eternal Earthstorm Diamond', meta: true, phase: 1, stats: { defenseRating: 12, blockValueBonus: 5 }, requires: '2+ blue' },
-  { name: 'Relentless Earthstorm Diamond', meta: true, phase: 1, stats: { agility: 12 }, requires: '2+ red' }, // note: +3% crit damage (unscored)
-  { name: 'Imbued Unstable Diamond', meta: true, phase: 1, stats: { spellDamage: 14 }, requires: 'more red than blue' },
+  { name: 'Powerful Earthstorm Diamond', id: 25896, meta: true, phase: 1, stats: { stamina: 18 }, requires: '3+ blue' },
+  { name: 'Eternal Earthstorm Diamond', id: 35501, meta: true, phase: 1, stats: { defenseRating: 12, blockValueBonus: 5 }, requires: '2+ blue' },
+  { name: 'Relentless Earthstorm Diamond', id: 32409, meta: true, phase: 1, stats: { agility: 12 }, requires: '2+ red' }, // note: +3% crit damage (unscored)
+  { name: 'Imbued Unstable Diamond', id: 32641, meta: true, phase: 1, stats: { spellDamage: 14 }, requires: 'more red than blue' },
 ];
 
 import { score } from './scoring.js';
