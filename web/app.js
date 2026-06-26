@@ -234,15 +234,17 @@ function slotHTML(r, slotKey, side) {
 const panel = (title, rows) =>
   `<div class="spanel"><h4>${title}</h4>${rows.map(([k, v]) => `<div class="srow"><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
 
-// What Kings + MotW add to this set's gates (these stats are already in the numbers above; the
-// note just shows their share). Buffs add stamina/agility but no defense/resilience.
+// What the stat buff contributes to this set (already included in the numbers above; this just
+// shows its share). It scales all 4 primaries — each with its own downstream effect.
 function buffNote(b) {
   if (!b || !b.name) return '';
-  return `<div class="buffnote">Of the above, <b>${b.name}</b> contributes
-    <b>+${Math.round(b.stamina)}</b> stam (≈+${Math.round(b.health).toLocaleString()} health),
-    <b>+${Math.round(b.agility)}</b> agi &amp; <b>+${Math.round(b.armor).toLocaleString()}</b> armor →
-    <b>+${b.crushAvoid.toFixed(2)}%</b> toward uncrushable (dodge), <b>+${b.critReduction.toFixed(2)}%</b> crit reduction
-    <span class="muted">(buffs add no defense/resilience, so they don't help uncrittable). Toggle them in Sixty Upgrades after import.</span></div>`;
+  return `<div class="buffnote"><b>${b.name}</b>'s share of the above:
+    <b>+${Math.round(b.stamina)}</b> stamina (≈+${Math.round(b.health).toLocaleString()} health),
+    <b>+${Math.round(b.agility)}</b> agility (+${b.crushAvoid.toFixed(2)}% dodge → uncrush, + melee crit),
+    <b>+${Math.round(b.intellect)}</b> intellect (+ spell crit),
+    <b>+${Math.round(b.strength)}</b> strength (+ block value),
+    <b>+${Math.round(b.armor).toLocaleString()}</b> armor.
+    <span class="muted">Crit reduction +${b.critReduction.toFixed(2)}% — buffs add no defense/resilience, so they don't help uncrittable. Set the buff in Sixty Upgrades after import.</span></div>`;
 }
 
 function setCard(r) {

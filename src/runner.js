@@ -131,11 +131,13 @@ function runGoal(goal, items, ctx) {
     const eU = evaluateSet(aggU);
     buffImpact = {
       name: ctx.buffName,
-      stamina: agg.stamina - aggU.stamina,
-      agility: agg.agility - aggU.agility,
+      stamina: agg.stamina - aggU.stamina,         // -> health
+      agility: agg.agility - aggU.agility,         // -> dodge + melee crit
+      intellect: agg.intellect - aggU.intellect,   // -> spell crit (+ mana)
+      strength: agg.strength - aggU.strength,      // -> block value
       armor: agg.armor - aggU.armor,
       health: agg.health - aggU.health,
-      crushAvoid: evald.totalAvoidanceWithHS - eU.totalAvoidanceWithHS, // dodge gained, toward uncrush
+      crushAvoid: evald.totalAvoidanceWithHS - eU.totalAvoidanceWithHS, // the dodge gain, toward uncrush
       critReduction: evald.critReduction - eU.critReduction,            // ~0 (no def/resil from buffs)
     };
   }
