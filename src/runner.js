@@ -8,8 +8,9 @@
 
 import { aggregate, BUFFS, TALENTS, talentsFromRanks } from './model.js';
 import { evaluateSet } from './character.js';
-import { bestGem, bestMeta, gemColors } from './gems.js';
+import { bestGem, bestMeta, gemColors, META_GEMS, CURRENT_PHASE } from './gems.js';
 import { bestEnchant } from './enchants.js';
+import { score } from './scoring.js';
 import { SCALES, blendScale } from './weights.js';
 import { planItemGems } from './gemsolver.js';
 import { buildPool, optimizeHeuristic } from './optimizer.js';
@@ -81,6 +82,81 @@ function lockFor(goal, locks) {
   return lock;
 }
 
+// Parse a meta's activation requirement into a color target.
+function metaReq(requires) {
+  if (!requires) return null;
+  let m;
+  if ((m = requires.match(/(\d+)\+\s*(red|yellow|blue)/))) return { color: m[2], count: +m[1] };
+  if (/more red than blue/.test(requires)) return { gt: ['red', 'blue'] };
+  if (/more blue than red/.test(requires)) return { gt: ['blue', 'red'] };
+  return null;
+}
+
+// META-AWARE gemming: choose the set's meta jointly with the colored gems, scored on the GOAL
+// objective (a threat set's meta should be Imbued spell-damage, a survival set's Powerful stamina
+// — not whatever the def gems happen to enable). A color-gated meta that isn't yet active can be
+// ENABLED by recoloring the cheapest FOCUS sockets to its required color (cap/def sockets are
+// load-bearing for the gates, so they're never disturbed); the recolor's objective cost is netted
+// against the meta's value. Mutates plan.choices and sets p.metas; returns the flat meta list.
+function resolveMetas(plans, objScale, ctx) {
+  const { perks, maxPhase, metaExclude = [] } = ctx;
+  const phase = maxPhase || CURRENT_PHASE;
+  const pool = META_GEMS.filter((g) => g.phase <= phase && !metaExclude.includes(g.name));
+  const gemOpt = (color) => bestGem(objScale, { socketColor: color, matchColor: true, jewelcrafting: !!perks.jcGems, ...(maxPhase ? { maxPhase } : {}) });
+  const all = [];
+  for (const p of plans) for (const c of p.plan.choices) if (c.color) all.push({ p, c });
+  const recolorable = all.filter((s) => s.p.v._gem !== 'cap'); // only focus sockets may be recolored
+  const tally = () => { const cc = { red: 0, yellow: 0, blue: 0 }; for (const s of all) for (const col of gemColors(s.c)) if (cc[col] != null) cc[col]++; return cc; };
+
+  const metas = [];
+  for (const p of plans) {
+    const pMetas = [];
+    for (let i = 0; i < p.plan.metaCount; i++) {
+      const counts = tally();
+      let best = null;
+      for (const M of pool) {
+        const en = enableMeta(M, counts, recolorable, gemOpt, objScale);
+        if (!en) continue;
+        const net = score(M.stats, objScale) - en.cost;
+        if (!best || net > best.net) best = { M, en, net };
+      }
+      if (!best) continue;
+      for (const r of best.en.recolors) {
+        sumInto(r.s.p.plan.stats, r.s.c.stats, -1); // remove the old gem's stats from its item
+        const keepSocket = r.s.c.socket;
+        for (const k of Object.keys(r.s.c)) if (k !== 'socket') delete r.s.c[k];
+        Object.assign(r.s.c, r.tg.gem, { socket: keepSocket });
+        sumInto(r.s.p.plan.stats, r.s.c.stats, +1); // add the recolored gem's stats
+      }
+      p.plan.choices.push({ socket: 'meta', ...best.M });
+      sumInto(p.plan.stats, best.M.stats); // meta stats (always active — only enabled metas chosen)
+      const info = { name: best.M.name, active: true, requires: best.M.requires };
+      pMetas.push(info); metas.push(info);
+    }
+    p.metas = pMetas;
+  }
+  return metas;
+}
+
+// Cheapest way (in objective points) to satisfy meta M's color requirement. Returns {cost,recolors}
+// (cost 0 / no recolors if already met) or null if it can't be enabled with the focus sockets.
+function enableMeta(M, counts, recolorable, gemOpt, objScale) {
+  const req = metaReq(M.requires);
+  if (!req) return { cost: 0, recolors: [] };
+  let color, deficit;
+  if (req.color) { color = req.color; deficit = req.count - counts[color]; }
+  else { color = req.gt[0]; deficit = (counts[req.gt[1]] - counts[req.gt[0]]) + 1; } // make color strictly exceed the other
+  if (deficit <= 0) return { cost: 0, recolors: [] };
+  const tg = gemOpt(color); if (!tg) return null;
+  const cands = recolorable
+    .filter((s) => !gemColors(s.c).includes(color))
+    .map((s) => ({ s, tg, cost: score(s.c.stats, objScale) - tg.score })); // objective value lost
+  if (cands.length < deficit) return null;
+  cands.sort((a, b) => a.cost - b.cost);
+  const recolors = cands.slice(0, deficit);
+  return { cost: recolors.reduce((a, r) => a + r.cost, 0), recolors };
+}
+
 function runGoal(goal, items, ctx) {
   const { perks, buff, maxPhase, faction, locks, talents } = ctx;
   const aggOpts = { hsBlockBonus: HS, ...buff, ...(talents ? { talents } : {}) };
@@ -91,32 +167,24 @@ function runGoal(goal, items, ctx) {
   const res = optimizeHeuristic(pool, oGoal, { distinct, locked });
 
   // Final gemming, socket-bonus-aware, PER ITEM so we can report gems/enchant by slot. Focus
-  // items gem by the goal scale, def-gemmed items by the cap scale. Meta activation is judged
-  // set-wide (a meta on the helm counts blue gems from the legs, etc.). Built from baseStats so
+  // items gem by the goal scale, def-gemmed items by the cap scale. Built from baseStats so
   // there's no double-count.
-  const metaOpts = metaOptsFor(ctx);
   const plans = res.items.map((v) => ({ v, scale: v._gem === 'cap' ? CAP_SCALE : objScale, plan: planItemGems(v, v._gem === 'cap' ? CAP_SCALE : objScale, perks, maxPhase) }));
-  const counts = { red: 0, yellow: 0, blue: 0 };
-  for (const p of plans) for (const c of p.plan.choices) for (const col of gemColors(c)) if (counts[col] != null) counts[col]++;
+  // Meta-aware: choose metas on the GOAL objective, recoloring focus sockets to enable a stronger
+  // color-gated meta when worth it. Mutates plan.choices and sets p.metas.
+  const metas = resolveMetas(plans, objScale, ctx);
 
+  // Enchants + final added stats. plan.stats holds the colored gems + socket bonuses (from
+  // planItemGems) and is kept current by resolveMetas (recolor deltas + meta stats), so sum it.
   const added = {};
   const gemChoices = [];
-  const metas = [];
   for (const p of plans) {
-    const pMetas = [];
-    for (let i = 0; i < p.plan.metaCount; i++) {
-      let m = bestMeta(p.scale, { counts, ...metaOpts }); let active = true;
-      if (!m) { m = bestMeta(p.scale, metaOpts); active = false; }
-      if (m) { p.plan.choices.push({ socket: 'meta', ...m.gem }); if (active) sumInto(p.plan.stats, m.gem.stats); pMetas.push({ name: m.gem.name, active, requires: m.gem.requires }); }
-    }
-    const en = bestEnchant(p.v.slot, p.scale, perks, { faction });
-    if (en) sumInto(p.plan.stats, en.enchant.stats);
     sumInto(added, p.plan.stats);
+    const en = bestEnchant(p.v.slot, p.scale, perks, { faction });
+    if (en) sumInto(added, en.enchant.stats);
     gemChoices.push(...p.plan.choices);
-    metas.push(...pMetas);
     p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null }));
     p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, effectId: en.enchant.enchant || null } : null;
-    p.metas = pMetas;
   }
   const agg = aggregate([...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }], aggOpts);
   const evald = evaluateSet(agg);
