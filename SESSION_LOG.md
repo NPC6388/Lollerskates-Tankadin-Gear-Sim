@@ -74,9 +74,10 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
   `allowUnique` opt-in left as the hook for single-placement.
 
 ### Pick up here
-1. **Single-placement for unique gems (optional, low value).** Currently unique/epic gems are
-   excluded entirely (0 per set), not used once. Slotting one in its best socket is worth ~1 stat
-   point — `bestGem({allowUnique})` is the hook. Only do it if the player wants their one epic used.
+1. **Single-placement for unique gems — DECLINED (2026-06-26).** Player: "it's fine to leave the
+   epics off, anyone with one can just add it to their Sixty Upgrades." Unique/epic gems stay
+   excluded entirely; the `bestGem({allowUnique})` hook remains but don't build on it unless asked.
+   (Supersedes the old "place the 1 unique Ornate Ruby" item below.)
 2. **Spell-hit soft cap — DEFERRED (player: "a while before I approach the hit cap").** Future work:
    the blended ratio goals value `spellHitRating` at a flat 1.1× with NO cap; past the **17%
    spell-hit cap** it should drop to ~0 (the named `threatSingleAtCap` scale does this; the
@@ -84,8 +85,7 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
 2. **Faction:** player is **Scryer** (uses Greater Inscription of the Orb). CLI/`bin` defaults to
    Aldor → would pick Discipline. Make faction a first-class setting / detect it.
 3. **Per-socket gemming** granularity (whole-item focus/cap variants still).
-4. **Place the 1 unique Ornate Ruby** in the best socket (currently excluded entirely; ~+3 SP).
-5. **Pure-threat slider** — now LOW impact (Veiled gemming maxes threat regardless; pure-threat SP
+4. **Pure-threat slider** — now LOW impact (Veiled gemming maxes threat regardless; pure-threat SP
    785 < raid 791), so deprioritized vs the soft cap.
 6. **Reconciliation TODO:** feed the player's exact set in and confirm the model reproduces
    801 SP / 8.63% hit / 8.98% crit / 11,957 HP end to end.
