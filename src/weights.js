@@ -51,7 +51,7 @@ export const SCALES = {
 
   // 5. Survival — uncrushable / EHP (farm; avoidance at face value)
   survivalEHP: scale({
-    stamina: 1, intellect: 0.1, strength: 0.02, agility: 0.92,
+    stamina: 1, intellect: 0.1, strength: 0.02, agility: 1.10,
     dodgeRating: 1.06, parryRating: 0.85, defenseRating: 1.2,
     blockRating: 1.02, blockValue: 0.05, blockValueBonus: 0.05,
     hitRating: 0.1, expertiseRating: 0.2, spellDamage: 0.3, spellHitRating: 0.1,
@@ -62,7 +62,7 @@ export const SCALES = {
   // 6. Balanced — caps enforced as constraints; beyond them, 1 SP ~= 1 stamina with
   // survival mitigation (block/defense/dodge) edging ahead. For GearForge-style optimizers.
   balanced: scale({
-    stamina: 1.0, intellect: 0.15, strength: 0.4, agility: 0.92,
+    stamina: 1.0, intellect: 0.15, strength: 0.4, agility: 1.10,
     dodgeRating: 1.06, parryRating: 0.85, defenseRating: 1.2,
     blockRating: 1.2, blockValue: 0.05, blockValueBonus: 0.05,
     hitRating: 0.6, expertiseRating: 0.9, spellDamage: 1.0, spellHitRating: 1.1, spellCritRating: 0.3,
@@ -85,7 +85,9 @@ export const PARTS = {
   // so dodge ≈ 1 (= stamina), parry ≈ 0.8 (costs more rating per %), defense ≈ 1.1 (gives 4
   // avoidance benefits). Block is kept LOW here — it's partial mitigation and wouldn't negate the
   // burst hit; its real value is Holy Shield threat + reaching uncrush, valued in those scales.
-  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 0.9, dodgeRating: 1.0, parryRating: 0.8, defenseRating: 1.1, blockRating: 0.3, intellect: 0.05 },
+  // agility edges dodgeRating: less dodge per point, but it ALSO gives armor (2/agi) + melee crit
+  // and scales with Kings (×1.1), where flat dodge rating doesn't — net a touch more total value.
+  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 1.05, dodgeRating: 1.0, parryRating: 0.8, defenseRating: 1.1, blockRating: 0.3, intellect: 0.05 },
   // spellCritRating: a spell crit adds +0.5x damage (CRIT_MULT.spell); ~0.3 per rating point
   // relative to spellDamage 1.0 — small, so it breaks near-ties toward crit rather than chasing it.
   threat: { spellDamage: 1, spellHitRating: 1.1, spellCritRating: 0.3, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },

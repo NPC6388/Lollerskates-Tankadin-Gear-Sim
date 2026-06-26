@@ -145,3 +145,9 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   `opts.maxPhase` (default CURRENT_PHASE), threaded through the runner + `recommendEnchants`.
   **Enchant Cloak - Steelweave** is marked **phase 5**, so the survival/def sets no longer
   recommend it now (they fall back to Cloak - Dodge); it returns once the realm reaches phase 5.
+- **Agility valued a touch above dodge rating** in the EHP-value weights (`PARTS.ehp`, `survivalEHP`,
+  `balanced`). Per point, agility gives less dodge than dodge rating, but it ALSO adds armor (2/agi)
+  + melee crit and scales with Kings (×1.1), where flat dodge rating doesn't — so its total tank
+  value edges ahead. Effect: the cloak enchant now picks **Greater Agility** over **Cloak - Dodge**
+  (relevant once Steelweave is phase-gated out). The **uncrushable-cap** scale is left dodge-ahead
+  on purpose — reaching the crush cap is about raw avoidance per point, where dodge rating wins.
