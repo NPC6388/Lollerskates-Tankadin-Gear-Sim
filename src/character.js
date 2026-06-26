@@ -19,14 +19,13 @@ export function evaluateSet(s) {
   const totalAvoidanceNoHS = actualAvoidance + (s.blockPct ?? 0);
   const totalAvoidanceWithHS = totalAvoidanceNoHS + hsBonus;
 
-  // Effective physical EHP: armor mitigation AND full avoidance. Miss/dodge/parry take the hit to
-  // ZERO, so they multiply effective health by 1/(1 - avoid) — and that value isn't capped by the
-  // uncrush threshold (going "over cap" on dodge/parry is still real survivability). Block is
-  // partial mitigation and is intentionally excluded here.
-  const fullAvoid = Math.min(actualAvoidance / 100, 0.95);
+  // Physical EHP = the health pool behind armor mitigation. Avoidance (dodge/parry/miss) is NOT
+  // multiplied in here: the guide notes it has DIMINISHING returns (it smooths the average but not
+  // the consecutive-hit spikes that kill you), so 1/(1-avoid) would overstate it. Avoidance is
+  // valued in the weight scales instead (where its magnitude can be tuned), and shown separately.
   const ehpPhysical =
     s.armor != null && s.health != null
-      ? s.health / (1 - armorDR(s.armor)) / (1 - fullAvoid)
+      ? s.health / (1 - armorDR(s.armor))
       : null;
 
   return {
