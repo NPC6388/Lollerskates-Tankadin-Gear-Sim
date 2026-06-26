@@ -149,7 +149,19 @@ export function parseExport(text) {
     } else if (line.startsWith('I:') || line.startsWith('E:')) {
       const equipped = line.startsWith('E:');
       const body = line.slice(2);
-      const [itemStr, equipLoc = '', statSeg = '', baseSeg, bonusSeg, nameSeg] = body.split('|');
+      // Fields: itemStr | equipLoc | statSeg | baseSeg | [socketBonus] | [name]. The socketBonus
+      // field is OPTIONAL — some addon builds omit it entirely (…|base|name) rather than leaving
+      // it empty (…|base||name), which would otherwise shove the name into the bonus slot and drop
+      // it (every trinket, having no socket bonus, hit this). Resolve the trailing fields by SHAPE:
+      // a socket-bonus token looks like "ITEM_MOD_*:<num>"; anything else is the name.
+      const fields = body.split('|');
+      const [itemStr, equipLoc = '', statSeg = '', baseSeg] = fields;
+      let bonusSeg, nameSeg;
+      const trailing = fields.slice(4); // [], [name], [bonus], or [bonus, name]
+      if (trailing.length >= 2) { [bonusSeg, nameSeg] = trailing; }
+      else if (trailing.length === 1) {
+        if (/^[A-Z0-9_]+:-?\d/.test(trailing[0])) bonusSeg = trailing[0]; else nameSeg = trailing[0];
+      }
       const item = parseItemString(itemStr);
       item.equipped = equipped;
       if (nameSeg) item.name = nameSeg; // v9: human-readable item name

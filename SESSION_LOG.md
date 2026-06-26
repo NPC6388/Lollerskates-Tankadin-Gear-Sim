@@ -33,6 +33,14 @@ max-threat output. Diagnosed against the player's TGS11 export + their sixtyupgr
 high-hit, crit-carrying build — 791 SP / 8.31% hit / 33 crit-rtg vs the player's 801 / 8.63% / 38,
 trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
 
+### Follow-on (same session)
+- **Import name-parsing bug fixed.** The addon's optional `socketBonus` field is sometimes omitted
+  (`…|base|name`) rather than empty (`…|base||name`); the fixed-index parse put the name in the
+  bonus slot and dropped it — every trinket showed an ID in the lock dropdown. `import.js` now
+  resolves trailing fields by shape. Verified: 0 items missing names on the live export.
+- **Model reconciled** to the player's sheet + Sixty export: hit 8.63% / crit 38rtg match exactly,
+  SP/str/agi/int exact, stamina within ±rounding. The engine is trustworthy end to end.
+
 ### Pick up here
 1. **Spell-hit soft cap (highest-value next):** the blended ratio goals value `spellHitRating` at a
    flat 1.1× with NO cap — past the **17% spell-hit cap** it should drop to ~0 (the named

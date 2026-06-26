@@ -93,3 +93,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   hand-built Veiled-gemmed, high-hit, crit-carrying build instead of shedding hit for raw spell
   power. Remaining: a spell-hit **soft cap** (hit is still valued past the 17% cap in the blended
   goals), Scryer/Aldor faction handling, and per-socket gemming. See `SESSION_LOG.md`.
+- **Import: name parsing made format-robust.** The optional `socketBonus` field is omitted by some
+  addon builds (`…|base|name`) rather than left empty (`…|base||name`); the fixed-index parse then
+  shoved the name into the bonus slot and dropped it — so every trinket (no socket bonus) lost its
+  name and the lock dropdown showed item IDs. `import.js` now resolves the trailing fields by SHAPE
+  (a socket-bonus token is `ITEM_MOD_*:<num>`; anything else is the name), handling both formats.
+- **Model reconciliation** against the player's live sheet + Sixty Upgrades buffed export confirms
+  the engine end to end: spell hit (8.63%) and spell crit (38 rtg) match to the digit; SP/str/agi/
+  int exact; stamina within the known ±rounding.
