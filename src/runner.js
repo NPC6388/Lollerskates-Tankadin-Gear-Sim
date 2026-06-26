@@ -184,7 +184,7 @@ function runGoal(goal, items, ctx) {
     if (en) sumInto(added, en.enchant.stats);
     gemChoices.push(...p.plan.choices);
     p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null }));
-    p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, effectId: en.enchant.enchant || null } : null;
+    p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, spell: en.enchant.spell || null, effectId: en.enchant.enchant || null } : null;
   }
   const agg = aggregate([...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }], aggOpts);
   const evald = evaluateSet(agg);

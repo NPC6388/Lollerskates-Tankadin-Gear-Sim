@@ -168,7 +168,9 @@ const wh = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/t
 // Wowhead's power.js adds the icon + hover tooltip to any item link; fall back to plain text
 // (color by gem color) when we have no id.
 const gemLink = (g) => g.id ? wh(g.id, g.name, 'gem') : `<span class="gem g-${GEM_COLOR[g.name] || 'meta'}">${g.name}</span>`;
-const enchLink = (e) => e.id ? wh(e.id, e.name, 'ds-ench') : `<span class="ds-ench">${e.name}</span>`;
+// Enchants link by scroll item when one exists, else by the enchanting spell (trainer-taught).
+const whSpell = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/tbc/spell=${id}" target="_blank" rel="noopener">${text}</a>`;
+const enchLink = (e) => e.id ? wh(e.id, e.name, 'ds-ench') : e.spell ? whSpell(e.spell, e.name, 'ds-ench') : `<span class="ds-ench">${e.name}</span>`;
 
 // WowSims/Sixty Upgrades slot order (Head…Ranged); ammo omitted.
 const WSE_SLOTS = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'weapon', 'offhand', 'relic'];

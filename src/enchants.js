@@ -19,7 +19,7 @@ export const ENCHANTS = {
   ],
   back: [
     { name: 'Enchant Cloak - Steelweave', id: 35756, enchant: 2648, stats: { defenseRating: 12 } },
-    { name: 'Enchant Cloak - Greater Agility', id: 34004, enchant: 368, stats: { agility: 12 } },
+    { name: 'Enchant Cloak - Greater Agility', spell: 34004, enchant: 368, stats: { agility: 12 } }, // trainer-taught: link by spell, not item
     { name: 'Enchant Cloak - Dodge', id: 33148, enchant: 2622, stats: { dodgeRating: 12 } },
   ],
   chest: [
@@ -32,7 +32,7 @@ export const ENCHANTS = {
     { name: 'Enchant Bracer - Spellpower', id: 22534, enchant: 2650, stats: { spellDamage: 15 } },
   ],
   hands: [
-    { name: 'Enchant Gloves - Major Strength', id: 33995, enchant: 684, stats: { strength: 15 } },
+    { name: 'Enchant Gloves - Major Strength', spell: 33995, enchant: 684, stats: { strength: 15 } }, // trainer-taught: link by spell
     { name: 'Enchant Gloves - Spell Strike', id: 28271, enchant: 2935, stats: { spellHitRating: 15 } },
     { name: 'Enchant Gloves - Major Spellpower', id: 28272, enchant: 2937, stats: { spellDamage: 20 } },
   ],
@@ -49,7 +49,7 @@ export const ENCHANTS = {
   ],
   offhand: [
     { name: 'Enchant Shield - Major Stamina', id: 28282, enchant: 1071, stats: { stamina: 18 } },
-    { name: 'Enchant Shield - Resilience', id: 44383, enchant: 3229, stats: { resilienceRating: 12 } },
+    { name: 'Enchant Shield - Resilience', spell: 44383, enchant: 3229, stats: { resilienceRating: 12 } }, // link by spell (no scroll item)
     // Formula 22540 / spell 27946 (+15 block rating). EffectID 2655 = "+15 Shield Block Rating"
     // (wago.tools DB2, verified against known enchants). wowsims doesn't model it; Sixty Upgrades does.
     { name: 'Enchant Shield - Shield Block', id: 22540, enchant: 2655, stats: { blockRating: 15 } },
