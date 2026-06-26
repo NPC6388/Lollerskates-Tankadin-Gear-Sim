@@ -103,6 +103,9 @@ function resolveMetas(plans, objScale, ctx) {
   const phase = maxPhase || CURRENT_PHASE;
   const pool = META_GEMS.filter((g) => g.phase <= phase && !metaExclude.includes(g.name));
   const gemOpt = (color) => bestGem(objScale, { socketColor: color, matchColor: true, jewelcrafting: !!perks.jcGems, ...(maxPhase ? { maxPhase } : {}) });
+  // Best gem providing the meta's needed color while ALSO fitting a socket's own color (to keep its
+  // socket bonus) — e.g. recolor a yellow socket to blue with a GREEN gem, not a purple one.
+  const gemOptDual = (metaColor, socketColor) => bestGem(objScale, { socketColor: metaColor, matchColor: true, alsoFits: socketColor, jewelcrafting: !!perks.jcGems, ...(maxPhase ? { maxPhase } : {}) });
   const all = [];
   for (const p of plans) for (const c of p.plan.choices) if (c.color) all.push({ p, c });
   const recolorable = all.filter((s) => s.p.v._gem !== 'cap'); // only focus sockets may be recolored
@@ -115,7 +118,7 @@ function resolveMetas(plans, objScale, ctx) {
       const counts = tally();
       let best = null;
       for (const M of pool) {
-        const en = enableMeta(M, counts, recolorable, gemOpt, objScale);
+        const en = enableMeta(M, counts, recolorable, gemOpt, gemOptDual, objScale);
         if (!en) continue;
         const net = score(M.stats, objScale) - en.cost;
         if (!best || net > best.net) best = { M, en, net };
@@ -140,7 +143,7 @@ function resolveMetas(plans, objScale, ctx) {
 
 // Cheapest way (in objective points) to satisfy meta M's color requirement. Returns {cost,recolors}
 // (cost 0 / no recolors if already met) or null if it can't be enabled with the focus sockets.
-function enableMeta(M, counts, recolorable, gemOpt, objScale) {
+function enableMeta(M, counts, recolorable, gemOpt, gemOptDual, objScale) {
   if (metaActivated(M, counts)) return { cost: 0, recolors: [] }; // the set's colors already satisfy it
   // Compound (multi-color) requirements aren't auto-enabled by recoloring — they're niche survival
   // metas; only use them when already active. Single-condition metas recolor to enable (below).
@@ -151,10 +154,17 @@ function enableMeta(M, counts, recolorable, gemOpt, objScale) {
   if (req.color) { color = req.color; deficit = req.count - counts[color]; }
   else { color = req.gt[0]; deficit = (counts[req.gt[1]] - counts[req.gt[0]]) + 1; } // make color strictly exceed the other
   if (deficit <= 0) return { cost: 0, recolors: [] };
-  const tg = gemOpt(color); if (!tg) return null;
-  const cands = recolorable
-    .filter((s) => !gemColors(s.c).includes(color))
-    .map((s) => ({ s, tg, cost: score(s.c.stats, objScale) - tg.score })); // objective value lost
+  const plain = gemOpt(color); if (!plain) return null;
+  const cands = [];
+  for (const s of recolorable) {
+    if (gemColors(s.c).includes(color)) continue; // already supplies the needed color
+    // If this socket earns a bonus (matched by its own color), prefer a gem that supplies the meta
+    // color AND still fits the socket color, so the bonus survives the recolor; else the plain gem.
+    let tg = plain;
+    const sockCol = s.c.socket;
+    if (s.p.v.socketBonus && sockCol && sockCol !== color) tg = gemOptDual(color, sockCol) || plain;
+    cands.push({ s, tg, cost: score(s.c.stats, objScale) - tg.score }); // objective value lost
+  }
   if (cands.length < deficit) return null;
   cands.sort((a, b) => a.cost - b.cost);
   const recolors = cands.slice(0, deficit);

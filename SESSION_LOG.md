@@ -73,6 +73,15 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
   cut (Tanzanite→Nightseye, Chrysoprase→Talasite, Fire Opal→Dawnstone). Impact <1% across sets.
   `allowUnique` opt-in left as the hook for single-placement.
 
+- **Meta-recolor preserves socket bonuses.** Repro (with the Imbued meta toggle OFF, so the threat
+  set falls back to the Powerful 3-blue meta): the recolor turned the helm's yellow socket blue with
+  a purple gem (Glowing Nightseye), forfeiting the +4 dodge bonus — player spotted it and suggested
+  a green gem (Enduring Talasite). Fix: `bestGem({alsoFits})` + the recolor prefers a dual-color gem
+  fitting both the meta color and the socket's own color (yellow→green), keeping the bonus. Verified:
+  helm now keeps Veiled / earns the +4 dodge. NOTE: couldn't reproduce the player's *crushable*
+  state on the TGS9 pool (stays 102.70% legal) — if it persists, get their exact TGS11 export +
+  confirm the Imbued-toggle state.
+
 ### Pick up here
 1. **Single-placement for unique gems — DECLINED (2026-06-26).** Player: "it's fine to leave the
    epics off, anyone with one can just add it to their Sixty Upgrades." Unique/epic gems stay

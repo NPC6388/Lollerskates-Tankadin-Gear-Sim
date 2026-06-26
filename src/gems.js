@@ -108,7 +108,10 @@ import { score } from './scoring.js';
 // UNIQUE gems (max 1 owned, e.g. Runed Ornate Ruby) are skipped for this bulk-fill pick unless
 // `allowUnique` — the workhorse must be a gem you can slot in every socket. (Placing the single
 // unique gem in the best socket for its small marginal gain is a TODO, tracked in SESSION_LOG.)
-export function bestGem(weights, { socketColor = null, matchColor = false, jewelcrafting = false, allowUnique = false, maxPhase = CURRENT_PHASE } = {}) {
+// `alsoFits` (a second socket color) restricts to gems that fit BOTH socketColor and alsoFits —
+// used to keep a socket bonus while recoloring for a meta (e.g. a yellow socket that must turn blue
+// wants a GREEN gem, which fits yellow+blue, not a purple one that forfeits the yellow bonus).
+export function bestGem(weights, { socketColor = null, matchColor = false, alsoFits = null, jewelcrafting = false, allowUnique = false, maxPhase = CURRENT_PHASE } = {}) {
   let best = null;
   for (const g of GEMS) {
     if (g.phase > maxPhase) continue;
@@ -118,6 +121,7 @@ export function bestGem(weights, { socketColor = null, matchColor = false, jewel
     // count; the bulk pick falls back to the near-identical rare cut (~1 stat point lower).
     if ((g.unique || g.epic) && !allowUnique) continue;
     if (matchColor && socketColor && !FITS[g.color].includes(socketColor)) continue;
+    if (alsoFits && !FITS[g.color].includes(alsoFits)) continue;
     const s = score(g.stats, weights);
     if (!best || s > best.score) best = { gem: g, score: s };
   }

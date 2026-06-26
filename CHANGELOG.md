@@ -133,3 +133,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Stalwart Fire Opal → Thick Dawnstone), a ~1-stat-point difference: all four sets moved <1%
   (≤10 SP / ≤200 EHP) and stayed legal. An `allowUnique` opt-in is the hook for future
   single-placement (slot one epic in its best socket).
+- **Meta-recolor preserves socket bonuses.** When a color-gated meta (e.g. Powerful, 3+ blue — the
+  fallback when the Imbued threat meta is toggled off) needed a socket recolored, the recolor picked
+  the highest-scoring gem of the needed color without regard for socket bonuses, so a yellow socket
+  turning blue got a *purple* gem and **forfeited its bonus** (e.g. the helm's +4 dodge). `bestGem`
+  gains an `alsoFits` filter; the recolor now prefers a **dual-color** gem that supplies the meta
+  color AND fits the socket's own color (yellow socket → *green*, keeping the +4 dodge), and only
+  falls back to a bonus-breaking gem when no dual cut exists — recovering the avoidance that was
+  silently lost (and can tip a borderline set back to uncrushable).
