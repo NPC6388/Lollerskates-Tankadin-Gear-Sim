@@ -146,7 +146,7 @@ function runOptimize() {
       const professions = [$('prof1').value, $('prof2').value].filter(Boolean);
       const trinketLocks = { icon: num($('lockIcon').value), eye: num($('lockEye').value) };
       const results = optimizeSets(items, {
-        professions, buffed: $('buffed').checked, maxPhase: +$('phase').value,
+        professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
         faction: $('faction').value, useImbuedMeta: $('imbuedMeta').checked,
         talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
       });
@@ -237,8 +237,8 @@ const panel = (title, rows) =>
 // What Kings + MotW add to this set's gates (these stats are already in the numbers above; the
 // note just shows their share). Buffs add stamina/agility but no defense/resilience.
 function buffNote(b) {
-  if (!b) return '';
-  return `<div class="buffnote">Of the above, <b>Kings + MotW</b> contribute
+  if (!b || !b.name) return '';
+  return `<div class="buffnote">Of the above, <b>${b.name}</b> contributes
     <b>+${Math.round(b.stamina)}</b> stam (≈+${Math.round(b.health).toLocaleString()} health),
     <b>+${Math.round(b.agility)}</b> agi &amp; <b>+${Math.round(b.armor).toLocaleString()}</b> armor →
     <b>+${b.crushAvoid.toFixed(2)}%</b> toward uncrushable (dodge), <b>+${b.critReduction.toFixed(2)}%</b> crit reduction

@@ -51,10 +51,14 @@
           <small>Drives gem/enchant perks (JC gems, BS sockets, ring enchant).</small>
         </div>
         <div class="field">
-          <label>Buffs &amp; options</label>
-          <label class="check"><input type="checkbox" id="buffed" checked /> Raid-buffed (Blessing of Kings + Mark of the Wild)</label>
+          <label for="statBuff">Stat buff</label>
+          <select id="statBuff">
+            <option value="kings" selected>Blessing of Kings (+10% stats)</option>
+            <option value="motw">Mark of the Wild (+14 stats)</option>
+            <option value="none">None (unbuffed)</option>
+          </select>
           <label class="check"><input type="checkbox" id="imbuedMeta" checked /> Use Imbued Unstable Diamond (spell-damage meta)</label>
-          <small>Off = unbuffed sheet / no spell-damage meta. ⚠ The Sixty Upgrades export can't carry buffs — toggle Kings &amp; MotW in its own buffs panel after importing.</small>
+          <small>Kings &amp; MotW don't stack (the larger wins) — pick one. ⚠ Buffs aren't carried by the export; set them in Sixty Upgrades after importing.</small>
         </div>
         <div class="field">
           <label for="phase">Gem phase</label>

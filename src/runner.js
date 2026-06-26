@@ -125,11 +125,12 @@ function runGoal(goal, items, ctx) {
   // the UI can annotate the gates: buffs add stamina/agi (EHP + a little dodge toward uncrush)
   // but no defense/resilience, so they don't move crit immunity.
   let buffImpact = null;
-  if (buff && buff.kings) {
+  if (buff && (buff.kings || buff.buffs)) {
     const baseStats = [...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }];
     const aggU = aggregate(baseStats, { hsBlockBonus: HS, ...(talents ? { talents } : {}) });
     const eU = evaluateSet(aggU);
     buffImpact = {
+      name: ctx.buffName,
       stamina: agg.stamina - aggU.stamina,
       agility: agg.agility - aggU.agility,
       armor: agg.armor - aggU.armor,
@@ -148,13 +149,24 @@ function runGoal(goal, items, ctx) {
   return { goal, selection: res.selection, items: res.items, legal: res.legal, evald, agg, gemChoices, metas, perSlot, buffImpact };
 }
 
+// Stat-buff modes. Kings (+10% mult) and MotW (+14 flat) do NOT stack in-game (the larger
+// wins), so they're mutually exclusive — pick one, or none.
+const BUFF_MODE = {
+  kings: { opts: { kings: true }, name: 'Blessing of Kings' },
+  motw: { opts: { buffs: BUFFS.markOfTheWild }, name: 'Mark of the Wild' },
+  none: { opts: {}, name: '' },
+};
+
 // Main entry. items = equippableItems(parseExport(text)). options:
-//   professions: string[]   buffed: bool   maxPhase?: number   trinketLocks?: {icon,eye}
+//   professions: string[]   buff: 'kings'|'motw'|'none'   maxPhase?: number   trinketLocks?: {icon,eye}
 //   goals?: GOAL_PRESETS-shaped[] (override, e.g. with UI-tweaked ratios)
 export function optimizeSets(items, options = {}) {
+  // back-compat: legacy `buffed: true` -> Kings (the larger of the two).
+  const mode = BUFF_MODE[options.buff] || (options.buffed ? BUFF_MODE.kings : BUFF_MODE.none);
   const ctx = {
     perks: professionPerks(options.professions || []),
-    buff: options.buffed ? { kings: true, buffs: BUFFS.markOfTheWild } : {},
+    buff: mode.opts,
+    buffName: mode.name,
     maxPhase: options.maxPhase,
     // Aldor/Scryer for faction-locked shoulder inscriptions; null = consider both.
     faction: options.faction || null,

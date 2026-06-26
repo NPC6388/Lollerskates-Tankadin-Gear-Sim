@@ -16,7 +16,7 @@ import { CAPS } from '../src/constants.js';
 
 // ---- config -----------------------------------------------------------------
 const PROFESSIONS = ['Enchanting']; // gear-relevant professions
-const BUFFED = true;                // Kings (+10%) + base MotW (+14)
+const BUFF = 'kings';               // 'kings' | 'motw' | 'none' (Kings/MotW don't stack)
 const PHASE = 2;                    // cap gems to this content phase
 const FACTION = 'Aldor';            // Aldor | Scryer (shoulder inscriptions)
 const USE_IMBUED = true;            // include the Imbued Unstable Diamond meta
@@ -30,11 +30,11 @@ if (!fs.existsSync(exportPath)) {
 
 const parsed = parseExport(toExportText(fs.readFileSync(exportPath, 'utf8')));
 const items = equippableItems(parsed);
-const results = optimizeSets(items, { professions: PROFESSIONS, buffed: BUFFED, maxPhase: PHASE, faction: FACTION, useImbuedMeta: USE_IMBUED, talentRanks: parsed.talentRanks });
+const results = optimizeSets(items, { professions: PROFESSIONS, buff: BUFF, maxPhase: PHASE, faction: FACTION, useImbuedMeta: USE_IMBUED, talentRanks: parsed.talentRanks });
 
 const ORDER = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'weapon', 'offhand', 'relic'];
 
-console.log(`Tankadin Gear Sim — ${parsed.character.name || '?'} (${items.length} equippable items)  ${BUFFED ? 'BUFFED: Kings + MotW' : 'unbuffed'}`);
+console.log(`Tankadin Gear Sim — ${parsed.character.name || '?'} (${items.length} equippable items)  buff: ${BUFF}`);
 console.log('\n==== SUMMARY ====');
 console.log('set'.padEnd(13), 'EHP'.padStart(8), 'SP'.padStart(5), 'sHit'.padStart(6), 'stam'.padStart(5), 'uncrush'.padStart(8), 'uncrit');
 for (const r of results) {
