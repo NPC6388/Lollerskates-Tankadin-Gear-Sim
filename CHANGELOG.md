@@ -101,14 +101,21 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **Model reconciliation** against the player's live sheet + Sixty Upgrades buffed export confirms
   the engine end to end: spell hit (8.63%) and spell crit (38 rtg) match to the digit; SP/str/agi/
   int exact; stamina within the known ±rounding.
-- **Meta gems: Ember Skyfire added + compound requirements.** Added **Ember Skyfire Diamond**
-  (+14 spell dmg, requires 3+ red) — the reliable single-target threat meta (a red/orange threat set
-  always meets 3+ red, unlike Imbued's "more red than blue" which fails on a tie), so the threat
-  set's meta socket now activates regardless of the Imbued toggle. Corrected the activation
-  requirements that the old parser couldn't express: **Eternal** = `2+ blue, 1+ yellow`,
-  **Relentless** = `2+ red, 2+ yellow, 2+ blue`. `metaActivated` now evaluates comma-separated AND
-  clauses; the meta-enable recolor step handles single-condition metas and leaves the compound
-  survival metas to activate only when the set already satisfies them.
+- **Meta gems: compound requirements + corrected metas.** The threat set was recommending a meta
+  that can't activate (e.g. a dead Relentless on the helm). Corrected the activation requirements
+  the old single-clause parser couldn't express: **Eternal** = `2+ blue, 1+ yellow`, **Relentless**
+  = `2+ red, 2+ yellow, 2+ blue`; `metaActivated` now evaluates comma-separated AND clauses, so the
+  solver never recommends a meta the set can't turn on. The current-phase threat meta is **Imbued
+  Unstable Diamond** ("more red than blue" — met by an all-red/orange threat set). Added **Ember
+  Skyfire Diamond** (+14 spell dmg, 3+ red) for completeness but gated to **phase 5** (this realm's
+  timeline), so the phase gate keeps it out of recommendations until then.
+- **Reclaim the gate overshoot (def-gem waste).** The optimizer selects cap (def-gem) item variants
+  from APPROXIMATE raw-gem stats during the search, but the socket-bonus-aware FINAL set often
+  clears the gates without them — leaving a def-gemmed piece (e.g. a def neck on a max-threat set)
+  and the set several % over the uncrush cap. `runGoal` now runs a reclaim pass on the TRUE final
+  stats: it flips def-gemmed pieces back to threat gems greedily, keeping any flip that leaves the
+  set legal (uncrit + uncrush + min-HP). On a max-threat set this dropped uncrush 105.2% → 102.7%
+  and recovered ~27 SP, while the genuinely load-bearing def-gem stays put.
 - **Min-HP gate (per set).** Each goal gets a hard raid-buffed-HP floor, enforced exactly like
   uncrit/uncrush — applies to all four sets incl. AOE Trash. `optimizer.js` `gatesPass`/`gateDeficit`
   take `gates.minHealth` (the HP shortfall is normalised ÷1000 so the repair heuristic balances it

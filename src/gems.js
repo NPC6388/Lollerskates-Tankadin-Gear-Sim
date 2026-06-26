@@ -92,10 +92,11 @@ export const META_GEMS = [
   { name: 'Powerful Earthstorm Diamond', id: 25896, meta: true, phase: 1, stats: { stamina: 18 }, requires: '3+ blue' },
   { name: 'Eternal Earthstorm Diamond', id: 35501, meta: true, phase: 1, stats: { defenseRating: 12, blockValueBonus: 5 }, requires: '2+ blue, 1+ yellow' },
   { name: 'Relentless Earthstorm Diamond', id: 32409, meta: true, phase: 1, stats: { agility: 12 }, requires: '2+ red, 2+ yellow, 2+ blue' }, // note: +3% crit damage (unscored)
-  // Threat metas (both +14 spell damage). Ember's "3+ red" is robustly met by a red/orange threat
-  // set, so it's the reliable single-target meta; Imbued's "more red than blue" can fail on a tie.
-  { name: 'Ember Skyfire Diamond', id: 35503, meta: true, phase: 1, stats: { spellDamage: 14 }, requires: '3+ red' }, // note: +2% intellect (percentage, unscored)
+  // Threat metas (both +14 spell damage). Imbued ("more red than blue") is the phase-1/2 threat
+  // meta — robustly met by an all-red/orange threat set (0 blue). Ember's easier "3+ red" is the
+  // better pick but it's PHASE 5 on this realm, so the phase gate keeps it out until then.
   { name: 'Imbued Unstable Diamond', id: 32641, meta: true, phase: 1, stats: { spellDamage: 14 }, requires: 'more red than blue' },
+  { name: 'Ember Skyfire Diamond', id: 35503, meta: true, phase: 5, stats: { spellDamage: 14 }, requires: '3+ red' }, // note: +2% intellect (percentage, unscored)
 ];
 
 import { score } from './scoring.js';

@@ -173,25 +173,65 @@ function runGoal(goal, items, ctx) {
   // Final gemming, socket-bonus-aware, PER ITEM so we can report gems/enchant by slot. Focus
   // items gem by the goal scale, def-gemmed items by the cap scale. Built from baseStats so
   // there's no double-count.
-  const plans = res.items.map((v) => ({ v, scale: v._gem === 'cap' ? CAP_SCALE : objScale, plan: planItemGems(v, v._gem === 'cap' ? CAP_SCALE : objScale, perks, maxPhase) }));
-  // Meta-aware: choose metas on the GOAL objective, recoloring focus sockets to enable a stronger
-  // color-gated meta when worth it. Mutates plan.choices and sets p.metas.
-  const metas = resolveMetas(plans, objScale, ctx);
+  const baseStatsList = res.items.map((v) => ({ stats: baseOf(v) }));
 
-  // Enchants + final added stats. plan.stats holds the colored gems + socket bonuses (from
-  // planItemGems) and is kept current by resolveMetas (recolor deltas + meta stats), so sum it.
-  const added = {};
-  const gemChoices = [];
-  for (const p of plans) {
-    sumInto(added, p.plan.stats);
-    const en = bestEnchant(p.v.slot, p.scale, perks, { faction });
-    if (en) sumInto(added, en.enchant.stats);
-    gemChoices.push(...p.plan.choices);
-    p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null }));
-    p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, spell: en.enchant.spell || null, effectId: en.enchant.enchant || null } : null;
+  // Gem the whole set under a per-item scale (objScale = goal/threat gems, CAP_SCALE = def gems);
+  // returns the plans (with .gems/.enchant filled), the meta list, the summed added stats, and the
+  // evaluated set. Meta-aware: resolveMetas picks metas on the goal objective (mutates the fresh
+  // plans it's handed). Re-callable with a different scale map for the reclaim pass below.
+  const gemSet = (scaleOf) => {
+    const plans = res.items.map((v) => { const sc = scaleOf(v); return { v, scale: sc, plan: planItemGems(v, sc, perks, maxPhase) }; });
+    const metas = resolveMetas(plans, objScale, ctx);
+    const added = {};
+    const gemChoices = [];
+    for (const p of plans) {
+      sumInto(added, p.plan.stats);
+      const en = bestEnchant(p.v.slot, p.scale, perks, { faction });
+      if (en) sumInto(added, en.enchant.stats);
+      gemChoices.push(...p.plan.choices);
+      p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null }));
+      p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, spell: en.enchant.spell || null, effectId: en.enchant.enchant || null } : null;
+    }
+    const agg = aggregate([...baseStatsList, { stats: added }], aggOpts);
+    return { plans, metas, added, gemChoices, agg, evald: evaluateSet(agg) };
+  };
+
+  // Does the FINAL (socket-bonus-aware) set still clear the goal's hard gates?
+  const finalLegal = (e) => {
+    const gt = goal.gates || {};
+    const critOk = gt.raid === false ? e.heroicCritImmune : e.raidCritImmune;
+    const need = gt.uncrushableTarget ?? CAPS.uncrushableCombined;
+    const crushOk = !gt.requireUncrushable || e.totalAvoidanceWithHS + 1e-9 >= need;
+    const hpOk = !gt.minHealth || (e.health ?? 0) + 1e-9 >= gt.minHealth;
+    return critOk && crushOk && hpOk;
+  };
+
+  // Start from the optimizer's variant choice (its cap variants -> def gems).
+  const scaleOf = new Map(res.items.map((v) => [v, v._gem === 'cap' ? CAP_SCALE : objScale]));
+  let g = gemSet((v) => scaleOf.get(v));
+
+  // RECLAIM the gate overshoot. The optimizer picks cap (def-gem) variants from APPROXIMATE raw-gem
+  // stats during the search, but the socket-bonus-aware final set often clears the gates without
+  // them and sits several % over the cap — wasted def gems (e.g. a def-gemmed neck on a max-threat
+  // set). Flip def-gemmed pieces back to threat gems greedily, keeping any flip that leaves the set
+  // legal. Operates on the true final stats, so it only flips when genuinely safe; recovers the SP.
+  if (finalLegal(g.evald)) {
+    for (let guard = 0; guard < res.items.length; guard++) {
+      let best = null;
+      for (const v of res.items) {
+        if (scaleOf.get(v) !== CAP_SCALE) continue; // only un-def-gem
+        const trial = gemSet((x) => (x === v ? objScale : scaleOf.get(x)));
+        if (!finalLegal(trial.evald)) continue;
+        const gain = trial.agg.spellPower - g.agg.spellPower; // recovered threat (SP proxy)
+        if (!best || gain > best.gain) best = { v, trial, gain };
+      }
+      if (!best) break;
+      scaleOf.set(best.v, objScale);
+      g = best.trial;
+    }
   }
-  const agg = aggregate([...res.items.map((v) => ({ stats: baseOf(v) })), { stats: added }], aggOpts);
-  const evald = evaluateSet(agg);
+
+  const { plans, metas, added, gemChoices, agg, evald } = g;
 
   // What Kings + MotW actually contribute to this set (buffed minus the same set unbuffed), so
   // the UI can annotate the gates: buffs add stamina/agi (EHP + a little dodge toward uncrush)

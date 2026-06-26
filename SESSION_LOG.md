@@ -52,6 +52,16 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
     the classic cut. Revisit if we start matching owned gems by ID.
 
 ### Shipped (later in session)
+- **Reclaim the gate overshoot (the big one).** Root-caused the "def gem on a max-threat piece"
+  complaint: the optimizer selects cap/def-gem variants from APPROXIMATE stats, but the final
+  socket-bonus-aware set clears the gates without them and sits several % over the uncrush cap.
+  `runGoal` now runs a reclaim pass on the true final stats — flips def-gemmed pieces back to threat
+  gems greedily, keeping any flip that stays legal. Max-threat: uncrush 105.2% → 102.7%, +27 SP,
+  neck back to Veiled; only a genuinely load-bearing def-gem remains. Factored final gemming into a
+  reusable `gemSet(scaleOf)` + `finalLegal(evald)` helper.
+- **Ember Skyfire is PHASE 5** (player), so it's gated out now; current-phase threat meta is Imbued
+  ("more red than blue", active on an all-red/orange set). Compound meta requirements corrected
+  (Eternal 2blue+1yellow, Relentless 2red+2yellow+2blue) so dead metas are never recommended.
 - **Min-HP gate per set.** Hard raid-buffed-HP floor on every goal (incl. AOE), enforced like
   uncrit/uncrush. `optimizer.js` gates + `gateDeficit` (HP shortfall ÷1000 to match %-unit
   deficits), `character.js` surfaces `health`, web UI adds a 10k–14k/500 slider + gate chip.
