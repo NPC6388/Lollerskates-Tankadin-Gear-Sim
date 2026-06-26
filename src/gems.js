@@ -85,12 +85,16 @@ export const GEMS = [
   { name: 'Charmed Amani Jewel', id: 34256, color: 'blue', phase: 3, epic: true, stats: { stamina: 15 } }, // Zul'Aman
 ];
 
-// Meta gems (single meta socket). `requires` is the activation condition; the solver
-// assumes a typical stamina-heavy tank build meets it and flags if not.
+// Meta gems (single meta socket). `requires` is the activation condition — a comma-separated
+// list of conditions that must ALL hold ("2+ blue, 1+ yellow"), each either "N+ <color>" or
+// "more <color> than <color>". The solver only recommends a meta whose colors the set satisfies.
 export const META_GEMS = [
   { name: 'Powerful Earthstorm Diamond', id: 25896, meta: true, phase: 1, stats: { stamina: 18 }, requires: '3+ blue' },
-  { name: 'Eternal Earthstorm Diamond', id: 35501, meta: true, phase: 1, stats: { defenseRating: 12, blockValueBonus: 5 }, requires: '2+ blue' },
-  { name: 'Relentless Earthstorm Diamond', id: 32409, meta: true, phase: 1, stats: { agility: 12 }, requires: '2+ red' }, // note: +3% crit damage (unscored)
+  { name: 'Eternal Earthstorm Diamond', id: 35501, meta: true, phase: 1, stats: { defenseRating: 12, blockValueBonus: 5 }, requires: '2+ blue, 1+ yellow' },
+  { name: 'Relentless Earthstorm Diamond', id: 32409, meta: true, phase: 1, stats: { agility: 12 }, requires: '2+ red, 2+ yellow, 2+ blue' }, // note: +3% crit damage (unscored)
+  // Threat metas (both +14 spell damage). Ember's "3+ red" is robustly met by a red/orange threat
+  // set, so it's the reliable single-target meta; Imbued's "more red than blue" can fail on a tie.
+  { name: 'Ember Skyfire Diamond', id: 35503, meta: true, phase: 1, stats: { spellDamage: 14 }, requires: '3+ red' }, // note: +2% intellect (percentage, unscored)
   { name: 'Imbued Unstable Diamond', id: 32641, meta: true, phase: 1, stats: { spellDamage: 14 }, requires: 'more red than blue' },
 ];
 
@@ -124,15 +128,18 @@ export function gemColors(gem) { return FITS[gem.color] || (gem.color ? [gem.col
 // only grant their stats once activated, so the solver must respect this. Unknown requirement
 // strings are treated as met (don't silently drop a real meta).
 export function metaActivated(meta, counts = {}) {
-  const red = counts.red || 0, blue = counts.blue || 0, yellow = counts.yellow || 0;
   const r = meta.requires;
   if (!r) return true;
+  return r.split(',').every((cond) => metaConditionHolds(cond.trim(), counts));
+}
+
+// One activation clause: "N+ <color>" (a minimum count) or "more <A> than <B>".
+// Unknown clauses are treated as met (never silently drop a real meta).
+export function metaConditionHolds(cond, counts = {}) {
+  const c = { red: counts.red || 0, yellow: counts.yellow || 0, blue: counts.blue || 0 };
   let m;
-  if ((m = r.match(/(\d+)\+\s*blue/))) return blue >= +m[1];
-  if ((m = r.match(/(\d+)\+\s*red/))) return red >= +m[1];
-  if ((m = r.match(/(\d+)\+\s*yellow/))) return yellow >= +m[1];
-  if (/more red than blue/.test(r)) return red > blue;
-  if (/more blue than red/.test(r)) return blue > red;
+  if ((m = cond.match(/(\d+)\+\s*(red|yellow|blue)/))) return c[m[2]] >= +m[1];
+  if ((m = cond.match(/more\s+(red|yellow|blue)\s+than\s+(red|yellow|blue)/))) return c[m[1]] > c[m[2]];
   return true;
 }
 

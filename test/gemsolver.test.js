@@ -45,26 +45,34 @@ test('meta activation: requirements parse; hybrids count for both colors', () =>
   assert.equal(metaActivated(powerful, { blue: 2 }), false);
   assert.equal(metaActivated(imbued, { red: 5, blue: 2 }), true);
   assert.equal(metaActivated(imbued, { red: 2, blue: 2 }), false);
+  // compound requirements: ALL clauses must hold (comma = AND)
+  const eternal = { requires: '2+ blue, 1+ yellow' };        // Eternal Earthstorm Diamond
+  const relentless = { requires: '2+ red, 2+ yellow, 2+ blue' }; // Relentless Earthstorm Diamond
+  assert.equal(metaActivated(eternal, { blue: 2, yellow: 1 }), true);
+  assert.equal(metaActivated(eternal, { blue: 2, yellow: 0 }), false); // missing the yellow
+  assert.equal(metaActivated(relentless, { red: 2, yellow: 2, blue: 2 }), true);
+  assert.equal(metaActivated(relentless, { red: 2, yellow: 2, blue: 1 }), false);
   // a purple (red+blue) gem contributes to BOTH counts
   assert.deepEqual(gemColors({ color: 'purple' }).sort(), ['blue', 'red']);
   assert.deepEqual(gemColors({ color: 'blue' }), ['blue']);
 });
 
 test('bestMeta with counts skips a meta the set cannot activate', () => {
-  // Only 2 blue gems: Powerful (3+ blue) is unreachable, so the survival pick falls to the
-  // best meta that DOES activate (Eternal, 2+ blue) instead of recommending a dark Powerful.
+  // No counts: best by score (Powerful, +18 stam). With only 2 blue + 1 yellow, Powerful
+  // (3+ blue) is unreachable, so the survival pick falls to the best meta that DOES activate
+  // (Eternal, 2+ blue & 1+ yellow). With 3 blue, Powerful is reachable again.
   assert.equal(bestMeta(SCALES.survivalEHP).gem.name, 'Powerful Earthstorm Diamond'); // no counts
-  assert.equal(bestMeta(SCALES.survivalEHP, { counts: { blue: 2 } }).gem.name, 'Eternal Earthstorm Diamond');
+  assert.equal(bestMeta(SCALES.survivalEHP, { counts: { blue: 2, yellow: 1 } }).gem.name, 'Eternal Earthstorm Diamond');
   assert.equal(bestMeta(SCALES.survivalEHP, { counts: { blue: 3 } }).gem.name, 'Powerful Earthstorm Diamond');
 });
 
 test('solveLoadout only counts meta stats when the colored gems activate it', () => {
-  // 2 red sockets get the stamina gem (Solid Star, blue) for survival -> 2 blue gems, so the
-  // meta socket gets Eternal (2+ blue), not Powerful (3+ blue). Reported active.
-  const item = { slot: 'hands', stats: {}, sockets: { meta: 1, red: 2 } };
+  // 3 red sockets get the stamina gem (Solid Star, blue) for survival -> 3 blue gems, so the
+  // meta socket gets Powerful (3+ blue). Reported active.
+  const item = { slot: 'hands', stats: {}, sockets: { meta: 1, red: 3 } };
   const out = solveLoadout([item], SCALES.survivalEHP, { names: [] });
   const meta = out.gems.choices.find((c) => c.socket === 'meta');
-  assert.equal(meta.name, 'Eternal Earthstorm Diamond');
+  assert.equal(meta.name, 'Powerful Earthstorm Diamond');
   assert.equal(out.gems.metas[0].active, true);
 });
 

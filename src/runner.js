@@ -8,7 +8,7 @@
 
 import { aggregate, BUFFS, TALENTS, talentsFromRanks } from './model.js';
 import { evaluateSet } from './character.js';
-import { bestGem, bestMeta, gemColors, META_GEMS, CURRENT_PHASE } from './gems.js';
+import { bestGem, bestMeta, gemColors, metaActivated, META_GEMS, CURRENT_PHASE } from './gems.js';
 import { bestEnchant } from './enchants.js';
 import { score } from './scoring.js';
 import { SCALES, blendScale } from './weights.js';
@@ -141,6 +141,10 @@ function resolveMetas(plans, objScale, ctx) {
 // Cheapest way (in objective points) to satisfy meta M's color requirement. Returns {cost,recolors}
 // (cost 0 / no recolors if already met) or null if it can't be enabled with the focus sockets.
 function enableMeta(M, counts, recolorable, gemOpt, objScale) {
+  if (metaActivated(M, counts)) return { cost: 0, recolors: [] }; // the set's colors already satisfy it
+  // Compound (multi-color) requirements aren't auto-enabled by recoloring — they're niche survival
+  // metas; only use them when already active. Single-condition metas recolor to enable (below).
+  if (M.requires && M.requires.includes(',')) return null;
   const req = metaReq(M.requires);
   if (!req) return { cost: 0, recolors: [] };
   let color, deficit;

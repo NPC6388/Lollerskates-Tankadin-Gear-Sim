@@ -41,6 +41,16 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
 - **Model reconciled** to the player's sheet + Sixty export: hit 8.63% / crit 38rtg match exactly,
   SP/str/agi/int exact, stamina within ±rounding. The engine is trustworthy end to end.
 
+- **Meta activation fixed for threat.** The threat set's meta wasn't activating (only spell-dmg
+  meta was Imbued, "more red than blue", fragile + behind a toggle). Added **Ember Skyfire Diamond**
+  (+14 spell dmg, 3+ red) — robustly active on a red/orange threat set. Also corrected Eternal
+  (`2+ blue, 1+ yellow`) and Relentless (`2+ red, 2+ yellow, 2+ blue`); `metaActivated` now parses
+  comma-AND clauses. Verified: full-threat meta = Ember, active, with the Imbued toggle on OR off.
+  - **NOTE / follow-up:** the player's client shows different meta item IDs than the DB (screens:
+    Ember 46601, Eternal 46597, Powerful 32866, Relentless 39961) vs DB classic IDs (35503/35501/
+    25896/32409). Math is unaffected (DB is a recommendation pool), but Wowhead links may point at
+    the classic cut. Revisit if we start matching owned gems by ID.
+
 ### Pick up here
 1. **Spell-hit soft cap (highest-value next):** the blended ratio goals value `spellHitRating` at a
    flat 1.1× with NO cap — past the **17% spell-hit cap** it should drop to ~0 (the named

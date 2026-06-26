@@ -101,3 +101,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **Model reconciliation** against the player's live sheet + Sixty Upgrades buffed export confirms
   the engine end to end: spell hit (8.63%) and spell crit (38 rtg) match to the digit; SP/str/agi/
   int exact; stamina within the known ±rounding.
+- **Meta gems: Ember Skyfire added + compound requirements.** Added **Ember Skyfire Diamond**
+  (+14 spell dmg, requires 3+ red) — the reliable single-target threat meta (a red/orange threat set
+  always meets 3+ red, unlike Imbued's "more red than blue" which fails on a tie), so the threat
+  set's meta socket now activates regardless of the Imbued toggle. Corrected the activation
+  requirements that the old parser couldn't express: **Eternal** = `2+ blue, 1+ yellow`,
+  **Relentless** = `2+ red, 2+ yellow, 2+ blue`. `metaActivated` now evaluates comma-separated AND
+  clauses; the meta-enable recolor step handles single-condition metas and leaves the compound
+  survival metas to activate only when the set already satisfies them.
