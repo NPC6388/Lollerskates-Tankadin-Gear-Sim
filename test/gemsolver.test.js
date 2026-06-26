@@ -12,7 +12,14 @@ import { UNBUFFED_EXPORT } from './fixtures/lollerskate-unbuffed.js';
 test('best gem follows the goal: spell damage for threat, stamina/defense for survival', () => {
   assert.equal(bestGem(SCALES.threatAOE).gem.name, 'Runed Living Ruby');          // spell damage (Ornate +12 is unique, excluded from bulk)
   assert.equal(bestGem(SCALES.survivalEHP).gem.name, 'Solid Star of Elune');       // stamina
-  assert.equal(bestGem(SCALES.survivalUncrushable).gem.name, 'Stalwart Fire Opal'); // defense + dodge
+  assert.equal(bestGem(SCALES.survivalUncrushable).gem.name, 'Thick Dawnstone'); // defense (epic Fire Opals are unique → excluded from bulk; best rare is the def gem)
+});
+
+test('epic gems are unique on this realm: excluded from bulk, allowed when asked', () => {
+  // Every epic cut is unique here, so the bulk pick is always a rare; the epic only appears if a
+  // caller explicitly opts in (allowUnique) — the hook for future single-placement.
+  assert.equal(bestGem(SCALES.survivalUncrushable).gem.epic, undefined);          // a rare, not epic
+  assert.equal(bestGem(SCALES.survivalUncrushable, { allowUnique: true }).gem.name, 'Stalwart Fire Opal');
 });
 
 test('best head enchant follows the goal', () => {

@@ -125,3 +125,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   silently violated.
 - **Neck gem** (Pendant of Dominance, yellow socket + spell-crit socket bonus) now correctly takes
   Veiled Noble Topaz and earns its bonus — fixed by the Veiled gem addition above.
+- **Epic gems are unique on this realm.** Every epic cut (Fire Opal / Tanzanite / Chrysoprase /
+  Seaspray / Amani) is one-per-character, so `bestGem` now excludes `epic` gems (and explicit
+  `unique` ones like Runed Ornate Ruby) from bulk socketing — the sim never recommends an
+  impossible count. The bulk pick falls back to the near-identical **rare** cut (Glowing Tanzanite →
+  Glowing Nightseye, Enduring Chrysoprase → Enduring Talasite, Regal Tanzanite → Regal Nightseye,
+  Stalwart Fire Opal → Thick Dawnstone), a ~1-stat-point difference: all four sets moved <1%
+  (≤10 SP / ≤200 EHP) and stayed legal. An `allowUnique` opt-in is the hook for future
+  single-placement (slot one epic in its best socket).

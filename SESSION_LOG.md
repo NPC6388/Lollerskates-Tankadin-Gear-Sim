@@ -68,8 +68,16 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
   Verified: gate binds (raises HP, trades SP) or marks the set illegal when unreachable. Test added.
 - **Neck gem confirmed** (Pendant of Dominance → Veiled, earns the +2 spell-crit socket bonus).
 
+- **Epic gems are unique (realm rule).** Player confirmed every epic cut is one-per-character.
+  `bestGem` excludes `epic` (and `unique`) gems from bulk → falls back to the near-identical rare
+  cut (Tanzanite→Nightseye, Chrysoprase→Talasite, Fire Opal→Dawnstone). Impact <1% across sets.
+  `allowUnique` opt-in left as the hook for single-placement.
+
 ### Pick up here
-1. **Spell-hit soft cap — DEFERRED (player: "a while before I approach the hit cap").** Future work:
+1. **Single-placement for unique gems (optional, low value).** Currently unique/epic gems are
+   excluded entirely (0 per set), not used once. Slotting one in its best socket is worth ~1 stat
+   point — `bestGem({allowUnique})` is the hook. Only do it if the player wants their one epic used.
+2. **Spell-hit soft cap — DEFERRED (player: "a while before I approach the hit cap").** Future work:
    the blended ratio goals value `spellHitRating` at a flat 1.1× with NO cap; past the **17%
    spell-hit cap** it should drop to ~0 (the named `threatSingleAtCap` scale does this; the
    PARTS/blend goals don't switch). Not urgent — player is far below the cap.

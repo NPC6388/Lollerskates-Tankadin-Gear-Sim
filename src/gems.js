@@ -113,7 +113,10 @@ export function bestGem(weights, { socketColor = null, matchColor = false, jewel
   for (const g of GEMS) {
     if (g.phase > maxPhase) continue;
     if (g.jcOnly && !jewelcrafting) continue;
-    if (g.unique && !allowUnique) continue;
+    // On this realm every EPIC gem is unique (one per character), as are explicitly-flagged uniques
+    // (e.g. Runed Ornate Ruby). Excluded from bulk socketing so we never recommend an impossible
+    // count; the bulk pick falls back to the near-identical rare cut (~1 stat point lower).
+    if ((g.unique || g.epic) && !allowUnique) continue;
     if (matchColor && socketColor && !FITS[g.color].includes(socketColor)) continue;
     const s = score(g.stats, weights);
     if (!best || s > best.score) best = { gem: g, score: s };
