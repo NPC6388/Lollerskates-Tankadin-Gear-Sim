@@ -80,7 +80,11 @@ export const SCALES = {
 // uncrush/crit gates are met they add nothing, and the gates already pull the set to the cap.
 // Component sub-weights, exported so a UI can rebuild scales from tunable ratios (see blendScale).
 export const PARTS = {
-  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 0.30, intellect: 0.05 },
+  // EHP now values full avoidance: dodge/parry (and the dodge/parry/miss that defense gives)
+  // take hits to zero, so they're effective health — and unlike block, that value isn't capped by
+  // the uncrush threshold. Face values anchored to stamina=1 (≈ the survivalEHP scale); block kept
+  // low (partial mitigation, and over-cap block does nothing).
+  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 0.92, dodgeRating: 1.06, parryRating: 0.85, defenseRating: 0.9, blockRating: 0.3, intellect: 0.05 },
   threat: { spellDamage: 1, spellHitRating: 1.1, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },
   aoeThreat: { spellDamage: 1.4, spellHitRating: 1.3, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12 },
   sta: { stamina: 1 },
