@@ -78,9 +78,17 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
   a purple gem (Glowing Nightseye), forfeiting the +4 dodge bonus — player spotted it and suggested
   a green gem (Enduring Talasite). Fix: `bestGem({alsoFits})` + the recolor prefers a dual-color gem
   fitting both the meta color and the socket's own color (yellow→green), keeping the bonus. Verified:
-  helm now keeps Veiled / earns the +4 dodge. NOTE: couldn't reproduce the player's *crushable*
-  state on the TGS9 pool (stays 102.70% legal) — if it persists, get their exact TGS11 export +
-  confirm the Imbued-toggle state.
+  helm now keeps Veiled / earns the +4 dodge. **Player confirmed this was the fix** — the wrong-color
+  helm gem forfeiting the +4 dodge was what pushed them under the crush cap (Imbued was unchecked).
+- **Enchants phase-gated** (they weren't). `bestEnchant` skips enchants above `opts.maxPhase`
+  (default CURRENT_PHASE), threaded through runner + `recommendEnchants`/`solveLoadout`. **Cloak -
+  Steelweave → phase 5** (player), so survival/def now fall back to Cloak - Dodge → then Greater
+  Agility (next item).
+- **Agility valued a touch above dodge rating** in the EHP-value scales (`PARTS.ehp` 1.05,
+  `survivalEHP`/`balanced` 1.10 vs dodge 1.0/1.06): agility gives less dodge per point but also armor
+  (2/agi) + melee crit and scales with Kings. Cloak enchant now picks **Greater Agility** over
+  Cloak - Dodge. `survivalUncrushable` (def-gemming for the cap) left dodge-ahead on purpose — the
+  crush cap is raw-avoidance-per-point, where dodge rating wins.
 
 ### Pick up here
 1. **Single-placement for unique gems — DECLINED (2026-06-26).** Player: "it's fine to leave the
