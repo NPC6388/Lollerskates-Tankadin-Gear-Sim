@@ -91,21 +91,29 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
   crush cap is raw-avoidance-per-point, where dodge rating wins.
 
 ### Pick up here
-1. **Single-placement for unique gems — DECLINED (2026-06-26).** Player: "it's fine to leave the
-   epics off, anyone with one can just add it to their Sixty Upgrades." Unique/epic gems stay
-   excluded entirely; the `bestGem({allowUnique})` hook remains but don't build on it unless asked.
-   (Supersedes the old "place the 1 unique Ornate Ruby" item below.)
-2. **Spell-hit soft cap — DEFERRED (player: "a while before I approach the hit cap").** Future work:
-   the blended ratio goals value `spellHitRating` at a flat 1.1× with NO cap; past the **17%
-   spell-hit cap** it should drop to ~0 (the named `threatSingleAtCap` scale does this; the
-   PARTS/blend goals don't switch). Not urgent — player is far below the cap.
+1. **Onboarding: simple README + user-friendly on-ramp for testers/users (player request).** Cover
+   BOTH halves end to end: (a) the **TGS addon** — install (drop `addon/TankadinGearSim` into
+   `Interface/AddOns`), `/tgs` then `/reload`, where the export lands
+   (`WTF/.../SavedVariables/TankadinGearSim.lua`) or the copy box; (b) the **gear sim** — open the
+   live tool, paste the export (or load the file), pick a goal + move the EHP↔Threat / Min-HP
+   sliders, set buff/phase/faction/Imbued toggles, read the gates (uncrit/uncrush/min-HP) + paper
+   doll, export back to Sixty Upgrades. Keep it short, screenshots/gifs, "5-minute first run" tone.
+   The current top `README.md` is dev/status-flavored — add a clear quick-start up top (or split a
+   `docs/` page) aimed at non-devs.
 2. **Faction:** player is **Scryer** (uses Greater Inscription of the Orb). CLI/`bin` defaults to
    Aldor → would pick Discipline. Make faction a first-class setting / detect it.
 3. **Per-socket gemming** granularity (whole-item focus/cap variants still).
 4. **Pure-threat slider** — now LOW impact (Veiled gemming maxes threat regardless; pure-threat SP
    785 < raid 791), so deprioritized vs the soft cap.
+5. **Spell-hit soft cap — DEFERRED (player: "a while before I approach the hit cap").** Future work:
+   the blended ratio goals value `spellHitRating` at a flat 1.1× with NO cap; past the **17%
+   spell-hit cap** it should drop to ~0 (the named `threatSingleAtCap` scale does this; the
+   PARTS/blend goals don't switch). Not urgent — player is far below the cap.
 6. **Reconciliation TODO:** feed the player's exact set in and confirm the model reproduces
    801 SP / 8.63% hit / 8.98% crit / 11,957 HP end to end.
+7. **Single-placement for unique gems — DECLINED (2026-06-26).** Player: "it's fine to leave the
+   epics off, anyone with one can just add it to their Sixty Upgrades." Unique/epic gems stay
+   excluded entirely; the `bestGem({allowUnique})` hook remains but don't build on it unless asked.
 
 ---
 
