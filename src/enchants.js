@@ -14,8 +14,8 @@ export const ENCHANTS = {
   shoulder: [
     { name: 'Greater Inscription of the Knight', id: 28911, enchant: 2991, faction: 'Scryer', stats: { defenseRating: 15, dodgeRating: 10 } },
     { name: 'Greater Inscription of Warding', id: 28889, enchant: 2978, faction: 'Aldor', stats: { dodgeRating: 15, defenseRating: 10 } },
-    { name: 'Greater Inscription of Discipline', id: 28886, enchant: 2982, faction: 'Aldor', stats: { spellDamage: 18 } },          // note: +10 spell crit (unscored)
-    { name: 'Greater Inscription of the Orb', id: 28909, enchant: 2995, faction: 'Scryer', stats: { spellDamage: 12 } },           // note: +15 spell crit (unscored)
+    { name: 'Greater Inscription of Discipline', id: 28886, enchant: 2982, faction: 'Aldor', stats: { spellDamage: 18, spellCritRating: 10 } },
+    { name: 'Greater Inscription of the Orb', id: 28909, enchant: 2995, faction: 'Scryer', stats: { spellDamage: 12, spellCritRating: 15 } },
   ],
   back: [
     { name: 'Enchant Cloak - Steelweave', id: 35756, enchant: 2648, stats: { defenseRating: 12 } },

@@ -16,7 +16,7 @@ import { CAPS } from '../src/constants.js';
 
 // ---- config -----------------------------------------------------------------
 const PROFESSIONS = ['Enchanting']; // gear-relevant professions
-const BUFF = 'kings';               // 'kings' | 'motw' | 'none' (Kings/MotW don't stack)
+const BUFF = 'raid';                // 'raid' (Kings+MotW, they stack) | 'kings' | 'motw' | 'none'
 const PHASE = 2;                    // cap gems to this content phase
 const FACTION = 'Aldor';            // Aldor | Scryer (shoulder inscriptions)
 const USE_IMBUED = true;            // include the Imbued Unstable Diamond meta
@@ -48,7 +48,7 @@ for (const r of results) {
   const need = r.goal.gates.uncrushableTarget ?? CAPS.uncrushableCombined;
   console.log(`\n========== ${r.goal.name} (${r.goal.focus}) ==========`);
   console.log(`legal:${r.legal}  uncrit:${e.raidCritImmune} (${e.critReduction.toFixed(2)}%)  uncrush:${e.uncrushable} (${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%)`);
-  console.log(`EHP ${Math.round(e.ehpPhysical).toLocaleString()}   SP ${Math.round(a.spellPower)}   spellHit ${spellHitPct(a).toFixed(2)}%   stam ${Math.round(a.stamina)}   armor ${Math.round(a.armor).toLocaleString()}   def ${a.defenseSkill.toFixed(0)}   resil ${Math.round(a.resilienceRating)}`);
+  console.log(`EHP ${Math.round(e.ehpPhysical).toLocaleString()}   SP ${Math.round(a.spellPower)}   spellHit ${spellHitPct(a).toFixed(2)}%   spellCrit ${Math.round(a.spellCritRating || 0)}rtg   stam ${Math.round(a.stamina)}   armor ${Math.round(a.armor).toLocaleString()}   def ${a.defenseSkill.toFixed(0)}   resil ${Math.round(a.resilienceRating)}`);
   for (const k of ORDER) { const it = r.selection[k]; if (it) console.log(`  ${k.padEnd(9)} ${it.name || it.itemId}${it.itemLevel ? ' (i' + it.itemLevel + ')' : ''}${it._gem === 'cap' ? '  [def-gemmed]' : ''}`); }
   const gc = {}; for (const g of r.gemChoices) gc[g.name] = (gc[g.name] || 0) + 1;
   console.log('  gems:', Object.entries(gc).map(([n, c]) => `${c}x ${n}`).join(', ') || '(none)');

@@ -74,3 +74,22 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **Set bonuses.** `sets.js` detects tier sets by item ID and reports the combat
   modifiers: Justicar (T4) 2pc +10% seal / 4pc +15 Holy Shield; Crystalforge (T5) 2pc +15
   Retribution Aura (wired into `threat.js`) / 4pc +100 block value.
+
+## Threat-set tuning (2026-06)
+- **Buffs: Kings + MotW stack.** Corrected the model — Blessing of Kings (+10% primaries) and
+  Mark of the Wild (flat +14) are different sources and DO stack (flat applied first, then ×1.10).
+  `runner.js` gains a `raid` buff mode applying both; it's the default for buffed runs (CLI + UI).
+  Previously they were treated as mutually exclusive ("the larger wins").
+- **Spell crit is now scored.** `spellCritRating` added to `STAT_KEYS`, the weight template, the
+  threat blends (`PARTS.threat` 0.3 / `aoeThreat` 0.4) and named threat `SCALES` (0.45–0.7) +
+  `balanced` (0.3), calibrated from a spell crit's +0.5× damage. `aggregate()` surfaces it and the
+  CLI prints it. The crit on the Potent gems and the two shoulder inscriptions is now folded into
+  their scored stats (was noted-but-unscored).
+- **Gem DB.** Added `Veiled Noble Topaz` (5 spell dmg / 4 spell hit — the single-target threat
+  hybrid that now beats a pure +9 damage gem under the ST weights) and `Runed Ornate Ruby`
+  (+12 spell dmg, **unique**). `bestGem` skips `unique` gems for bulk socket fill, so the workhorse
+  stays Runed Living Ruby and the optimizer never recommends multiples of a one-per-character gem.
+- **Net effect:** the optimizer's single-target Raid Threat set now independently reproduces a
+  hand-built Veiled-gemmed, high-hit, crit-carrying build instead of shedding hit for raw spell
+  power. Remaining: a spell-hit **soft cap** (hit is still valued past the 17% cap in the blended
+  goals), Scryer/Aldor faction handling, and per-socket gemming. See `SESSION_LOG.md`.

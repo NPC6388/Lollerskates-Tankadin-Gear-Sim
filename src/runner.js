@@ -219,9 +219,12 @@ function runGoal(goal, items, ctx) {
   return { goal, selection: res.selection, items: res.items, legal: res.legal, evald, agg, gemChoices, metas, perSlot, buffImpact };
 }
 
-// Stat-buff modes. Kings (+10% mult) and MotW (+14 flat) do NOT stack in-game (the larger
-// wins), so they're mutually exclusive — pick one, or none.
+// Stat-buff modes. Kings (+10% to primaries) and MotW (+14 flat) DO stack in-game — different
+// sources (paladin blessing vs druid buff), different types (percentage vs flat). The realistic
+// raid-buffed view applies BOTH (MotW flat first, then Kings ×1.10 — see aggregate). The
+// single-buff modes remain for comparison/partial-raid scenarios.
 const BUFF_MODE = {
+  raid: { opts: { kings: true, buffs: BUFFS.markOfTheWild }, name: 'Kings + Mark of the Wild' },
   kings: { opts: { kings: true }, name: 'Blessing of Kings' },
   motw: { opts: { buffs: BUFFS.markOfTheWild }, name: 'Mark of the Wild' },
   none: { opts: {}, name: '' },
@@ -231,8 +234,8 @@ const BUFF_MODE = {
 //   professions: string[]   buff: 'kings'|'motw'|'none'   maxPhase?: number   trinketLocks?: {icon,eye}
 //   goals?: GOAL_PRESETS-shaped[] (override, e.g. with UI-tweaked ratios)
 export function optimizeSets(items, options = {}) {
-  // back-compat: legacy `buffed: true` -> Kings (the larger of the two).
-  const mode = BUFF_MODE[options.buff] || (options.buffed ? BUFF_MODE.kings : BUFF_MODE.none);
+  // back-compat: legacy `buffed: true` -> full raid buffs (Kings + MotW, which stack).
+  const mode = BUFF_MODE[options.buff] || (options.buffed ? BUFF_MODE.raid : BUFF_MODE.none);
   const ctx = {
     perks: professionPerks(options.professions || []),
     buff: mode.opts,

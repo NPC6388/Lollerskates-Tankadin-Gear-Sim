@@ -8,7 +8,7 @@ const ZERO = {
   dodgeRating: 0, parryRating: 0, defenseRating: 0,
   blockRating: 0, blockValue: 0, blockValueBonus: 0,
   hitRating: 0, expertiseRating: 0,
-  spellDamage: 0, spellHitRating: 0,
+  spellDamage: 0, spellHitRating: 0, spellCritRating: 0,
   health: 0, resilienceRating: 0, armor: 0,
   metaSockets: 0, redSockets: 0, yellowSockets: 0, blueSockets: 0,
 };
@@ -20,14 +20,14 @@ export const SCALES = {
   threatSingleBelowCap: scale({
     intellect: 0.1, strength: 0.55, agility: 0.05, defenseRating: 0.04,
     blockRating: 0.3, hitRating: 0.85, expertiseRating: 1.1,
-    spellDamage: 1.5, spellHitRating: 1.65,
+    spellDamage: 1.5, spellHitRating: 1.65, spellCritRating: 0.45,
     metaSockets: 18, redSockets: 13.5, yellowSockets: 9, blueSockets: 7,
   }),
 
   // 2. Threat — single target, at hit/exp/spell-hit caps (those zeroed)
   threatSingleAtCap: scale({
     intellect: 0.1, strength: 0.55, agility: 0.05, defenseRating: 0.04,
-    blockRating: 0.3, spellDamage: 1.5,
+    blockRating: 0.3, spellDamage: 1.5, spellCritRating: 0.45,
     metaSockets: 18, redSockets: 13.5, yellowSockets: 9, blueSockets: 7,
   }),
 
@@ -35,7 +35,7 @@ export const SCALES = {
   threatAOE: scale({
     intellect: 0.15, strength: 0.4, agility: 0.05, defenseRating: 0.06,
     blockRating: 0.6, hitRating: 0.5, expertiseRating: 0.7,
-    spellDamage: 2.5, spellHitRating: 2.2,
+    spellDamage: 2.5, spellHitRating: 2.2, spellCritRating: 0.7,
     metaSockets: 18, redSockets: 22.5, yellowSockets: 14, blueSockets: 11,
   }),
 
@@ -65,7 +65,7 @@ export const SCALES = {
     stamina: 1.0, intellect: 0.15, strength: 0.4, agility: 0.92,
     dodgeRating: 1.06, parryRating: 0.85, defenseRating: 1.2,
     blockRating: 1.2, blockValue: 0.05, blockValueBonus: 0.05,
-    hitRating: 0.6, expertiseRating: 0.9, spellDamage: 1.0, spellHitRating: 1.1,
+    hitRating: 0.6, expertiseRating: 0.9, spellDamage: 1.0, spellHitRating: 1.1, spellCritRating: 0.3,
     health: 0.08, resilienceRating: 0.05, armor: 0.06,
     metaSockets: 18, redSockets: 9, yellowSockets: 9, blueSockets: 12,
   }),
@@ -86,8 +86,10 @@ export const PARTS = {
   // avoidance benefits). Block is kept LOW here — it's partial mitigation and wouldn't negate the
   // burst hit; its real value is Holy Shield threat + reaching uncrush, valued in those scales.
   ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 0.9, dodgeRating: 1.0, parryRating: 0.8, defenseRating: 1.1, blockRating: 0.3, intellect: 0.05 },
-  threat: { spellDamage: 1, spellHitRating: 1.1, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },
-  aoeThreat: { spellDamage: 1.4, spellHitRating: 1.3, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12 },
+  // spellCritRating: a spell crit adds +0.5x damage (CRIT_MULT.spell); ~0.3 per rating point
+  // relative to spellDamage 1.0 — small, so it breaks near-ties toward crit rather than chasing it.
+  threat: { spellDamage: 1, spellHitRating: 1.1, spellCritRating: 0.3, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },
+  aoeThreat: { spellDamage: 1.4, spellHitRating: 1.3, spellCritRating: 0.4, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12 },
   sta: { stamina: 1 },
 };
 

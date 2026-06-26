@@ -53,12 +53,13 @@
         <div class="field">
           <label for="statBuff">Stat buff</label>
           <select id="statBuff">
-            <option value="kings" selected>Blessing of Kings (+10% stats)</option>
+            <option value="raid" selected>Kings + Mark of the Wild (raid)</option>
+            <option value="kings">Blessing of Kings (+10% stats)</option>
             <option value="motw">Mark of the Wild (+14 stats)</option>
             <option value="none">None (unbuffed)</option>
           </select>
           <label class="check"><input type="checkbox" id="imbuedMeta" checked /> Use Imbued Unstable Diamond (spell-damage meta)</label>
-          <small>Kings &amp; MotW don't stack (the larger wins) — pick one. ⚠ Buffs aren't carried by the export; set them in Sixty Upgrades after importing.</small>
+          <small>Kings &amp; MotW DO stack (flat + percentage) — &ldquo;raid&rdquo; applies both. ⚠ Buffs aren't carried by the export; set them in Sixty Upgrades after importing.</small>
         </div>
         <div class="field">
           <label for="phase">Gem phase</label>

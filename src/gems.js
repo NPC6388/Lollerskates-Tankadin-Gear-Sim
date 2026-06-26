@@ -37,6 +37,7 @@ export const GEMS = [
   { name: 'Subtle Living Ruby', id: 24032, color: 'red', phase: 1, stats: { dodgeRating: 8 } },
   { name: 'Flashing Living Ruby', id: 24036, color: 'red', phase: 1, stats: { parryRating: 8 } },
   { name: 'Runed Living Ruby', id: 24030, color: 'red', phase: 1, stats: { spellDamage: 9 } },
+  { name: 'Runed Ornate Ruby', id: 28118, color: 'red', phase: 1, unique: true, stats: { spellDamage: 12 } }, // +12 spell dmg, UNIQUE (max 1) — only +3 over the workhorse, so not used for bulk fill
 
   // --- Yellow (pure) — phase 1 rares (rare value is +8, not +10) ---
   { name: 'Thick Dawnstone', id: 24052, color: 'yellow', phase: 1, stats: { defenseRating: 8 } },
@@ -49,11 +50,12 @@ export const GEMS = [
   { name: 'Solid Star of Elune', id: 24033, color: 'blue', phase: 1, stats: { stamina: 12 } },
 
   // --- Orange (red+yellow hybrids) ---
-  { name: 'Inscribed Noble Topaz', id: 24058, color: 'orange', phase: 1, stats: { strength: 4 } }, // note: +4 spell crit (unscored)
+  { name: 'Inscribed Noble Topaz', id: 24058, color: 'orange', phase: 1, stats: { strength: 4, spellCritRating: 4 } },
   { name: 'Glinting Noble Topaz', id: 24061, color: 'orange', phase: 1, stats: { agility: 4, hitRating: 4 } },
-  { name: 'Potent Noble Topaz', id: 24059, color: 'orange', phase: 1, stats: { spellDamage: 5 } }, // note: +4 spell crit (unscored)
+  { name: 'Veiled Noble Topaz', id: 31867, color: 'orange', phase: 1, stats: { spellDamage: 5, spellHitRating: 4 } },
+  { name: 'Potent Noble Topaz', id: 24059, color: 'orange', phase: 1, stats: { spellDamage: 5, spellCritRating: 4 } },
   { name: 'Etched Fire Opal', id: 30559, color: 'orange', phase: 2, epic: true, stats: { strength: 5, hitRating: 4 } },
-  { name: 'Potent Fire Opal', id: 30588, color: 'orange', phase: 2, epic: true, stats: { spellDamage: 6 } }, // note: +4 spell crit (unscored)
+  { name: 'Potent Fire Opal', id: 30588, color: 'orange', phase: 2, epic: true, stats: { spellDamage: 6, spellCritRating: 4 } },
   { name: 'Glistening Fire Opal', id: 30585, color: 'orange', phase: 2, epic: true, stats: { defenseRating: 5, agility: 4 } },
   { name: 'Stalwart Fire Opal', id: 30554, color: 'orange', phase: 2, epic: true, stats: { defenseRating: 5, dodgeRating: 4 } },
   { name: 'Glimmering Fire Opal', id: 30558, color: 'orange', phase: 2, epic: true, stats: { defenseRating: 4, parryRating: 5 } },
@@ -98,11 +100,15 @@ import { score } from './scoring.js';
 // gems that fit that color are considered (to keep a socket bonus); otherwise the highest-
 // scoring gem regardless of color (the usual tank choice of all-stamina). jcOnly gems are
 // excluded unless `jewelcrafting`. Gems above `maxPhase` (default CURRENT_PHASE) are skipped.
-export function bestGem(weights, { socketColor = null, matchColor = false, jewelcrafting = false, maxPhase = CURRENT_PHASE } = {}) {
+// UNIQUE gems (max 1 owned, e.g. Runed Ornate Ruby) are skipped for this bulk-fill pick unless
+// `allowUnique` — the workhorse must be a gem you can slot in every socket. (Placing the single
+// unique gem in the best socket for its small marginal gain is a TODO, tracked in SESSION_LOG.)
+export function bestGem(weights, { socketColor = null, matchColor = false, jewelcrafting = false, allowUnique = false, maxPhase = CURRENT_PHASE } = {}) {
   let best = null;
   for (const g of GEMS) {
     if (g.phase > maxPhase) continue;
     if (g.jcOnly && !jewelcrafting) continue;
+    if (g.unique && !allowUnique) continue;
     if (matchColor && socketColor && !FITS[g.color].includes(socketColor)) continue;
     const s = score(g.stats, weights);
     if (!best || s > best.score) best = { gem: g, score: s };

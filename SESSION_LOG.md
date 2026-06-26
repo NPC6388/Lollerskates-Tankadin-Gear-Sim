@@ -4,6 +4,50 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-26 — Threat-set tuning: buff stacking, spell crit, Veiled/Ornate gems
+
+**Goal:** close the gap where the player's hand-built single-target threat set beat the sim's
+max-threat output. Diagnosed against the player's TGS11 export + their sixtyupgrades set JSON.
+
+### Diagnosis
+- Item *selection* is already 2-opt optimal (a pairwise-swap climb found no improvement), so the
+  gap was **objective/weights + gemming**, not search depth.
+- Root causes: (1) **Kings + MotW were modeled as mutually exclusive** — they STACK (flat +
+  percentage); player confirmed. (2) **Spell crit was unscored** (`spellCritRating` wasn't even in
+  `STAT_KEYS`). (3) **Gem DB missing** `Veiled Noble Topaz` (5 dmg/4 hit) and `Runed Ornate Ruby`
+  (+12, unique) — the player's actual gems.
+
+### Shipped (this commit)
+- **Buff stacking** — `runner.js` `BUFF_MODE` now has a `raid` mode (Kings + MotW together); it's
+  the default for `buffed`/CLI/UI. The model already layered them correctly; only the mode picker
+  was wrong. `index.html` dropdown + note updated.
+- **Spell crit scored** — `spellCritRating` added to `STAT_KEYS`, the `ZERO` weight template, the
+  threat `PARTS` (0.3) / `aoeThreat` (0.4) and named threat `SCALES` (0.45–0.7) and `balanced`
+  (0.3); calibrated from a crit's +0.5× damage. `aggregate` surfaces it; CLI prints it. Crit stats
+  added to the Potent gems + the two inscriptions that carry it.
+- **Gems** — added `Veiled Noble Topaz` (player-confirmed 5 dmg/4 hit) and `Runed Ornate Ruby`
+  (+12 spell dmg, **`unique: true`**). `bestGem` skips `unique` gems for bulk fill (workhorse stays
+  Runed Living Ruby) — Ornate's real value is only +3 SP in one socket.
+
+**Result:** the sim's Raid Threat set now independently reproduces the player's Veiled-gemmed,
+high-hit, crit-carrying build — 791 SP / 8.31% hit / 33 crit-rtg vs the player's 801 / 8.63% / 38,
+trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
+
+### Pick up here
+1. **Spell-hit soft cap (highest-value next):** the blended ratio goals value `spellHitRating` at a
+   flat 1.1× with NO cap — past the **17% spell-hit cap** it should drop to ~0 (the named
+   `threatSingleAtCap` scale does this; the PARTS/blend goals don't switch). Player flagged this.
+2. **Faction:** player is **Scryer** (uses Greater Inscription of the Orb). CLI/`bin` defaults to
+   Aldor → would pick Discipline. Make faction a first-class setting / detect it.
+3. **Per-socket gemming** granularity (whole-item focus/cap variants still).
+4. **Place the 1 unique Ornate Ruby** in the best socket (currently excluded entirely; ~+3 SP).
+5. **Pure-threat slider** — now LOW impact (Veiled gemming maxes threat regardless; pure-threat SP
+   785 < raid 791), so deprioritized vs the soft cap.
+6. **Reconciliation TODO:** feed the player's exact set in and confirm the model reproduces
+   801 SP / 8.63% hit / 8.98% crit / 11,957 HP end to end.
+
+---
+
 ## 2026-06-25 — Export box fixed → full-bank run; import + optimizer hardening
 
 **Goal:** get a real export off the live client, then run the full collection.

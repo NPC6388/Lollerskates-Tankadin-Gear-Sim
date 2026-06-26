@@ -76,7 +76,7 @@ export const STAT_KEYS = [
   'stamina', 'strength', 'agility', 'intellect',
   'defenseRating', 'dodgeRating', 'parryRating', 'blockRating',
   'blockValue', 'spellDamage', 'hitRating', 'expertiseRating',
-  'spellHitRating', 'resilienceRating', 'armor',
+  'spellHitRating', 'spellCritRating', 'resilienceRating', 'armor',
 ];
 
 export function sumStats(items) {
@@ -129,6 +129,7 @@ export function aggregate(items, opts = {}) {
     strength,
     intellect,
     spellPower: b('spellDamage'),
+    spellCritRating: b('spellCritRating'),
     // Block value = shield base block + item block-value suffixes (both in b('blockValue')
     // once addon v6 reads the shield's "N Block" line) + Strength/20 (TBC: 1 BV per 20 Str).
     blockValue: b('blockValue') + Math.floor(strength / 20),
