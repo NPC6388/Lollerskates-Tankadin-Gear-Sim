@@ -141,3 +141,7 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   color AND fits the socket's own color (yellow socket → *green*, keeping the +4 dodge), and only
   falls back to a bonus-breaking gem when no dual cut exists — recovering the avoidance that was
   silently lost (and can tip a borderline set back to uncrushable).
+- **Enchants are phase-gated** (they weren't before). `bestEnchant` skips any enchant above
+  `opts.maxPhase` (default CURRENT_PHASE), threaded through the runner + `recommendEnchants`.
+  **Enchant Cloak - Steelweave** is marked **phase 5**, so the survival/def sets no longer
+  recommend it now (they fall back to Cloak - Dodge); it returns once the realm reaches phase 5.

@@ -60,12 +60,12 @@ function colorCounts(choices) {
 
 // Recommend an enchant per enchantable slot present in `slots` (an array of slot names).
 // Ring enchants apply to BOTH rings, so a 'ring' slot contributes its enchant twice.
-export function recommendEnchants(slots = [], weights, perks = { names: [] }) {
+export function recommendEnchants(slots = [], weights, perks = { names: [] }, opts = {}) {
   const choices = {};
   const stats = {};
   for (const slot of slots) {
     if (!ENCHANTS[slot]) continue;
-    const pick = bestEnchant(slot, weights, perks);
+    const pick = bestEnchant(slot, weights, perks, opts);
     if (!pick) continue;
     choices[slot] = pick.enchant;
     addStats(stats, pick.enchant.stats, slot === 'ring' ? 2 : 1);
@@ -176,7 +176,7 @@ export function solveLoadout(set, weights, perks = { names: [] }, opts = {}) {
     }
   }
   const slots = [...new Set(set.map((i) => i.slot).filter(Boolean))];
-  const enchants = recommendEnchants(slots, w, perks);
+  const enchants = recommendEnchants(slots, w, perks, maxPhase ? { maxPhase } : {});
   const added = {};
   for (const k of STAT_KEYS) {
     const v = (gemStats[k] || 0) + (enchants.stats[k] || 0);

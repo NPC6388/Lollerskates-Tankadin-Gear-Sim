@@ -18,7 +18,7 @@ export const ENCHANTS = {
     { name: 'Greater Inscription of the Orb', id: 28909, enchant: 2995, faction: 'Scryer', stats: { spellDamage: 12, spellCritRating: 15 } },
   ],
   back: [
-    { name: 'Enchant Cloak - Steelweave', id: 35756, enchant: 2648, stats: { defenseRating: 12 } },
+    { name: 'Enchant Cloak - Steelweave', id: 35756, enchant: 2648, phase: 5, stats: { defenseRating: 12 } },
     { name: 'Enchant Cloak - Greater Agility', spell: 34004, enchant: 368, stats: { agility: 12 } }, // trainer-taught: link by spell, not item
     { name: 'Enchant Cloak - Dodge', id: 33148, enchant: 2622, stats: { dodgeRating: 12 } },
   ],
@@ -62,15 +62,20 @@ export const ENCHANTS = {
 };
 
 import { score } from './scoring.js';
+import { CURRENT_PHASE } from './gems.js';
 
 // Best enchant for a slot under a goal. Enchants gated by a profession are excluded unless the
 // player has it (perks.names). Faction-locked enchants (Aldor/Scryer shoulder inscriptions) are
-// excluded unless they match opts.faction; with no faction given, all are considered.
+// excluded unless they match opts.faction; with no faction given, all are considered. Enchants are
+// phase-gated like gems: an enchant above `opts.maxPhase` (default CURRENT_PHASE) is skipped, so a
+// later-content enchant (e.g. Cloak - Steelweave, phase 5) isn't recommended before it exists.
 export function bestEnchant(slot, weights, perks = { names: [] }, opts = {}) {
   const list = ENCHANTS[slot];
   if (!list) return null;
+  const maxPhase = opts.maxPhase ?? CURRENT_PHASE;
   let best = null;
   for (const e of list) {
+    if ((e.phase || 1) > maxPhase) continue;
     if (e.profession && !perks.names.includes(e.profession)) continue;
     if (e.faction && opts.faction && e.faction !== opts.faction) continue;
     const s = score(e.stats, weights);

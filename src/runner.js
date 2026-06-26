@@ -63,7 +63,7 @@ function buildVariant(it, gemScale, enchScale, ctx) {
     const m = bestMeta(gemScale, { counts, ...metaOpts }) || bestMeta(gemScale, metaOpts);
     if (m) sumInto(stats, m.gem.stats, sock.meta);
   }
-  const en = bestEnchant(it.slot, enchScale, perks, { faction });
+  const en = bestEnchant(it.slot, enchScale, perks, { faction, maxPhase });
   if (en) sumInto(stats, en.enchant.stats);
   return stats;
 }
@@ -196,7 +196,7 @@ function runGoal(goal, items, ctx) {
     const gemChoices = [];
     for (const p of plans) {
       sumInto(added, p.plan.stats);
-      const en = bestEnchant(p.v.slot, p.scale, perks, { faction });
+      const en = bestEnchant(p.v.slot, p.scale, perks, { faction, maxPhase });
       if (en) sumInto(added, en.enchant.stats);
       gemChoices.push(...p.plan.choices);
       p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null }));
