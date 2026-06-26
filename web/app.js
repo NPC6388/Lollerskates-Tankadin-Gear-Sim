@@ -26,6 +26,10 @@ const GOAL_SIDES = {
   balanced: { left: 'ehp', right: 'threat' },
 };
 const AXIS_LABEL = { threat: 'Threat', ehp: 'EHP' };
+// Per-set minimum-HP gate (raid-buffed health floor), enforced as a hard constraint like
+// uncrit/uncrush. Applies to every goal incl. AOE Trash. 10k default = effectively off.
+const MINHP = { min: 10000, max: 14000, step: 500, default: 10000 };
+const fmtHp = (h) => (h / 1000).toFixed(1) + 'k';
 const fmtW = (w) => (Number.isInteger(w) ? String(w) : w.toFixed(1));
 function ratioFor(id, v) {
   const { left, right } = GOAL_SIDES[id];
@@ -55,16 +59,25 @@ function init() {
       <div class="slider-cell">
         <div class="slider-wrap">
           <span class="end left">${AXIS_LABEL[left]}</span>
-          <input type="range" min="-3" max="3" step="0.5" value="${v}" />
+          <input type="range" class="ratio-slider" min="-3" max="3" step="0.5" value="${v}" />
           <span class="end right">${AXIS_LABEL[right]}</span>
         </div>
         <div class="ratio">${ratioText(g.id, v)}</div>
       </div>
+      <div class="minhp-cell">
+        <span class="minhp-label">Min HP</span>
+        <input type="range" class="minhp-slider" min="${MINHP.min}" max="${MINHP.max}" step="${MINHP.step}" value="${MINHP.default}" />
+        <span class="minhp-val">${fmtHp(MINHP.default)}</span>
+      </div>
     </div>`;
   }).join('');
-  $('goalConfig').querySelectorAll('.goal-row input').forEach((r) => {
+  // The EHP↔threat slider updates the ratio text; the Min-HP slider updates its own kHP label.
+  $('goalConfig').querySelectorAll('.ratio-slider').forEach((r) => {
     const id = r.closest('.goal-row').dataset.goal;
     r.addEventListener('input', (e) => { e.target.closest('.slider-cell').querySelector('.ratio').textContent = ratioText(id, +e.target.value); });
+  });
+  $('goalConfig').querySelectorAll('.minhp-slider').forEach((r) => {
+    r.addEventListener('input', (e) => { e.target.closest('.minhp-cell').querySelector('.minhp-val').textContent = fmtHp(+e.target.value); });
   });
 
   $('exportText').addEventListener('input', () => tryParse($('exportText').value));
@@ -132,9 +145,12 @@ function populateTrinketLocks() {
 // ---- run --------------------------------------------------------------------
 function currentGoals() {
   return GOAL_PRESETS.map((g) => {
-    const v = +$('goalConfig').querySelector(`.goal-row[data-goal="${g.id}"] input`).value;
+    const row = $('goalConfig').querySelector(`.goal-row[data-goal="${g.id}"]`);
+    const v = +row.querySelector('.ratio-slider').value;
+    const minHealth = +row.querySelector('.minhp-slider').value;
     const r = ratioFor(g.id, v);
-    return { ...g, focus: ratioText(g.id, v), ratio: r.ratio };
+    // Merge the min-HP floor into the goal's hard gates (10k default is effectively non-binding).
+    return { ...g, focus: ratioText(g.id, v), ratio: r.ratio, gates: { ...g.gates, minHealth } };
   });
 }
 
@@ -253,6 +269,8 @@ function setCard(r) {
   const e = r.evald, a = r.agg;
   const need = r.goal.gates.uncrushableTarget ?? CAPS.uncrushableCombined;
   const crushPass = e.totalAvoidanceWithHS + 1e-9 >= need;
+  const minHp = r.goal.gates.minHealth || 0;
+  const hpPass = !minHp || a.health + 1e-9 >= minHp;
   const metaWarn = r.metas.filter((m) => !m.active)
     .map((m) => `⚠ ${m.name} won't activate — needs ${m.requires}`).join('<br>');
   const noId = [...new Set(Object.values(r.perSlot).filter((ps) => ps.enchant && !ps.enchant.effectId).map((ps) => ps.enchant.name))];
@@ -280,6 +298,7 @@ function setCard(r) {
         <div class="gates">
           <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">Uncrittable ${e.critReduction.toFixed(2)}%</span>
           <span class="gate ${crushPass ? 'pass' : 'fail'}">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>
+          ${minHp ? `<span class="gate ${hpPass ? 'pass' : 'fail'}">Min HP ${fmt(a.health)} / ${fmt(minHp)}</span>` : ''}
         </div>
         <button class="export-btn" type="button">⬇ Export to Sixty Upgrades</button>
       </div>

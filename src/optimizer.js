@@ -77,17 +77,22 @@ const crushTarget = (gates = {}) => gates.uncrushableTarget ?? CAPS.uncrushableC
 function gatesPass(evald, gates = {}) {
   const critOk = gates.raid === false ? evald.heroicCritImmune : evald.raidCritImmune;
   const crushOk = !gates.requireUncrushable || evald.totalAvoidanceWithHS + 1e-9 >= crushTarget(gates);
-  return { critOk, crushOk, all: critOk && crushOk };
+  const hpOk = !gates.minHealth || (evald.health ?? 0) + 1e-9 >= gates.minHealth;
+  return { critOk, crushOk, hpOk, all: critOk && crushOk && hpOk };
 }
 
-// How far a set is from satisfying the required gates, in % units (0 = legal).
+// How far a set is from satisfying the required gates (0 = legal). Crit/crush deficits are in
+// %-points; the min-HP shortfall is divided by 1000 so an HP gap reads in the same order of
+// magnitude (a 2000-HP shortfall ~= 2.0), keeping the repair heuristic's per-objective tradeoff
+// balanced across the three gates.
 function gateDeficit(evald, gates = {}) {
   const critTarget = gates.raid === false ? BASE.heroicBossCritVsPlayer : BASE.bossCritVsPlayer;
   const critDef = Math.max(0, critTarget - evald.critReduction);
   const crushDef = gates.requireUncrushable
     ? Math.max(0, crushTarget(gates) - evald.totalAvoidanceWithHS)
     : 0;
-  return critDef + crushDef;
+  const hpDef = gates.minHealth ? Math.max(0, (gates.minHealth - (evald.health ?? 0)) / 1000) : 0;
+  return critDef + crushDef + hpDef;
 }
 
 function build(selection, goal) {

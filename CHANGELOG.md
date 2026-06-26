@@ -109,3 +109,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   **Relentless** = `2+ red, 2+ yellow, 2+ blue`. `metaActivated` now evaluates comma-separated AND
   clauses; the meta-enable recolor step handles single-condition metas and leaves the compound
   survival metas to activate only when the set already satisfies them.
+- **Min-HP gate (per set).** Each goal gets a hard raid-buffed-HP floor, enforced exactly like
+  uncrit/uncrush — applies to all four sets incl. AOE Trash. `optimizer.js` `gatesPass`/`gateDeficit`
+  take `gates.minHealth` (the HP shortfall is normalised ÷1000 so the repair heuristic balances it
+  against the %-unit crit/crush deficits); `character.js` `evaluateSet` now surfaces raw `health`.
+  The web UI adds a **Min HP** slider per set (10k–14k, 500 steps; 10k default ≈ off) and a gate
+  chip showing `HP / floor`. When the floor is unreachable the set is reported illegal, never
+  silently violated.
+- **Neck gem** (Pendant of Dominance, yellow socket + spell-crit socket bonus) now correctly takes
+  Veiled Noble Topaz and earns its bonus — fixed by the Veiled gem addition above.

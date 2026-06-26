@@ -60,6 +60,10 @@ input[type=text] { width: 100%; font-family: ui-monospace, monospace; font-size:
 .slider-wrap .end { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .slider-wrap .end.left { text-align: right; }
 .goal-row .ratio { color: var(--gold); font-size: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.minhp-cell { grid-column: 2; display: flex; align-items: center; gap: 8px; }
+.minhp-cell .minhp-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.minhp-cell input[type=range] { flex: 1; min-width: 70px; accent-color: var(--gold); }
+.minhp-cell .minhp-val { color: var(--gold); font-size: 12px; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
 
 button {
   border: 1px solid var(--line); background: var(--panel2); color: var(--text);

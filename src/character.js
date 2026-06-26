@@ -46,6 +46,7 @@ export function evaluateSet(s) {
     // Throughput / survival objectives
     spellPower: s.spellPower ?? 0, // threat objective (matches the sheet's SP proxy)
     blockValue: s.blockValue ?? 0,
+    health: s.health ?? 0,         // raw HP pool (for the min-HP gate)
     ehpPhysical,                   // survival objective: HP / (1 - armor DR)
   };
 }

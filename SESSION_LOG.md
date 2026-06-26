@@ -51,10 +51,18 @@ trading a little SP/hit for more stamina (the EHP component). Tests **99/99**.
     25896/32409). Math is unaffected (DB is a recommendation pool), but Wowhead links may point at
     the classic cut. Revisit if we start matching owned gems by ID.
 
+### Shipped (later in session)
+- **Min-HP gate per set.** Hard raid-buffed-HP floor on every goal (incl. AOE), enforced like
+  uncrit/uncrush. `optimizer.js` gates + `gateDeficit` (HP shortfall ÷1000 to match %-unit
+  deficits), `character.js` surfaces `health`, web UI adds a 10k–14k/500 slider + gate chip.
+  Verified: gate binds (raises HP, trades SP) or marks the set illegal when unreachable. Test added.
+- **Neck gem confirmed** (Pendant of Dominance → Veiled, earns the +2 spell-crit socket bonus).
+
 ### Pick up here
-1. **Spell-hit soft cap (highest-value next):** the blended ratio goals value `spellHitRating` at a
-   flat 1.1× with NO cap — past the **17% spell-hit cap** it should drop to ~0 (the named
-   `threatSingleAtCap` scale does this; the PARTS/blend goals don't switch). Player flagged this.
+1. **Spell-hit soft cap — DEFERRED (player: "a while before I approach the hit cap").** Future work:
+   the blended ratio goals value `spellHitRating` at a flat 1.1× with NO cap; past the **17%
+   spell-hit cap** it should drop to ~0 (the named `threatSingleAtCap` scale does this; the
+   PARTS/blend goals don't switch). Not urgent — player is far below the cap.
 2. **Faction:** player is **Scryer** (uses Greater Inscription of the Orb). CLI/`bin` defaults to
    Aldor → would pick Discipline. Make faction a first-class setting / detect it.
 3. **Per-socket gemming** granularity (whole-item focus/cap variants still).

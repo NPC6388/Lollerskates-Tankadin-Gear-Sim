@@ -124,3 +124,17 @@ test("scale objective ranks by the blended weight scale (survival picks the tank
   const res = optimizeHeuristic(pool, goal, {});
   assert.equal(res.selection.chest.name, 'chest (tank)');
 });
+
+test('min-HP gate is enforced like crit/crush (binds or marks illegal)', () => {
+  // The max-EHP survival set is the highest HP the pool can reach; gate the threat set there.
+  const maxH = optimizeHeuristic(SAMPLE_POOL, survivalGoal).agg.health;
+
+  const gated = optimizeHeuristic(SAMPLE_POOL, { ...threatGoal, gates: { ...threatGoal.gates, minHealth: maxH } });
+  // The gate is a hard constraint: a legal result NEVER sits below it.
+  if (gated.legal) assert.ok(gated.agg.health + 1e-9 >= maxH);
+
+  // An unreachable floor is reported illegal, not silently violated.
+  const impossible = optimizeHeuristic(SAMPLE_POOL, { ...threatGoal, gates: { ...threatGoal.gates, minHealth: maxH + 100000 } });
+  assert.equal(impossible.legal, false);
+  assert.ok(impossible.agg.health < maxH + 100000);
+});
