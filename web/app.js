@@ -89,9 +89,11 @@ function init() {
   renderWeights();
 }
 
-// ---- Sixty Upgrades / Pawn stat weights -------------------------------------
+// ---- Sixty Upgrades stat weights --------------------------------------------
 // The named scales the guide/sim use, shown so a player can paste them into Sixty Upgrades' custom
-// stat weights. Order + readable names for the table; Pawn keys for the importable string.
+// stat weights. Sixty Upgrades' custom-weights format is a flat JSON of { ourKey: weight } using the
+// SAME stat keys this sim uses (incl. the meta/red/yellow/blue socket weights), omitting zeros — so
+// the Copy button just emits JSON.stringify of the scale's non-zero entries.
 const WEIGHT_SCALES = [
   { key: 'threatSingleBelowCap', label: 'Single-Target Threat', note: 'below the spell-hit / expertise caps' },
   { key: 'threatSingleAtCap', label: 'Single-Target Threat (capped)', note: 'hit / expertise / spell-hit already capped' },
@@ -100,37 +102,35 @@ const WEIGHT_SCALES = [
   { key: 'survivalEHP', label: 'Survival — EHP / Farm', note: 'avoidance at face value' },
   { key: 'balanced', label: 'Balanced', note: 'caps as constraints; ~1 SP ≈ 1 stamina beyond them' },
 ];
-const WSTAT = [ // [our key, readable name, Pawn key]
-  ['stamina', 'Stamina', 'Stamina'], ['strength', 'Strength', 'Strength'], ['agility', 'Agility', 'Agility'],
-  ['intellect', 'Intellect', 'Intellect'], ['spellDamage', 'Spell Damage', 'SpellDamage'],
-  ['spellHitRating', 'Spell Hit Rating', 'SpellHitRating'], ['spellCritRating', 'Spell Crit Rating', 'SpellCritRating'],
-  ['hitRating', 'Hit Rating', 'HitRating'], ['expertiseRating', 'Expertise Rating', 'ExpertiseRating'],
-  ['defenseRating', 'Defense Rating', 'DefenseRating'], ['dodgeRating', 'Dodge Rating', 'DodgeRating'],
-  ['parryRating', 'Parry Rating', 'ParryRating'], ['blockRating', 'Block Rating', 'BlockRating'],
-  ['blockValue', 'Block Value', 'BlockValue'], ['resilienceRating', 'Resilience Rating', 'ResilienceRating'],
-  ['armor', 'Armor', 'Armor'], ['health', 'Health', 'Hp'],
-];
-const pawnString = (key) => {
-  const w = SCALES[key];
-  const parts = WSTAT.filter(([k]) => w[k]).map(([k, , pawn]) => `${pawn}=${fmtW(w[k])}`);
-  return `( Pawn: v1: "Tankadin ${WEIGHT_SCALES.find((s) => s.key === key).label}": ${parts.join(', ')} )`;
+const WSTAT_NAME = { // our stat key -> readable name (for the on-page table)
+  stamina: 'Stamina', intellect: 'Intellect', strength: 'Strength', agility: 'Agility',
+  dodgeRating: 'Dodge Rating', parryRating: 'Parry Rating', defenseRating: 'Defense Rating',
+  blockRating: 'Block Rating', blockValue: 'Block Value', blockValueBonus: 'Block Value Bonus',
+  hitRating: 'Hit Rating', expertiseRating: 'Expertise Rating', spellDamage: 'Spell Damage',
+  spellHitRating: 'Spell Hit Rating', spellCritRating: 'Spell Crit Rating',
+  resilienceRating: 'Resilience Rating', armor: 'Armor', health: 'Health',
+  metaSockets: 'Meta socket', redSockets: 'Red socket', yellowSockets: 'Yellow socket', blueSockets: 'Blue socket',
 };
+// Keys that exist in our scales but are NOT Sixty Upgrades gear stats — internal pseudo-stats we must
+// not emit into the SU JSON (blockValueBonus is a meta-gem block-value % multiplier, not a gear stat).
+const SU_EXCLUDE = new Set(['blockValueBonus']);
+const nonZeroEntries = (key) => Object.entries(SCALES[key]).filter(([k, v]) => v !== 0 && !SU_EXCLUDE.has(k));
+const suWeightsJson = (key) => JSON.stringify(Object.fromEntries(nonZeroEntries(key)), null, 4);
 function renderWeights() {
   const host = $('weights'); if (!host) return;
   host.innerHTML = WEIGHT_SCALES.map(({ key, label, note }) => {
-    const w = SCALES[key];
-    const rows = WSTAT.filter(([k]) => w[k]).map(([k, name]) => `<div class="srow"><span>${name}</span><b>${fmtW(w[k])}</b></div>`).join('');
+    const rows = nonZeroEntries(key).map(([k, v]) => `<div class="srow"><span>${WSTAT_NAME[k] || k}</span><b>${fmtW(v)}</b></div>`).join('');
     return `<div class="wscale">
-      <div class="wscale-head"><h4>${label}</h4><button class="ghost copy-pawn" type="button" data-key="${key}">Copy Pawn string</button></div>
+      <div class="wscale-head"><h4>${label}</h4><button class="ghost copy-weights" type="button" data-key="${key}">Copy weights (JSON)</button></div>
       <p class="muted wscale-note">${note}</p>
       <div class="wgrid">${rows}</div>
     </div>`;
   }).join('');
-  host.querySelectorAll('.copy-pawn').forEach((b) => b.addEventListener('click', () => {
-    const str = pawnString(b.dataset.key);
+  host.querySelectorAll('.copy-weights').forEach((b) => b.addEventListener('click', () => {
+    const str = suWeightsJson(b.dataset.key);
     const ok = () => { const t = b.textContent; b.textContent = '✓ Copied'; setTimeout(() => { b.textContent = t; }, 1800); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(str).then(ok, () => window.prompt('Copy this Pawn string:', str));
-    else window.prompt('Copy this Pawn string:', str);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(str).then(ok, () => window.prompt('Copy this JSON for Sixty Upgrades:', str));
+    else window.prompt('Copy this JSON for Sixty Upgrades:', str);
   }));
 }
 

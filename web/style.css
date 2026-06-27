@@ -136,7 +136,7 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .wscale-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .wscale-head h4 { margin: 0; font-size: 13px; }
 .wscale-note { margin: 2px 0 8px; font-size: 11px; }
-.copy-pawn { font-size: 11px; padding: 3px 8px; white-space: nowrap; }
+.copy-weights { font-size: 11px; padding: 3px 8px; white-space: nowrap; }
 .wgrid { display: grid; gap: 2px; }
 .wgrid .srow { display: flex; justify-content: space-between; font-size: 12px; padding: 1px 0; }
 .wgrid .srow span { color: var(--muted); }

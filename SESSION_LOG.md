@@ -4,6 +4,24 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (i) — Weights export: Sixty Upgrades JSON, not Pawn
+
+Player confirmed SU's custom stat-weights format is a flat JSON of `{ ourKey: weight }` using the SAME
+keys this sim uses (incl. `metaSockets/redSockets/yellowSockets/blueSockets`), zeros omitted — they
+pasted a working single-target scale. The earlier "Copy Pawn string" was my wrong guess.
+
+- `web/app.js`: replaced `pawnString` with `suWeightsJson(key)` = `JSON.stringify` of the scale's
+  non-zero entries; button relabeled **Copy weights (JSON)**; on-page table now lists all non-zero
+  entries (incl. socket weights). Excludes `blockValueBonus` (internal meta block-value % pseudo-stat,
+  not an SU gear stat) via `SU_EXCLUDE`. How-to in `index.html` updated (copy JSON → SU Custom Stat
+  Weights); CSS class `.copy-pawn` → `.copy-weights`. Suite **120 pass**.
+- The emitted single-target JSON matches the player's working one except it now also includes
+  `spellCritRating: 0.45` (added when spell crit became scored). Unverified SU keys to watch:
+  `spellCritRating` and the survival-only `health/blockValue/dodgeRating/parryRating/resilienceRating/
+  armor` — flagged to the player to confirm SU accepts them (will drop/rename any it rejects).
+
+---
+
 ## 2026-06-27 (h) — AOE tuned for trash: no crush gate, low spell hit
 
 Player: the AOE set still held defensive pieces (Aldori shield, Crimson belt, Seventh Ring) because
