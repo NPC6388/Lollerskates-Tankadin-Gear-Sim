@@ -4,6 +4,32 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (j) — Locked-meta fix, per-set lock button, live buff note
+
+Batch of four from the player:
+1. **AOE meta inactive (only 2 blue).** Root cause: when items are LOCKED, `resolveMetas` didn't count
+   their current gem colors, and a meta socket on a locked item wasn't evaluated at all. Fixed: tally
+   locked items' gem colors toward activation, and flag a kept (locked) meta active/inactive vs the
+   whole-set colors (`m.kept` flag) so a dark meta surfaces in metaWarn. (Non-locked AOE meta was
+   already active in tests; the bug only bit with locking.)
+2. **Per-set "Lock this set's gems/enchants" button.** `web/app.js` `lockedItemIds` Set + `buildKeepSpec`
+   (scope dropdown OR per-set locks); banner of chips with unlock × + Clear all; re-optimizes on change.
+   `keepConfig` filters changed from AND to **OR** so item-ids stack with the equipped/all/current scope.
+3. **Live buff note.** `buffNote(b, agg)` now prints each buffed stat with its downstream effect
+   computed per-set: stamina(≈hp), agility(≈% dodge via crushAvoid), intellect(≈% spell crit via
+   `INT_PER_SPELLCRIT=80` approx — model has no int→crit), armor(≈% DR via `ARMOR_CONST`). Dropped strength.
+4. **Socket-color chips** were already shipped (cc8e273, `gemCell(g,true)` always) — confirmed intact;
+   stale comment fixed. The player's screenshot predated it → hard-refresh.
+
+Tests +2 (`keep-gems.test.js`: OR-combine; kept-meta flag). Suite **122 pass**.
+
+**Possible follow-up:** a kept color-gated meta that's inactive isn't auto-activated by recoloring
+non-locked recommended gems (we only warn) — deliberate, since forcing blue onto a threat set to light a
+stamina meta is usually wrong; revisit if the player wants auto-activation. `INT_PER_SPELLCRIT` is a
+rough constant; tighten if a real int→spell-crit formula is added to the model.
+
+---
+
 ## 2026-06-27 (i) — Weights export: Sixty Upgrades JSON, not Pawn
 
 Player confirmed SU's custom stat-weights format is a flat JSON of `{ ourKey: weight }` using the SAME

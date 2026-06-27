@@ -101,6 +101,13 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .gate.pass { color: var(--good); border-color: rgba(111,207,111,.4); }
 .gate.fail { color: var(--bad); border-color: rgba(224,109,109,.4); }
 .gate.na { color: var(--muted); }
+/* Per-set actions (lock + export) and the locked-items banner. */
+.set-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.lockedbar { margin: 0 0 10px; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(240,198,116,.10); border: 1px solid rgba(240,198,116,.35); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lockchip { display: inline-flex; align-items: center; gap: 4px; background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 1px 4px 1px 8px; }
+.lockx { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; }
+.lockx:hover { color: var(--bad); }
+.clearlocks { font-size: 11px; padding: 2px 8px; margin-left: auto; }
 
 .doll { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
 .ds-slot { padding: 9px 0; border-bottom: 1px solid var(--line); min-height: 44px; }

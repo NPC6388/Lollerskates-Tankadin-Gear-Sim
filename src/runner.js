@@ -91,8 +91,11 @@ export function lockEligible(item, { perks = { names: [] }, faction = null, maxP
 //   true                      lock every (completed) item — budget "keep all completed"
 //   itemId[]                  lock specific shared pieces (by item-id)
 //   { itemIds?, slots?, equippedOnly?, ignoreCompleteness? }
-//     equippedOnly: restrict to currently-equipped items (the "keep equipped" / "current set" scopes)
+//     equippedOnly: lock currently-equipped items (the "keep equipped" / "current set" scopes)
+//     itemIds/slots: lock specific pieces (e.g. the per-set "lock this set's items" button)
 //     ignoreCompleteness: lock even items with empty sockets / no enchant (the "as-is" scope)
+// Filters are OR-combined: an item locks if it's equipped (when equippedOnly) OR named by id/slot — so
+// a scope and an explicit item-id list can be supplied together (lock equipped AND these shared pieces).
 // Returns null when nothing would lock.
 function keepConfig(spec) {
   if (!spec) return null;
@@ -104,9 +107,8 @@ function keepConfig(spec) {
   const ids = new Set(spec.itemIds || []);
   const slots = new Set(spec.slots || []);
   const equippedOnly = !!spec.equippedOnly;
-  const named = ids.size || slots.size;
-  if (!named && !equippedOnly) return null;
-  const pred = (it) => (!equippedOnly || !!it.equipped) && (!named || ids.has(it.itemId) || slots.has(it.slot));
+  if (!ids.size && !slots.size && !equippedOnly) return null;
+  const pred = (it) => (equippedOnly && !!it.equipped) || ids.has(it.itemId) || slots.has(it.slot);
   return { pred, ignoreCompleteness: !!spec.ignoreCompleteness };
 }
 
@@ -186,7 +188,15 @@ function resolveMetas(plans, objScale, ctx) {
   const all = [];
   for (const p of plans) for (const c of p.plan.choices) if (c.color) all.push({ p, c });
   const recolorable = all.filter((s) => s.p.v._gem !== 'cap'); // only focus sockets may be recolored
-  const tally = () => { const cc = { red: 0, yellow: 0, blue: 0 }; for (const s of all) for (const col of gemColors(s.c)) if (cc[col] != null) cc[col]++; return cc; };
+  // LOCKED items keep their current gems (not in plan.choices) — but their colors still count toward
+  // meta activation. Tally them from the item's gem ids so a kept blue-gemmed piece helps a "3+ blue"
+  // meta (and the recolor logic doesn't over-recolor to re-supply colors that are already there).
+  const lockedCount = { red: 0, yellow: 0, blue: 0 };
+  for (const p of plans) if (p.locked) for (const id of (p.v.gems || [])) {
+    const g = GEM_BY_ID.get(id);
+    if (g) for (const col of gemColors(g)) if (lockedCount[col] != null) lockedCount[col]++;
+  }
+  const tally = () => { const cc = { ...lockedCount }; for (const s of all) for (const col of gemColors(s.c)) if (cc[col] != null) cc[col]++; return cc; };
 
   const metas = [];
   for (const p of plans) {
@@ -214,6 +224,19 @@ function resolveMetas(plans, objScale, ctx) {
       pMetas.push(info); metas.push(info);
     }
     p.metas = pMetas;
+  }
+  // A meta socket on a LOCKED item is kept as-is — we can't re-pick it, but we MUST report whether the
+  // player's current meta is active given the whole set's gem colors, so a dark meta gets flagged.
+  const finalCounts = tally();
+  for (const p of plans) {
+    if (!p.locked) continue;
+    for (const id of (p.v.gems || [])) {
+      const g = GEM_BY_ID.get(id);
+      if (!g || !g.meta) continue;
+      const info = { name: g.name, active: metaActivated(g, finalCounts), requires: g.requires, kept: true };
+      p.metas = (p.metas || []).concat(info);
+      metas.push(info);
+    }
   }
   return metas;
 }

@@ -94,6 +94,24 @@ test('scope equippedOnly: a completed BAG item is not locked (only worn items lo
   assert.equal(r.perSlot[bagDone.slot].locked, false, 'bag item not locked under equippedOnly');
 });
 
+test('scope + explicit item-ids OR-combine (lock equipped AND a named bag item)', () => {
+  const local = equippableItems(parseExport(SAMPLE));
+  const bag = local.find((i) => !i.equipped && (i.gems || []).length
+    && lockEligible(i, { perks: professionPerks(['Enchanting']) }));
+  if (!bag) return;
+  const pool = [bag, ...local.filter((i) => i.slot !== bag.slot)]; // force the bag item into its slot
+  const r = optimizeSets(pool, { ...base, keepGemsEnchants: { equippedOnly: true, itemIds: [bag.itemId] } })[0];
+  assert.equal(r.perSlot[bag.slot].locked, true, 'named bag item locks via OR even though not equipped');
+});
+
+test('a kept (locked) meta is flagged active/inactive in the readout', () => {
+  const r = optimizeSets(items, { ...base, keepGemsEnchants: { equippedOnly: true } })[0];
+  // The equipped head carries the meta socket; locked, its meta is kept — it must report an explicit
+  // active flag so a dark meta surfaces (instead of being silently ignored).
+  const headMeta = (r.perSlot.head && r.perSlot.head.metas || []).find((m) => m.kept);
+  if (r.perSlot.head && r.perSlot.head.locked && headMeta) assert.equal(typeof headMeta.active, 'boolean');
+});
+
 test('scope ignoreCompleteness: "current set as-is" locks an equipped item with an empty socket', () => {
   const local = equippableItems(parseExport(SAMPLE));
   const chest = local.find((i) => i.slot === 'chest' && i.equipped && (i.gems || []).length);

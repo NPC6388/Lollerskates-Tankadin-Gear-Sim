@@ -6,7 +6,7 @@ import { optimizeSets, spellHitPct, GOAL_PRESETS, DEFAULT_TRINKET_LOCKS } from '
 import { PROFESSION_NAMES } from '../src/professions.js';
 import { GEMS, META_GEMS } from '../src/gems.js';
 import { SCALES } from '../src/weights.js';
-import { CAPS } from '../src/constants.js';
+import { CAPS, ARMOR_CONST } from '../src/constants.js';
 
 const $ = (id) => document.getElementById(id);
 // Paper-doll columns, like the in-game character sheet.
@@ -44,6 +44,8 @@ const defaultV = (g) => { const { left, right } = GOAL_SIDES[g.id]; return (g.ra
 let items = null;        // equippable items from the export
 let parsed = null;       // full parse (character + items)
 let activeTab = 0;
+let lastResults = null;  // last optimize results (for the per-set lock button)
+const lockedItemIds = new Set(); // item-ids whose gems/enchants are kept across every set
 
 // ---- setup ------------------------------------------------------------------
 function init() {
@@ -210,9 +212,10 @@ function runOptimize() {
       const results = optimizeSets(items, {
         professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
         faction: $('faction').value, useImbuedMeta: $('imbuedMeta').checked,
-        keepGemsEnchants: keepFromScope($('keepScope').value),
+        keepGemsEnchants: buildKeepSpec(),
         talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
       });
+      lastResults = results;
       render(results);
     } catch (err) {
       $('summary').innerHTML = `<p class="status err">${err.message || err}</p>`;
@@ -224,14 +227,16 @@ function runOptimize() {
 }
 const num = (v) => (v ? +v : null);
 
-// "Keep gems & enchants" scope preset -> optimizeSets.keepGemsEnchants option.
-function keepFromScope(scope) {
-  switch (scope) {
-    case 'all': return true;                                          // every completed item
-    case 'equipped': return { equippedOnly: true };                  // worn completed items
-    case 'current': return { equippedOnly: true, ignoreCompleteness: true }; // worn items, even unfinished
-    default: return false;                                            // 'off' — re-gem everything
-  }
+// Build optimizeSets.keepGemsEnchants from the scope dropdown PLUS the per-set "lock these items"
+// list. The scope (equipped/all/current) and the explicit item-ids are OR-combined by keepConfig.
+function buildKeepSpec() {
+  const scope = $('keepScope').value;
+  if (scope === 'all') return true;                       // every completed item — ids are redundant
+  const spec = {};
+  if (scope === 'equipped') spec.equippedOnly = true;     // worn completed items
+  else if (scope === 'current') { spec.equippedOnly = true; spec.ignoreCompleteness = true; } // worn, even unfinished
+  if (lockedItemIds.size) spec.itemIds = [...lockedItemIds];
+  return Object.keys(spec).length ? spec : false;         // 'off' + no locks -> re-gem everything
 }
 
 // ---- render -----------------------------------------------------------------
@@ -248,8 +253,8 @@ const isColor = (c) => c === 'red' || c === 'yellow' || c === 'blue';
 const SOCK_LABEL = { red: 'Red', yellow: 'Yellow', blue: 'Blue' };
 const socketChip = (s) => isColor(s) ? `<span class="sock-chip sock-${s}">${SOCK_LABEL[s]} socket</span>`
   : (s === 'meta' ? `<span class="sock-chip sock-meta">Meta</span>` : '');
-// Show the socket-COLOR chip only when the bonus is being earned (then placement by color matters).
-// The meta chip always shows. When the bonus is forfeited, gems can go in any socket (labelled below).
+// Each gem cell shows its SOCKET-COLOR chip (the meta chip always shows). Callers pass showColor=true
+// so every recommended gem is labelled with the socket it goes in; locked items carry no socket tag.
 const gemCell = (g, showColor) => {
   const chip = g.socket === 'meta' ? socketChip('meta') : (showColor && isColor(g.socket) ? socketChip(g.socket) : '');
   return `<div class="gem-cell">${chip}<div class="gem-name">${gemLink(g)}</div></div>`;
@@ -306,9 +311,30 @@ function render(results) {
   $('tabs').querySelectorAll('button').forEach((b) =>
     b.addEventListener('click', () => { activeTab = +b.dataset.i; render(results); }));
 
-  $('sets').innerHTML = setCard(results[activeTab]);
+  $('sets').innerHTML = lockedBanner() + setCard(results[activeTab]);
   const eb = $('sets').querySelector('.export-btn');
   if (eb) eb.addEventListener('click', () => exportSet(results[activeTab], eb));
+  // Lock this set's items: add every selected item-id to the kept list, then re-optimize so the
+  // other sets keep those gems/enchants too (don't undo a set you've committed to).
+  const lb = $('sets').querySelector('.lock-set-btn');
+  if (lb) lb.addEventListener('click', () => {
+    for (const it of Object.values(results[activeTab].selection)) if (it) lockedItemIds.add(it.itemId);
+    runOptimize();
+  });
+  $('sets').querySelectorAll('.lockx').forEach((x) => x.addEventListener('click', () => { lockedItemIds.delete(+x.dataset.id); runOptimize(); }));
+  const cl = $('sets').querySelector('.clearlocks');
+  if (cl) cl.addEventListener('click', () => { lockedItemIds.clear(); runOptimize(); });
+}
+
+// Banner listing the items whose gems/enchants are locked across all sets (chips with an unlock ×).
+function lockedBanner() {
+  if (!lockedItemIds.size) return '';
+  const chips = [...lockedItemIds].map((id) => {
+    const it = (items || []).find((i) => i.itemId === id);
+    return `<span class="lockchip">${it ? (it.name || id) : id}<button class="lockx" data-id="${id}" title="unlock">×</button></span>`;
+  }).join('');
+  return `<div class="lockedbar">🔒 <b>Locked</b> (gems/enchants kept across every set): ${chips}
+    <button class="ghost clearlocks" type="button">Clear all</button></div>`;
 }
 
 function slotHTML(r, slotKey, side) {
@@ -340,17 +366,21 @@ function slotHTML(r, slotKey, side) {
 const panel = (title, rows) =>
   `<div class="spanel"><h4>${title}</h4>${rows.map(([k, v]) => `<div class="srow"><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
 
-// What the stat buff contributes to this set (already included in the numbers above; this just
-// shows its share). It scales all 4 primaries — each with its own downstream effect.
-function buffNote(b) {
+// What the stat buff contributes to THIS set, computed live (Kings is +10% of base stats, so the
+// amount depends on the set). Each stat is shown as amount (downstream effect). buffImpact already
+// holds the per-set deltas; we convert intellect→spell crit and armor→damage reduction here.
+const INT_PER_SPELLCRIT = 80;             // ≈ TBC level-70 caster: ~1% spell crit per 80 intellect
+const armorDR = (armor) => armor / (armor + ARMOR_CONST()); // vs a raid boss (standard TBC formula)
+function buffNote(b, agg) {
   if (!b || !b.name) return '';
-  return `<div class="buffnote"><b>${b.name}</b>'s share of the above:
-    <b>+${Math.round(b.stamina)}</b> stamina (≈+${Math.round(b.health).toLocaleString()} health),
-    <b>+${Math.round(b.agility)}</b> agility (+${b.crushAvoid.toFixed(2)}% dodge → uncrush, + melee crit),
-    <b>+${Math.round(b.intellect)}</b> intellect (+ spell crit),
-    <b>+${Math.round(b.strength)}</b> strength (+ block value),
-    <b>+${Math.round(b.armor).toLocaleString()}</b> armor.
-    <span class="muted">Crit reduction +${b.critReduction.toFixed(2)}% — buffs add no defense/resilience, so they don't help uncrittable. Set the buff in Sixty Upgrades after import.</span></div>`;
+  const drDelta = agg && b.armor ? (armorDR(agg.armor) - armorDR(agg.armor - b.armor)) * 100 : 0;
+  const part = (amt, unit, down) => `<b>+${amt}</b> ${unit} <span class="muted">(${down})</span>`;
+  return `<div class="buffnote"><b>${b.name}</b>'s live share of this set (Kings adds 10% of base stats):<br>
+    ${part(b.stamina.toFixed(1), 'stamina', `≈+${Math.round(b.health).toLocaleString()} health`)},
+    ${part(b.agility.toFixed(1), 'agility', `≈+${b.crushAvoid.toFixed(2)}% dodge`)},
+    ${part(b.intellect.toFixed(1), 'intellect', `≈+${(b.intellect / INT_PER_SPELLCRIT).toFixed(2)}% spell crit`)},
+    ${part(Math.round(b.armor), 'armor', `≈+${drDelta.toFixed(2)}% damage reduction`)}.
+    <span class="muted">Buffs add no defense/resilience, so they don't help uncrittable. Set the buff in Sixty Upgrades after import.</span></div>`;
 }
 
 function setCard(r) {
@@ -396,10 +426,13 @@ function setCard(r) {
             : `<span class="gate na">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% — not required (trash)</span>`}
           ${minHp ? `<span class="gate ${hpPass ? 'pass' : 'fail'}">Min HP ${fmt(a.health)} / ${fmt(minHp)}</span>` : ''}
         </div>
-        <button class="export-btn" type="button">⬇ Export to Sixty Upgrades</button>
+        <div class="set-actions">
+          <button class="lock-set-btn ghost" type="button">🔒 Lock this set's gems/enchants</button>
+          <button class="export-btn" type="button">⬇ Export to Sixty Upgrades</button>
+        </div>
       </div>
     </div>
-    ${buffNote(r.buffImpact)}
+    ${buffNote(r.buffImpact, r.agg)}
     ${doll}
     ${socketNote}
     ${metaWarn ? `<div class="metawarn">${metaWarn}</div>` : ''}

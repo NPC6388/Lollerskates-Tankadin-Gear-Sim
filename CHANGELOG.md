@@ -281,3 +281,17 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   pasted the updated Single-Target/AOE JSON into SU with no error and `spellCritRating` is listed). So
   the SU weights export needs no key filtering — the full non-zero scale (incl. `blockValueBonus` and
   the socket weights) imports cleanly.
+- **Meta activation accounts for locked items (and flags a kept dark meta).** `resolveMetas` now
+  tallies LOCKED items' current gem colors toward meta activation (a kept blue-gemmed piece helps a
+  "3+ blue" meta), and when the meta socket itself is on a locked item it reports whether that kept
+  meta is active given the whole set's colors — so a dark meta (e.g. a locked head's "3+ blue" Powerful
+  with only 2 blue) is now flagged in the readout instead of silently shipped.
+- **"Lock this set's gems/enchants" button per set.** Each displayed set has a button that adds its
+  items to a persistent locked list (shown as a banner of chips with unlock ×, plus Clear all); the
+  set re-optimizes so every other set keeps those gems/enchants — so committing one set won't get
+  undone when you tune the next. `keepConfig` filters are now OR-combined, so this item-id lock stacks
+  with the scope dropdown.
+- **Buff note is a live per-set calculation.** Kings is +10% of base stats, so its share depends on
+  the set — the note now shows each buffed stat with its downstream effect computed live: stamina
+  (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
+  "+25.1 agility (≈+1.00% dodge)".
