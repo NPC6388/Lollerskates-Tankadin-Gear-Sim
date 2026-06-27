@@ -354,6 +354,7 @@ function buffNote(b) {
 
 function setCard(r) {
   const e = r.evald, a = r.agg;
+  const crushReq = r.goal.gates.requireUncrushable !== false; // AOE trash drops the crush gate
   const need = r.goal.gates.uncrushableTarget ?? CAPS.uncrushableCombined;
   const crushPass = e.totalAvoidanceWithHS + 1e-9 >= need;
   const minHp = r.goal.gates.minHealth || 0;
@@ -393,7 +394,9 @@ function setCard(r) {
       <div class="head-right">
         <div class="gates">
           <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">Uncrittable ${e.critReduction.toFixed(2)}%</span>
-          <span class="gate ${crushPass ? 'pass' : 'fail'}">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>
+          ${crushReq
+            ? `<span class="gate ${crushPass ? 'pass' : 'fail'}">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>`
+            : `<span class="gate na">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% — not required (trash)</span>`}
           ${minHp ? `<span class="gate ${hpPass ? 'pass' : 'fail'}">Min HP ${fmt(a.health)} / ${fmt(minHp)}</span>` : ''}
         </div>
         <button class="export-btn" type="button">⬇ Export to Sixty Upgrades</button>

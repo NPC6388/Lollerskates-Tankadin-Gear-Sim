@@ -35,7 +35,9 @@ export const SCALES = {
   threatAOE: scale({
     intellect: 0.15, strength: 0.4, agility: 0.05, defenseRating: 0.06,
     blockRating: 0.6, hitRating: 0.5, expertiseRating: 0.7,
-    spellDamage: 2.5, spellHitRating: 2.2, spellCritRating: 0.7,
+    // AOE trash is level ≤72 — only ~5% spell hit is needed (vs ~16% for a level-73 boss), and it's
+    // reached easily, so spell hit is worth far less here than in a raid threat set.
+    spellDamage: 2.5, spellHitRating: 0.5, spellCritRating: 0.7,
     metaSockets: 18, redSockets: 22.5, yellowSockets: 14, blueSockets: 11,
   }),
 
@@ -91,7 +93,9 @@ export const PARTS = {
   // spellCritRating: a spell crit adds +0.5x damage (CRIT_MULT.spell); ~0.3 per rating point
   // relative to spellDamage 1.0 — small, so it breaks near-ties toward crit rather than chasing it.
   threat: { spellDamage: 1, spellHitRating: 1.1, spellCritRating: 0.3, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },
-  aoeThreat: { spellDamage: 1.4, spellHitRating: 1.3, spellCritRating: 0.4, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12 },
+  // aoeThreat is for level ≤72 trash: only ~5% spell hit is needed (vs ~16% for a raid boss) and it's
+  // easily reached, so spellHitRating is weighted low here (don't chase hit you don't need).
+  aoeThreat: { spellDamage: 1.4, spellHitRating: 0.3, spellCritRating: 0.4, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12 },
   sta: { stamina: 1 },
 };
 

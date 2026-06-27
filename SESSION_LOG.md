@@ -4,6 +4,24 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (h) — AOE tuned for trash: no crush gate, low spell hit
+
+Player: the AOE set still held defensive pieces (Aldori shield, Crimson belt, Seventh Ring) because
+of the crush gate; for level ≤72 trash there are no crushing blows and only ~5% spell hit is needed.
+
+- **Dropped the uncrushable gate for the AOE Trash goal** (`gates.requireUncrushable: false`; trash
+  ≤72 can't crush — only 73+ bosses). Crit immunity kept (trash can crit; set stays uncrittable
+  anyway). This is what was holding shield-block/avoidance pieces; removing it flips the 1:4 AOE set
+  to pure threat (Merciless Barrier, Veteran's Lamellar Belt, Seer's Signet + Seal of the Exorcist),
+  ~+40 SP, avoidance ~89% (fine — not required).
+- **Lowered spell-hit weight in the AOE scale** (sim + SU/Pawn): `PARTS.aoeThreat.spellHitRating`
+  1.3 → 0.3 and `SCALES.threatAOE.spellHitRating` 2.2 → 0.5 (only ~5% needed vs a level-72 mob).
+- Gate readout shows "Uncrushable N% — not required (trash)" for the AOE set (web `.gate.na` + CLI).
+- Suite **120 pass**. NOTE: the AOE *preset default* is 1:2 (more EHP-weighted) so it still mixes in
+  some survival/socketed pieces; full-threat behavior is at the 1:4 the player uses.
+
+---
+
 ## 2026-06-27 (g) — Tooltip-scan capture gap; AOE picks explained
 
 **Trigger:** player questioned AOE picks (Aldori>Merciless, Phoenix-Wing>Sergeant's, Battlescar>Boots

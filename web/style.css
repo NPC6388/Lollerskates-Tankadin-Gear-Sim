@@ -100,6 +100,7 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .gate { font-size: 13px; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--line); }
 .gate.pass { color: var(--good); border-color: rgba(111,207,111,.4); }
 .gate.fail { color: var(--bad); border-color: rgba(224,109,109,.4); }
+.gate.na { color: var(--muted); }
 
 .doll { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
 .ds-slot { padding: 9px 0; border-bottom: 1px solid var(--line); min-height: 44px; }

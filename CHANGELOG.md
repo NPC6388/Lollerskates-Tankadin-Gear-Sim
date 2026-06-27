@@ -258,3 +258,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   up short on to the base value. This fixes keep-mode deltas (which went negative) and the as-worn
   evaluation; the optimizer was already unaffected (it scores from the base field). Re-scanning with
   the current addon also fills resolved at the source.
+- **AOE Trash: dropped the crushing-blow gate + de-valued spell hit.** Level ≤72 trash can't land
+  crushing blows (only 73+ bosses do), so the AOE Trash goal no longer requires uncrushable — that
+  itemization goes to threat instead (crit immunity is still required; trash can crit). And because a
+  level-72 mob needs only ~5% spell hit (vs ~16% for a raid boss) — easily reached — `spellHitRating`
+  is weighted low in the AOE-threat scale: `PARTS.aoeThreat` 1.3 → 0.3 and the SU/Pawn `threatAOE`
+  scale 2.2 → 0.5. Net at 1:4: the AOE set stops holding shield-block / avoidance pieces (Aldori,
+  Seventh Ring, Crimson belt) for a crush cap it doesn't need and takes pure-threat gear (Merciless
+  Gladiator's Barrier, Veteran's Lamellar Belt, Seer's Signet, …), ~+40 SP. The gate readout shows
+  "Uncrushable N% — not required (trash)" for this set (web + CLI).
