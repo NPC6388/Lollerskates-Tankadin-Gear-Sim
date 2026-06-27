@@ -236,3 +236,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   **Libram of the Eternal Rest**, while raid/survival/balanced keep **Libram of Repentance** — matching
   the mechanic that Holy Shield (and thus Repentance's conditional block bonus) stays up single-target
   but is consumed early in AOE, where the unconditional Consecration libram wins.
+- **Libram modeling reworked to use only real (Sixty Upgrades) stats.** Dropped the `consecrationDamage`
+  pseudo-stat — it has no home in the SU scales, so weighting it there was invalid. Instead a libram's
+  flat-damage effect is converted to **equivalent spell damage** (the same stat the scales/SU use):
+  Libram of the Eternal Rest's +47 Consecration damage → ~35 effective spell damage (raw coefficient
+  inversion is ~49, discounted because the effect feeds only Consecration, not the whole rotation).
+  The AOE scale weights spell damage higher (Consecration scales per target), so the threat-model
+  optimizer lands on the right split on the real scan: **AOE → Libram of the Eternal Rest;
+  raid/survival/balanced → Libram of Repentance** (its block→Holy-Shield threat holds up single-target).
+  Limitation noted in `librams.js`: a single spell-damage number can't make it AOE-*only*; tune there.
+- **Socket note reworded for the Sixty Upgrades flow.** The gems ARE in the export, but socket order
+  isn't always exported correctly, so the note now says you may need to **swap the gems between sockets**
+  in Sixty Upgrades (match each to its socket color) so the bonus activates — instead of implying you
+  socket them from scratch.

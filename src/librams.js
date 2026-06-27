@@ -6,13 +6,22 @@
 // Matched by item id (canonical) or a name regex (robust when the export lacks ids). Add entries as
 // new tanking librams come up — keep the modeled stat honest to the tooltip.
 //
-// Conditionality note: Libram of Repentance's block bonus only applies while Holy Shield is ACTIVE.
-// Single-target that's ~always up; in AOE the charges are consumed early so the bonus largely drops.
-// We model it as flat blockRating (full uptime) — accurate for raid/survival — and let the AOE goal's
-// AOE-threat weighting (where Consecration far outvalues block) make the Consecration libram win there.
+// We express each libram with stats the weight scales already use (the same stats Sixty Upgrades
+// understands) — no invented pseudo-stats. A flat +damage effect is converted to its EQUIVALENT spell
+// damage via the spell's coefficient, so the existing spellDamage weights (higher under AOE, where
+// Consecration scales per target) value it. Modeled as full spell damage is a slight over-credit for
+// pure single-target (the effect only feeds Consecration, not the whole rotation) — tune here if needed.
+//
+// Conditionality note: Libram of Repentance's block bonus needs Holy Shield ACTIVE — ~always up
+// single-target, but consumed early in AOE, so it's weakest exactly where the Consecration libram shines.
 export const LIBRAMS = [
   { ids: [29388], match: /libram of repentance/i, stats: { blockRating: 42 } },        // +42 block rating while Holy Shield up
-  { ids: [32368], match: /libram of (the )?eternal rest/i, stats: { consecrationDamage: 47 } }, // +47 Consecration damage
+  // +47 Consecration damage. Raw coefficient inversion (÷~0.95) ≈ 49 SP of Consecration OUTPUT, but
+  // that over-credits: real spell damage feeds the whole rotation, this only feeds Consecration. Modeled
+  // at ~35 effective spell damage — enough that it wins the threat-leaning sets (and especially AOE,
+  // where the scale weights spell damage higher because Consecration hits every target) while the block
+  // libram still wins survival. A single spell-damage number can't make it AOE-ONLY; tune here.
+  { ids: [32368], match: /libram of (the )?eternal rest/i, stats: { spellDamage: 35 } },
 ];
 
 // Modeled stats for an item if it's a known libram, else null.

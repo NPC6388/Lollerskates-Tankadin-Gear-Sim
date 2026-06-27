@@ -362,13 +362,13 @@ function setCard(r) {
     .map((m) => `⚠ ${m.name} won't activate — needs ${m.requires}`).join('<br>');
   const noId = [...new Set(Object.values(r.perSlot).filter((ps) => ps.enchant && !ps.enchant.effectId).map((ps) => ps.enchant.name))];
   const exportNote = noId.length ? `<div class="metawarn">Export: no Sixty Upgrades ID for ${noId.join(', ')} — omitted from the string.</div>` : '';
-  // Gems can't be auto-applied, so they're socketed by hand. Where a socket bonus is being earned,
-  // placement is COLOR-sensitive (export socket order is unreliable) — call that out.
+  // Gems ARE in the export, but the socket ORDER isn't reliable, so a bonus may land inactive on
+  // import — tell the player they may need to swap gems between sockets (match by color) to fix it.
   const anyRecGems = Object.values(r.perSlot).some((ps) => !ps.locked && (ps.gems || []).length);
   const anyKeptBonus = Object.values(r.perSlot).some((ps) => ps.bonusKept === true);
   const socketNote = anyRecGems
-    ? `<div class="socketnote">💎 Gems aren't applied automatically — socket them yourself.${anyKeptBonus
-        ? ' Where a <b>socket bonus</b> is shown active, place each gem in the <b>matching-color</b> socket above it (match by <b>color, not order</b> — socket order varies in-game) or the bonus won\'t activate.'
+    ? `<div class="socketnote">💎 The gems are included in the export.${anyKeptBonus
+        ? ' Socket order isn\'t always exported correctly, so after importing into Sixty Upgrades you may need to <b>swap the gems between sockets</b> — put each gem in the <b>socket color</b> shown above it so the socket bonus activates.'
         : ''}</div>`
     : '';
 

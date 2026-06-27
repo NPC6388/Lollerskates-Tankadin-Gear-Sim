@@ -25,10 +25,22 @@ Repentance = +42 block rating while Holy Shield active.
 - Verified: AOE → Eternal Rest; raid/survival/balanced → Repentance. Tests `test/librams.test.js`
   (id/name match; AOE>ST Consecration value; per-goal relic split). Suite **119 pass**.
 
-**Note:** weight magnitudes (0.4 ST / ~2× AOE per SP-point) are reasoned approximations, not a derived
-threat sim — easy to retune in `weights.js` if the player wants a different ST/AOE balance. Repentance's
-block is modeled at full uptime (accurate for ST/survival; slightly generous in AOE, but Eternal Rest
-wins AOE decisively regardless).
+**Note:** weight magnitudes are reasoned approximations, not a derived threat sim.
+
+**Revised same session (player feedback):** the `consecrationDamage` pseudo-stat was dropped — it can't
+be expressed in the Sixty Upgrades scales, so weighting it there is invalid. Reworked to convert the
+libram's flat damage to **equivalent spell damage** (a real/SU stat): Eternal Rest = ~35 spell damage
+(raw coeff inversion ~49, discounted since it only feeds Consecration). Reverted consecrationDamage from
+`STAT_KEYS` + all scales/PARTS. Kept the AOE goal on `aoeThreat` (real improvement; weights spell damage
+higher). Net on the real scan: AOE → Eternal Rest; raid/survival/balanced → Repentance. Tests updated.
+Caveat: a single spell-damage number can't make it AOE-*only* (that needed the per-scenario pseudo-stat);
+tune the value in `librams.js`. Also reworded the socket note for the SU flow (gems are exported; you may
+need to swap them between sockets in SU if the order wasn't right). Suite **119 pass**.
+
+**Belt question (no code change):** AOE 1:4 picks Crimson Girdle of the Indomitable (gemmed for threat),
+not Girdle of Valorous Deeds — the latter is a pure survival belt (int/stam/def/block, zero threat
+itemization), so it scores far below the threat belts on the AOE scale and isn't needed to hold the
+relaxed crush gate. Working as designed.
 
 ---
 
