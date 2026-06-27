@@ -321,7 +321,9 @@ function slotHTML(r, slotKey, side) {
   let gems = '';
   if (ps.gems && ps.gems.length) {
     const kept = ps.bonusKept === true;
-    const cells = `<div class="ds-gems">${ps.gems.map((g) => gemCell(g, kept)).join('')}</div>`;
+    // Always show the socket-color chip above each gem (recommended gems carry a socket tag; locked
+    // items don't, so they just list the gems they're already wearing).
+    const cells = `<div class="ds-gems">${ps.gems.map((g) => gemCell(g, true)).join('')}</div>`;
     let bonusLine = '';
     if (ps.socketBonus) {
       bonusLine = kept
@@ -363,14 +365,10 @@ function setCard(r) {
     .map((m) => `⚠ ${m.name} won't activate — needs ${m.requires}`).join('<br>');
   const noId = [...new Set(Object.values(r.perSlot).filter((ps) => ps.enchant && !ps.enchant.effectId).map((ps) => ps.enchant.name))];
   const exportNote = noId.length ? `<div class="metawarn">Export: no Sixty Upgrades ID for ${noId.join(', ')} — omitted from the string.</div>` : '';
-  // Gems ARE in the export, but the socket ORDER isn't reliable, so a bonus may land inactive on
-  // import — tell the player they may need to swap gems between sockets (match by color) to fix it.
+  // The export carries the gems, but their socket placement isn't always right on import.
   const anyRecGems = Object.values(r.perSlot).some((ps) => !ps.locked && (ps.gems || []).length);
-  const anyKeptBonus = Object.values(r.perSlot).some((ps) => ps.bonusKept === true);
   const socketNote = anyRecGems
-    ? `<div class="socketnote">💎 The gems are included in the export.${anyKeptBonus
-        ? ' Socket order isn\'t always exported correctly, so after importing into Sixty Upgrades you may need to <b>swap the gems between sockets</b> — put each gem in the <b>socket color</b> shown above it so the socket bonus activates.'
-        : ''}</div>`
+    ? '<div class="socketnote">💎 Verify gems are in the correct sockets on Sixty Upgrades — the export sometimes puts them in the wrong holes.</div>'
     : '';
 
   const doll = `<div class="doll">

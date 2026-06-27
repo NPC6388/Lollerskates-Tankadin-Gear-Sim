@@ -267,3 +267,7 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Seventh Ring, Crimson belt) for a crush cap it doesn't need and takes pure-threat gear (Merciless
   Gladiator's Barrier, Veteran's Lamellar Belt, Seer's Signet, …), ~+40 SP. The gate readout shows
   "Uncrushable N% — not required (trash)" for this set (web + CLI).
+- **Socket-color chip shown for every recommended gem** (not only when the bonus is active) — each gem
+  now displays its socket-color label above it (locked/as-worn items still just list their gems). The
+  gem export note reworded to: "Verify gems are in the correct sockets on Sixty Upgrades — the export
+  sometimes puts them in the wrong holes."
