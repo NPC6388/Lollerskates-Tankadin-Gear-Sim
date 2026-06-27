@@ -39,6 +39,18 @@ over-satisfies the cap to ~102.95%), so the runner gate-recovery path is a **saf
 by unit test, not yet by an end-to-end crushable scan. If the player still sees crushable, get that
 exact config (professions / phase / trinket locks) to repro the integration path directly.
 
+### Backlog (player request — do AFTER the current config pass)
+- **"Keep existing gems/enchants" option.** A toggle to build sets WITHOUT re-gemming/re-enchanting —
+  treat each item's currently-socketed gems + applied enchant as **fixed** (score off resolved
+  `item.stats`, skip `planItemGems`/`bestEnchant` for locked items). Two motivations: (1) **budget**
+  players who can't afford to re-cut gems / buy enchants per set, and (2) when the **same physical
+  item is shared across multiple sets**, you can't realistically re-gem/re-enchant it each swap, so
+  its gems must stay put. Probably wants per-item granularity (lock some, optimize others) and a
+  global "lock all current" default. Note the existing groundwork: the addon already folds worn-gem
+  stats into resolved `item.stats`, and the gem layer already builds from `baseStats` to avoid
+  double-counting — so a locked item just uses resolved stats and is excluded from the gem/enchant
+  solver.
+
 ---
 
 ## 2026-06-26 — Threat-set tuning: buff stacking, spell crit, Veiled/Ornate gems
