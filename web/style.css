@@ -116,6 +116,9 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .gem:hover { border-color: var(--accent); }
 .gem.g-red { color: #ff8a8a; } .gem.g-yellow { color: #f0d774; } .gem.g-blue { color: #8ab6ff; }
 .gem.g-orange { color: #f0b070; } .gem.g-green { color: #86e0a0; } .gem.g-purple { color: #c79bff; } .gem.g-meta { color: #d9c2ff; }
+/* Socket-color dot: which color socket a recommended gem belongs in (place by color for the bonus). */
+.sock { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; border: 1px solid rgba(0,0,0,.5); }
+.sock-red { background: #ff5a5a; } .sock-yellow { background: #f0d774; } .sock-blue { background: #6fa8ff; }
 .defgem { color: var(--warn); font-size: 11px; margin-left: 6px; }
 .ds-slot.right .defgem { margin-left: 0; margin-right: 6px; }
 

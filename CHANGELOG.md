@@ -189,3 +189,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     — freezes worn items even when unfinished). CLI mirrors via `KEEP_GEMS=all|equipped|current`.
     Caveat: "as-is" freezes worn gems/enchants but the optimizer may still swap a slot to a strictly
     better item (which then gets gemmed) — a true no-swap "evaluate my exact set" mode is a follow-up.
+- **Per-gem socket-color in the readout (socket bonus actually activates).** The solver already
+  assigned the right gem to each socket color (e.g. shoulder: Veiled→yellow, Glowing Nightseye→blue)
+  and credited the bonus, but the per-slot output dropped the socket color — so when placed in-game
+  the gems landed in the wrong sockets (Justicar's sockets are physically blue-then-yellow) and the
+  bonus greyed out. The export's socket order is unreliable (Lua `pairs()` — base seg lists BLUE,YELLOW
+  while resolved lists YELLOW,BLUE), so placement must be COLOR-based: `perSlot.gems[*]` now carries
+  its `socket` color and the web paper-doll shows a colored socket dot per gem. Place each gem in the
+  matching-color socket and the bonus lights up regardless of physical order.

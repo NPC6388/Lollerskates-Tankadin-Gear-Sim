@@ -287,7 +287,9 @@ function runGoal(goal, items, ctx) {
       const en = bestEnchant(p.v.slot, p.scale, perks, { faction, maxPhase });
       if (en) sumInto(added, en.enchant.stats);
       gemChoices.push(...p.plan.choices);
-      p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null }));
+      // Carry the SOCKET COLOR per gem: the export's socket order is unreliable (Lua pairs()), so
+      // the bonus only activates if the user places each gem by COLOR — surface that mapping.
+      p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null, socket: c.socket || null }));
       p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, spell: en.enchant.spell || null, effectId: en.enchant.enchant || null } : null;
     }
     const agg = aggregate([...baseStatsList, { stats: added }], aggOpts);

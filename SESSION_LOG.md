@@ -4,6 +4,29 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (c) — Per-gem socket color (bonus actually activates in-game)
+
+**Trigger:** player testing "re-gem everything" saw a shoulder's socket bonus grey out in-game even
+though the recommended gems (Veiled + Glowing Nightseye) *could* earn it.
+
+**Diagnosis:** the solver was RIGHT — at 1:2 it picks Veiled→yellow, Glowing→blue and credits the +4
+stam bonus. But `perSlot.gems` dropped the per-gem socket color, so when socketed in-game the gems
+went into the wrong sockets (Justicar Shoulderguards' sockets are physically blue-then-yellow) and
+the bonus greyed. Export socket order is **unreliable** (Lua `pairs()` — confirmed: base seg lists
+BLUE,YELLOW; resolved lists YELLOW,BLUE), so placement must be **color-based**, not positional.
+
+**Shipped:** `perSlot.gems[*].socket` now carries the socket color; the web paper-doll renders a
+colored socket dot before each gem (`gemRow` + `.sock-*` CSS) so you place each gem in the matching
+socket. Forfeited-bonus fills still tag the physical socket (a gem may sit off-color when the bonus
+isn't worth it — that's intended). Tests: `test/gem-socket.test.js` (gems tagged only to real sockets
+of the item; Justicar shoulder maps one gem per yellow/blue socket). Suite **112 pass**.
+
+**Follow-up:** CLI still prints gems as an aggregate (no per-socket color) — fine for a dev tool; the
+web UI is the player-facing readout. Could add a forfeit indicator so an off-color dot isn't mistaken
+for a bonus placement.
+
+---
+
 ## 2026-06-27 (b) — "Keep existing gems/enchants" build mode
 
 Implemented the backlog item from earlier today: a build mode that uses items **as they sit** —

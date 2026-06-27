@@ -195,6 +195,11 @@ const wh = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/t
 // Wowhead's power.js adds the icon + hover tooltip to any item link; fall back to plain text
 // (color by gem color) when we have no id.
 const gemLink = (g) => g.id ? wh(g.id, g.name, 'gem') : `<span class="gem g-${GEM_COLOR[g.name] || 'meta'}">${g.name}</span>`;
+// Prefix a recommended gem with a SOCKET-COLOR dot so it's placed in the matching socket (the
+// socket bonus only lights up when each gem sits in a socket of its color; export order is unreliable).
+const SOCK_LABEL = { red: 'Red', yellow: 'Yellow', blue: 'Blue' };
+const gemRow = (g) => (g.socket && SOCK_LABEL[g.socket]
+  ? `<span class="sock sock-${g.socket}" title="${SOCK_LABEL[g.socket]} socket"></span>` : '') + gemLink(g);
 // Enchants link by scroll item when one exists, else by the enchanting spell (trainer-taught).
 const whSpell = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/tbc/spell=${id}" target="_blank" rel="noopener">${text}</a>`;
 const enchLink = (e) => e.id ? wh(e.id, e.name, 'ds-ench') : e.spell ? whSpell(e.spell, e.name, 'ds-ench') : `<span class="ds-ench">${e.name}</span>`;
@@ -253,7 +258,7 @@ function slotHTML(r, slotKey, side) {
   const ps = r.perSlot[slotKey] || {};
   const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : (ps.locked ? '<span class="defgem">kept</span>' : '');
   const ench = ps.enchant ? `<div class="ds-ench-row">${enchLink(ps.enchant)}</div>` : '';
-  const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemLink).join('')}</div>` : '';
+  const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemRow).join('')}</div>` : '';
   return `<div class="ds-slot ${side}">
     ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${tag}
     ${ench}${gems}
