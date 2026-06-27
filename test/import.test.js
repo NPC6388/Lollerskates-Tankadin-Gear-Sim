@@ -171,6 +171,19 @@ test('equippableItems still excludes non-gear (no recognized equip slot)', () =>
   assert.equal(eq[0].name, 'Libram of the Eternal Rest');
 });
 
+test('resolved stats are lifted to base when the tooltip scan dropped an innate stat', () => {
+  // Real bug: the addon's tooltip scan missed "+spell damage" equip lines on some plate (resolved
+  // had no spellDamage) while GetItemStats (base) captured it. resolved must never undercount an
+  // innate stat, so it's lifted to base. Here base has spellDamage 19, resolved omitted it.
+  const text = [
+    'TGS9', 'C:name=x',
+    'I:item:29253::::::::70::::::::::|INVTYPE_WAIST|ilvl=110;ITEM_MOD_STAMINA_SHORT=37;ITEM_MOD_DEFENSE_SKILL_RATING=24|ITEM_MOD_STAMINA_SHORT=37;ITEM_MOD_DEFENSE_SKILL_RATING=24;ITEM_MOD_SPELL_POWER=19||Girdle of Valorous Deeds',
+  ].join('\n');
+  const it = equippableItems(parseExport(text))[0];
+  assert.equal(it.stats.spellDamage, 19, 'resolved lifted to base spell damage');
+  assert.equal(it.baseStats.spellDamage, 19);
+});
+
 test('parseItemString pulls id / enchant / gems / suffix', () => {
   const p = parseItemString('item:12345:678:111:222:0:0:99:0:70');
   assert.equal(p.itemId, 12345);

@@ -84,6 +84,7 @@ export function parseItemString(s) {
 }
 
 import { libramStats } from './librams.js';
+import { STAT_KEYS } from './model.js';
 
 // socket-count stat keys -> color, for exposing a per-item socket layout
 const SOCKET_STAT_KEYS = { socketRed: 'red', socketYellow: 'yellow', socketBlue: 'blue', socketMeta: 'meta' };
@@ -182,6 +183,14 @@ export function parseExport(text) {
           // (and shields take no armor enchant in TBC), so copying resolved -> base is exact,
           // not a double-count. Only fill when base is missing it (i.e. the shield case).
           if (!item.baseStats.armor && stats.armor) item.baseStats.armor = stats.armor;
+          // The tooltip scan (resolved) can MISS an innate equip line — e.g. "Increases damage and
+          // healing done by magical spells and effects by up to N" (the +spell-damage plate) — that
+          // GetItemStats (base) captures. resolved should always be >= base for innate stats (it's
+          // base + gems + enchants), so lift any stat the scan came up short on. Keeps keep-mode
+          // deltas and the as-worn evaluation from undercounting. (Optimizer already scores off base.)
+          for (const k of STAT_KEYS) {
+            if ((item.baseStats[k] || 0) > (item.stats[k] || 0)) item.stats[k] = item.baseStats[k];
+          }
         }
         // sockets: prefer the base layout (every socket); v1–v7 fall back to the resolved
         // field, which only lists currently-EMPTY sockets.

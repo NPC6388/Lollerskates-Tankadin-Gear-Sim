@@ -4,6 +4,30 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (g) — Tooltip-scan capture gap; AOE picks explained
+
+**Trigger:** player questioned AOE picks (Aldori>Merciless, Phoenix-Wing>Sergeant's, Battlescar>Boots
+of the Righteous Path, Seventh Ring>Seer's Signet) and showed Girdle of Valorous Deeds' tooltip with a
+"+20 spell damage" equip line — suspecting items are mis-read.
+
+**Findings:**
+- **Real capture gap.** The addon's tooltip scan (resolved field) dropped "+spell damage" equip lines
+  ("Increases damage and healing done by magical spells and effects by up to N") on ≥4 items in the scan
+  (Valorous Deeds sp19, Crusader's Ornamented Spaulders sp7, Seal of Danzalar sp24→12, Veteran's
+  Lamellar Bracers sp21). `GetItemStats` (base field) captured them. **Fixed:** `import.js` lifts any
+  resolved stat below base up to base (resolved ≥ base always holds for innate stats). Fixes keep-mode
+  deltas (were going negative) + as-worn eval. Optimizer was already scoring off base, so picks unchanged.
+  Regression test added. Suite **120 pass**.
+- **Picks were already correct / are gate-driven.** With the current code the AOE 1:4 set picks the
+  THREAT items — Merciless Gladiator's Barrier, Sergeant's Heavy Cape, Boots of the Righteous Path —
+  NOT the defensive ones the player saw (so they were on an older build; both old single-target-threat
+  and new aoeThreat weightings now pick the threat items). The **ring** (Seventh Ring of the Tirisfalen
+  over Seer's Signet) is the crush gate: the AOE set sits at 97.78% vs the 97.4% relaxed cap, and
+  Seventh Ring's block 24 + defense 17 is needed to stay uncrushable; Seer's Signet (caster, sp33+crit)
+  would drop it below. Min HP "11k" wasn't binding (set already ~11.3k).
+
+---
+
 ## 2026-06-27 (f) — Libram effect modeling (Consecration libram wins AOE)
 
 **Context:** player asked why AOE picked Libram of Repentance over Libram of the Eternal Rest, and

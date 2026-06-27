@@ -249,3 +249,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   isn't always exported correctly, so the note now says you may need to **swap the gems between sockets**
   in Sixty Upgrades (match each to its socket color) so the bonus activates — instead of implying you
   socket them from scratch.
+- **Import self-heals dropped innate stats (tooltip-scan capture gap).** The addon's tooltip scan
+  (resolved field) was missing "+spell damage" equip lines on some plate — "Increases damage and
+  healing done by magical spells and effects by up to N" — while `GetItemStats` (base field) captured
+  it. Affected ≥4 items in a real scan (Girdle of Valorous Deeds sp19, Crusader's Ornamented Spaulders
+  sp7, The Seal of Danzalar sp24, Veteran's Lamellar Bracers sp21). Since resolved should always be
+  ≥ base for innate stats (it's base + gems + enchants), `import.js` now lifts any stat the scan came
+  up short on to the base value. This fixes keep-mode deltas (which went negative) and the as-worn
+  evaluation; the optimizer was already unaffected (it scores from the base field). Re-scanning with
+  the current addon also fills resolved at the source.
