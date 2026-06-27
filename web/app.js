@@ -5,6 +5,7 @@ import { toExportText } from '../src/savedvars.js';
 import { optimizeSets, spellHitPct, GOAL_PRESETS, DEFAULT_TRINKET_LOCKS } from '../src/runner.js';
 import { PROFESSION_NAMES } from '../src/professions.js';
 import { GEMS, META_GEMS } from '../src/gems.js';
+import { SCALES } from '../src/weights.js';
 import { CAPS } from '../src/constants.js';
 
 const $ = (id) => document.getElementById(id);
@@ -85,6 +86,52 @@ function init() {
   $('loadSample').addEventListener('click', loadSample);
   $('talents').addEventListener('input', updateTalentSummary);
   $('optimizeBtn').addEventListener('click', runOptimize);
+  renderWeights();
+}
+
+// ---- Sixty Upgrades / Pawn stat weights -------------------------------------
+// The named scales the guide/sim use, shown so a player can paste them into Sixty Upgrades' custom
+// stat weights. Order + readable names for the table; Pawn keys for the importable string.
+const WEIGHT_SCALES = [
+  { key: 'threatSingleBelowCap', label: 'Single-Target Threat', note: 'below the spell-hit / expertise caps' },
+  { key: 'threatSingleAtCap', label: 'Single-Target Threat (capped)', note: 'hit / expertise / spell-hit already capped' },
+  { key: 'threatAOE', label: 'AOE Threat', note: 'multi-target — Consecration / Holy Shield scale per target' },
+  { key: 'survivalUncrushable', label: 'Survival — reach Uncrushable', note: 'crush-removal premium on avoidance' },
+  { key: 'survivalEHP', label: 'Survival — EHP / Farm', note: 'avoidance at face value' },
+  { key: 'balanced', label: 'Balanced', note: 'caps as constraints; ~1 SP ≈ 1 stamina beyond them' },
+];
+const WSTAT = [ // [our key, readable name, Pawn key]
+  ['stamina', 'Stamina', 'Stamina'], ['strength', 'Strength', 'Strength'], ['agility', 'Agility', 'Agility'],
+  ['intellect', 'Intellect', 'Intellect'], ['spellDamage', 'Spell Damage', 'SpellDamage'],
+  ['spellHitRating', 'Spell Hit Rating', 'SpellHitRating'], ['spellCritRating', 'Spell Crit Rating', 'SpellCritRating'],
+  ['hitRating', 'Hit Rating', 'HitRating'], ['expertiseRating', 'Expertise Rating', 'ExpertiseRating'],
+  ['defenseRating', 'Defense Rating', 'DefenseRating'], ['dodgeRating', 'Dodge Rating', 'DodgeRating'],
+  ['parryRating', 'Parry Rating', 'ParryRating'], ['blockRating', 'Block Rating', 'BlockRating'],
+  ['blockValue', 'Block Value', 'BlockValue'], ['resilienceRating', 'Resilience Rating', 'ResilienceRating'],
+  ['armor', 'Armor', 'Armor'], ['health', 'Health', 'Hp'],
+];
+const pawnString = (key) => {
+  const w = SCALES[key];
+  const parts = WSTAT.filter(([k]) => w[k]).map(([k, , pawn]) => `${pawn}=${fmtW(w[k])}`);
+  return `( Pawn: v1: "Tankadin ${WEIGHT_SCALES.find((s) => s.key === key).label}": ${parts.join(', ')} )`;
+};
+function renderWeights() {
+  const host = $('weights'); if (!host) return;
+  host.innerHTML = WEIGHT_SCALES.map(({ key, label, note }) => {
+    const w = SCALES[key];
+    const rows = WSTAT.filter(([k]) => w[k]).map(([k, name]) => `<div class="srow"><span>${name}</span><b>${fmtW(w[k])}</b></div>`).join('');
+    return `<div class="wscale">
+      <div class="wscale-head"><h4>${label}</h4><button class="ghost copy-pawn" type="button" data-key="${key}">Copy Pawn string</button></div>
+      <p class="muted wscale-note">${note}</p>
+      <div class="wgrid">${rows}</div>
+    </div>`;
+  }).join('');
+  host.querySelectorAll('.copy-pawn').forEach((b) => b.addEventListener('click', () => {
+    const str = pawnString(b.dataset.key);
+    const ok = () => { const t = b.textContent; b.textContent = '✓ Copied'; setTimeout(() => { b.textContent = t; }, 1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(str).then(ok, () => window.prompt('Copy this Pawn string:', str));
+    else window.prompt('Copy this Pawn string:', str);
+  }));
 }
 
 // Talent string -> points per tree (split on "-", sum the rank digits in each segment).

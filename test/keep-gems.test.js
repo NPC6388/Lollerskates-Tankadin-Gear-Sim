@@ -54,6 +54,16 @@ test('lock eligibility: empty sockets or a missing enchant make an item NOT lock
   assert.equal(lockEligible({ slot: 'relic', sockets: {}, gems: [], enchantId: 0 }, { perks }), true);
 });
 
+test('lock conditions count leg armor (spellthread) as the leg enchant', () => {
+  const perks = professionPerks(['Enchanting']);
+  // Leg armor is applied via the item's enchant slot (Runic Spellthread = 2748, Nethercleft = 3013),
+  // so it's checked like any other slot enchant: a leg with it + its socket filled is complete...
+  assert.equal(lockEligible({ slot: 'legs', sockets: { yellow: 1 }, gems: [1], enchantId: 2748 }, { perks }), true);
+  assert.equal(lockEligible({ slot: 'legs', sockets: {}, gems: [], enchantId: 3013 }, { perks }), true);
+  // ...and a leg WITHOUT leg armor is incomplete, so the solver adds it rather than locking the piece.
+  assert.equal(lockEligible({ slot: 'legs', sockets: { yellow: 1 }, gems: [1], enchantId: 0 }, { perks }), false);
+});
+
 test('keep-all skips an item with empty sockets (it gets optimized, not kept)', () => {
   // Find an equipped, socketed item the optimizer is likely to pick, and blank one of its gems so
   // it reads as having an empty socket; under keep-all it must NOT be locked.

@@ -207,3 +207,13 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   since placement matters) when earned, and **✕ Socket bonus skipped: +N Stat — not worth an off-color
   gem** when the solver forfeits it on purpose (chips hidden, since the gem can go in any socket). The
   manual-socketing note only stresses color-matching when a bonus is actually being earned.
+- **Sixty Upgrades stat weights on the page + how-to.** New "Sixty Upgrades stat weights" panel
+  renders the guide's named weight scales (single-target threat below/at caps, AOE, survival
+  uncrushable/EHP, balanced) as readable tables, each with a **Copy Pawn string** button for import
+  into Sixty Upgrades / any Pawn-compatible planner, plus a how-to (custom weights, Pawn import vs
+  manual entry, and the reminder that the uncrit/uncrush gates aren't enforced by weights).
+- **Lock conditions: leg armor / spellthread confirmed counted.** Leg armor (Runic Spellthread 2748,
+  Nethercleft 3013) and every slot enchant (weapon/ring/etc.) are applied via the item's enchant id,
+  which `lockEligible` already checks — a leg without leg armor is treated incomplete (solver adds it),
+  one with it can lock. Added a regression test. (Open gap: the **Eternal Belt Buckle** waist socket
+  isn't modeled — we don't suggest it or flag its absence; tracked for a future socket-enhancement pass.)

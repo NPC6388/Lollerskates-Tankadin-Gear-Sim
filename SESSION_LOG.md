@@ -4,6 +4,27 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (d) — Sixty Upgrades weights panel + leg-armor lock check
+
+- **SU stat-weights panel** (`index.html` #weights-panel, `web/app.js` renderWeights). Shows the
+  guide's named scales (ST threat below/at cap, AOE, survival uncrushable/EHP, balanced) as tables
+  with a **Copy Pawn string** per scale (`( Pawn: v1: "Tankadin <label>": Key=val, … )`) + a how-to
+  (custom weights / Pawn import / manual entry; gates aren't enforced by weights — hit 490 def & 102.4%
+  first). Always visible (reference data, no export needed).
+- **Leg armor in lock conditions — verified already handled.** Player flagged "other enhancement types
+  (e.g. runic spellthread)" for the keep/lock completeness check. Leg armor IS an item enchant
+  (Spellthread 2748 / Nethercleft 3013) stored in the enchant slot, which `lockEligible` already checks
+  via `bestEnchant('legs') && !enchantId` — confirmed end-to-end (leg locks showing Runic Spellthread;
+  a leg without it reads incomplete). Added a regression test. Suite **115 pass**.
+- **Real remaining gap: Eternal Belt Buckle.** Audit of equipped enhancements showed the **waist**
+  takes no enchant in our DB and we don't model the belt buckle (a prismatic socket adder —
+  `socketPrismatic` is even dropped by `socketsFromStats`). So a buckle-less waist isn't flagged
+  incomplete and we never suggest a buckle. NOTE: gating lock-completeness on the buckle would fight
+  budget keep-mode (the point is keeping what you have), so a buckle is better as a *recommendation*
+  than a lock requirement. Awaiting player's call on a socket-enhancement pass.
+
+---
+
 ## 2026-06-27 (c) — Per-gem socket color (bonus actually activates in-game)
 
 **Trigger:** player testing "re-gem everything" saw a shoulder's socket bonus grey out in-game even
