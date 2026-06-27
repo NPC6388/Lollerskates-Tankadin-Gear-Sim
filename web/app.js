@@ -202,7 +202,17 @@ const isColor = (c) => c === 'red' || c === 'yellow' || c === 'blue';
 const SOCK_LABEL = { red: 'Red', yellow: 'Yellow', blue: 'Blue' };
 const socketChip = (s) => isColor(s) ? `<span class="sock-chip sock-${s}">${SOCK_LABEL[s]} socket</span>`
   : (s === 'meta' ? `<span class="sock-chip sock-meta">Meta</span>` : '');
-const gemCell = (g) => `<div class="gem-cell">${socketChip(g.socket)}<div class="gem-name">${gemLink(g)}</div></div>`;
+// Show the socket-COLOR chip only when the bonus is being earned (then placement by color matters).
+// The meta chip always shows. When the bonus is forfeited, gems can go in any socket (labelled below).
+const gemCell = (g, showColor) => {
+  const chip = g.socket === 'meta' ? socketChip('meta') : (showColor && isColor(g.socket) ? socketChip(g.socket) : '');
+  return `<div class="gem-cell">${chip}<div class="gem-name">${gemLink(g)}</div></div>`;
+};
+const STAT_LABEL = { stamina: 'Stamina', defenseRating: 'Defense', dodgeRating: 'Dodge', parryRating: 'Parry',
+  blockRating: 'Block', blockValue: 'Block Value', resilienceRating: 'Resilience', agility: 'Agility',
+  strength: 'Strength', intellect: 'Intellect', spellDamage: 'Spell Damage', spellHitRating: 'Spell Hit',
+  spellCritRating: 'Spell Crit', hitRating: 'Hit' };
+const fmtBonus = (b) => `+${b.value} ${STAT_LABEL[b.stat] || b.stat}`;
 // Enchants link by scroll item when one exists, else by the enchanting spell (trainer-taught).
 const whSpell = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/tbc/spell=${id}" target="_blank" rel="noopener">${text}</a>`;
 const enchLink = (e) => e.id ? wh(e.id, e.name, 'ds-ench') : e.spell ? whSpell(e.spell, e.name, 'ds-ench') : `<span class="ds-ench">${e.name}</span>`;
@@ -261,7 +271,18 @@ function slotHTML(r, slotKey, side) {
   const ps = r.perSlot[slotKey] || {};
   const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : (ps.locked ? '<span class="defgem">kept</span>' : '');
   const ench = ps.enchant ? `<div class="ds-ench-row">${enchLink(ps.enchant)}</div>` : '';
-  const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemCell).join('')}</div>` : '';
+  let gems = '';
+  if (ps.gems && ps.gems.length) {
+    const kept = ps.bonusKept === true;
+    const cells = `<div class="ds-gems">${ps.gems.map((g) => gemCell(g, kept)).join('')}</div>`;
+    let bonusLine = '';
+    if (ps.socketBonus) {
+      bonusLine = kept
+        ? `<div class="bonus-on">✓ Socket bonus active: ${fmtBonus(ps.socketBonus)}</div>`
+        : `<div class="bonus-off">✕ Socket bonus skipped: ${fmtBonus(ps.socketBonus)} — not worth an off-color gem</div>`;
+    }
+    gems = cells + bonusLine;
+  }
   return `<div class="ds-slot ${side}">
     ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${tag}
     ${ench}${gems}
@@ -294,11 +315,14 @@ function setCard(r) {
     .map((m) => `⚠ ${m.name} won't activate — needs ${m.requires}`).join('<br>');
   const noId = [...new Set(Object.values(r.perSlot).filter((ps) => ps.enchant && !ps.enchant.effectId).map((ps) => ps.enchant.name))];
   const exportNote = noId.length ? `<div class="metawarn">Export: no Sixty Upgrades ID for ${noId.join(', ')} — omitted from the string.</div>` : '';
-  // Gems can't be auto-applied, and the export's socket order isn't reliable — tell the player to
-  // place each gem in the socket whose COLOR is shown above it, so socket bonuses actually activate.
-  const needsManualSocket = Object.values(r.perSlot).some((ps) => (ps.gems || []).some((g) => isColor(g.socket)));
-  const socketNote = needsManualSocket
-    ? `<div class="socketnote">💎 Gems can't be applied automatically. Socket each gem into the <b>matching-color</b> socket shown above it — match by <b>color, not order</b> (socket order varies in-game), or the socket bonus won't activate.</div>`
+  // Gems can't be auto-applied, so they're socketed by hand. Where a socket bonus is being earned,
+  // placement is COLOR-sensitive (export socket order is unreliable) — call that out.
+  const anyRecGems = Object.values(r.perSlot).some((ps) => !ps.locked && (ps.gems || []).length);
+  const anyKeptBonus = Object.values(r.perSlot).some((ps) => ps.bonusKept === true);
+  const socketNote = anyRecGems
+    ? `<div class="socketnote">💎 Gems aren't applied automatically — socket them yourself.${anyKeptBonus
+        ? ' Where a <b>socket bonus</b> is shown active, place each gem in the <b>matching-color</b> socket above it (match by <b>color, not order</b> — socket order varies in-game) or the bonus won\'t activate.'
+        : ''}</div>`
     : '';
 
   const doll = `<div class="doll">

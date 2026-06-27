@@ -201,3 +201,9 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   its own cell — the **socket color** chip on top, the **gem that goes in it** directly beneath — and
   each set card carries a reminder that gems can't be applied automatically and must be socketed by
   COLOR (not order, which varies in-game) or the bonus won't activate. Replaces the bare color dot.
+- **Socket bonus: clear active vs deliberately-skipped state.** Each socketed piece now reports
+  `bonusKept` — computed from the FINAL gems (every colored gem fits its tagged socket, so it survives
+  meta recolors). The paper-doll shows **✓ Socket bonus active: +N Stat** (with the socket-color chips,
+  since placement matters) when earned, and **✕ Socket bonus skipped: +N Stat — not worth an off-color
+  gem** when the solver forfeits it on purpose (chips hidden, since the gem can go in any socket). The
+  manual-socketing note only stresses color-matching when a bonus is actually being earned.

@@ -25,10 +25,13 @@ of the item; Justicar shoulder maps one gem per yellow/blue socket). Suite **112
 web UI is the player-facing readout.
 
 **Update (same session):** per player request, replaced the bare color dot with a **per-socket cell**
-— socket-color chip on top, the gem beneath it — and added a **manual-socketing note** on each set
-card (gems can't be auto-applied; socket by COLOR not order, or the bonus won't light up). Open polish:
-forfeited-bonus fills still show their physical socket chip (a gem may sit off-color when the bonus
-isn't worth it) — could mark those "(any socket)" so they're not mistaken for a bonus placement.
+— socket-color chip on top, the gem beneath it — and added a **manual-socketing note** on each set card.
+
+**Update 2 (same session):** make the deliberately-skipped bonus explicit. `perSlot.bonusKept` is
+computed from the FINAL gems (every colored gem fits its tagged socket → survives meta recolors).
+Paper-doll shows **✓ Socket bonus active: +N Stat** (with color chips, placement matters) when earned,
+**✕ Socket bonus skipped: +N Stat** (chips hidden — gem can go anywhere) when forfeited. Tests +2
+(bonusKept ↔ all-gems-fit; shoulder skipped at 1:4). Suite **114 pass**.
 
 ---
 

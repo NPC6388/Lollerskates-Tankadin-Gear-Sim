@@ -8,7 +8,7 @@
 
 import { aggregate, BUFFS, TALENTS, talentsFromRanks, STAT_KEYS } from './model.js';
 import { evaluateSet } from './character.js';
-import { bestGem, bestMeta, gemColors, metaActivated, GEMS, META_GEMS, CURRENT_PHASE } from './gems.js';
+import { bestGem, bestMeta, gemColors, metaActivated, GEMS, META_GEMS, CURRENT_PHASE, FITS } from './gems.js';
 import { bestEnchant, ENCHANTS } from './enchants.js';
 import { score } from './scoring.js';
 import { SCALES, blendScale } from './weights.js';
@@ -281,6 +281,7 @@ function runGoal(goal, items, ctx) {
       if (p.locked) {
         p.gems = currentGems(p.v);
         p.enchant = currentEnchant(p.v);
+        p.socketBonus = null; p.bonusKept = null; // locked: kept as worn, don't re-assert the bonus
         gemChoices.push(...p.gems);
         continue;
       }
@@ -290,6 +291,11 @@ function runGoal(goal, items, ctx) {
       // Carry the SOCKET COLOR per gem: the export's socket order is unreliable (Lua pairs()), so
       // the bonus only activates if the user places each gem by COLOR — surface that mapping.
       p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null, socket: c.socket || null }));
+      // Bonus is ACTIVE only if every colored gem fits the socket it's tagged to (computed on the
+      // FINAL choices, so it reflects any meta recolor). If forfeited, the UI says so explicitly.
+      p.socketBonus = p.v.socketBonus || null;
+      const coloredCh = p.plan.choices.filter((c) => c.color && FITS[c.color]);
+      p.bonusKept = !!p.v.socketBonus && coloredCh.length > 0 && coloredCh.every((c) => FITS[c.color].includes(c.socket));
       p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, spell: en.enchant.spell || null, effectId: en.enchant.enchant || null } : null;
     }
     const agg = aggregate([...baseStatsList, { stats: added }], aggOpts);
@@ -372,7 +378,7 @@ function runGoal(goal, items, ctx) {
   const perSlot = {};
   for (const [slotKey, it] of Object.entries(res.selection)) {
     const p = plans.find((x) => x.v === it);
-    perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap', locked: it._gem === 'locked' } : { gems: [], enchant: null, metas: [], defGemmed: false, locked: false };
+    perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap', locked: it._gem === 'locked', socketBonus: p.socketBonus || null, bonusKept: p.bonusKept } : { gems: [], enchant: null, metas: [], defGemmed: false, locked: false, socketBonus: null, bonusKept: null };
   }
   return { goal, selection: res.selection, items: res.items, legal: res.legal, evald, agg, gemChoices, metas, perSlot, buffImpact };
 }

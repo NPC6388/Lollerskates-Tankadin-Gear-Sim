@@ -32,6 +32,24 @@ test('recommended gems are tagged to REAL sockets of their item (no invented soc
   assert.ok(checked > 0, 'at least one socketed recommendation was checked');
 });
 
+test('bonusKept reflects whether every colored gem fits its socket (active vs deliberately skipped)', () => {
+  const r = optimizeSets(items, base)[0];
+  for (const [slot, it] of Object.entries(r.selection)) {
+    const ps = r.perSlot[slot];
+    if (!it.socketBonus || ps.locked) continue;
+    const colored = ps.gems.filter((g) => isColor(g.socket));
+    const allFit = colored.length > 0 && colored.every((g) => FITS[gemByName.get(g.name).color].includes(g.socket));
+    assert.equal(ps.bonusKept, allFit, `${slot}: bonusKept=${ps.bonusKept} but allFit=${allFit}`);
+  }
+});
+
+test('a forfeited bonus is flagged skipped at high threat (shoulder at 1:4)', () => {
+  const goals14 = [{ id: 'rt', name: 'Raid Threat', focus: '', ratio: { ehp: 1, threat: 4 }, gates: { raid: true, requireUncrushable: true }, lockEye: true }];
+  const r = optimizeSets(items, { ...base, goals: goals14 })[0];
+  const sh = r.selection.shoulder;
+  if (sh && /Justicar Shoulder/.test(sh.name || '')) assert.equal(r.perSlot.shoulder.bonusKept, false);
+});
+
 test('Justicar Shoulderguards: the two gems map to the yellow and blue sockets (bonus can activate)', () => {
   const r = optimizeSets(items, base)[0];
   const sh = r.selection.shoulder;

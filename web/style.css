@@ -122,6 +122,10 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .sock-chip { font-size: 10px; line-height: 1.5; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 4px; }
 .sock-chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(0,0,0,.5); background: currentColor; }
 .sock-chip.sock-red { color: #ff7a7a; } .sock-chip.sock-yellow { color: #f0d774; } .sock-chip.sock-blue { color: #7aa8ff; } .sock-chip.sock-meta { color: #d9c2ff; }
+/* Per-slot socket-bonus status: active (earned) vs deliberately skipped (forfeited). */
+.bonus-on { margin-top: 3px; font-size: 11px; color: #86e0a0; }
+.bonus-off { margin-top: 3px; font-size: 11px; color: var(--muted); }
+.ds-slot.right .bonus-on, .ds-slot.right .bonus-off { text-align: right; }
 /* Manual-socketing reminder (gems can't be auto-applied; place by color). */
 .socketnote { margin: 8px 0; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(120,150,255,.10); border: 1px solid rgba(120,150,255,.35); color: var(--text); }
 .defgem { color: var(--warn); font-size: 11px; margin-left: 6px; }
