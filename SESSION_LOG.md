@@ -4,6 +4,30 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 — SESSION WRAP / pick up here
+
+Big day on the gear sim (entries **a–j** below have the detail). All work committed + pushed to
+`main` (tip `26f5422`), tree clean, **122 tests pass**. Highlights:
+- **Gemming/sockets:** gate-aware socket bonuses; never drop a free bonus; per-gem socket-color chips;
+  active-vs-skipped bonus shown; meta now counts locked items' colors + flags a kept dark meta.
+- **Keep-mode:** "keep existing gems/enchants" with scope presets (off / all completed / equipped
+  completed / current as-is) **plus** a per-set "Lock this set's gems/enchants" button (banner + Clear).
+- **AOE Trash:** uses aoeThreat weighting; **crush gate dropped** (trash ≤72 can't crush); spell hit
+  de-valued (~5% cap). Librams modeled (Eternal Rest → ~35 spell damage; Repentance → block 42).
+- **Import robustness:** keep stat-less equip items; lift resolved→base when the tooltip scan dropped
+  an innate stat (the +spell-damage plate bug).
+- **Sixty Upgrades:** weights panel exports the **SU JSON** (verified, incl. `spellCritRating` /
+  `blockValueBonus`); gear export note reworded; buff note is a live per-set downstream calc.
+
+**Open follow-ups (none blocking):**
+- Kept inactive meta is *warned*, not auto-activated (deliberate; revisit if wanted).
+- `INT_PER_SPELLCRIT=80` is a rough constant (no int→spell-crit formula in the model yet).
+- Libram spell-damage value (~35) and AOE weight magnitudes are tunable approximations.
+- Runner gate-recovery (gate-aware re-gem) is unit-tested but not yet exercised by a real crushable scan.
+- Pre-existing: onboarding README / user on-ramp (commit 3685d21); bundled unowned-item DB (open M3).
+
+---
+
 ## 2026-06-27 (j) — Locked-meta fix, per-set lock button, live buff note
 
 Batch of four from the player:
