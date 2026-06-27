@@ -215,5 +215,5 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **Lock conditions: leg armor / spellthread confirmed counted.** Leg armor (Runic Spellthread 2748,
   Nethercleft 3013) and every slot enchant (weapon/ring/etc.) are applied via the item's enchant id,
   which `lockEligible` already checks — a leg without leg armor is treated incomplete (solver adds it),
-  one with it can lock. Added a regression test. (Open gap: the **Eternal Belt Buckle** waist socket
-  isn't modeled — we don't suggest it or flag its absence; tracked for a future socket-enhancement pass.)
+  one with it can lock. Added a regression test. (TBC belts take **no** slot enhancement — the Eternal
+  Belt Buckle is a WotLK addition — so the waist correctly has none; all TBC enhancement types are covered.)

@@ -16,12 +16,12 @@ Running handoff notes for resuming work. Newest session at the top.
   (Spellthread 2748 / Nethercleft 3013) stored in the enchant slot, which `lockEligible` already checks
   via `bestEnchant('legs') && !enchantId` — confirmed end-to-end (leg locks showing Runic Spellthread;
   a leg without it reads incomplete). Added a regression test. Suite **115 pass**.
-- **Real remaining gap: Eternal Belt Buckle.** Audit of equipped enhancements showed the **waist**
-  takes no enchant in our DB and we don't model the belt buckle (a prismatic socket adder —
-  `socketPrismatic` is even dropped by `socketsFromStats`). So a buckle-less waist isn't flagged
-  incomplete and we never suggest a buckle. NOTE: gating lock-completeness on the buckle would fight
-  budget keep-mode (the point is keeping what you have), so a buckle is better as a *recommendation*
-  than a lock requirement. Awaiting player's call on a socket-enhancement pass.
+- **No waist-enhancement gap after all.** The audit showed the waist takes no enchant in our DB; I'd
+  flagged the Eternal Belt Buckle as missing — but the player corrected: the belt buckle is a **WotLK**
+  item, not in TBC. TBC belts have no slot enhancement, so the waist correctly has none. Conclusion:
+  **all TBC enhancement types are already covered** in the lock conditions (gems + every slot enchant,
+  incl. leg armor). No socket-enhancement pass needed for TBC. (`socketsFromStats` dropping
+  `socketPrismatic` is therefore moot for TBC.)
 
 ---
 
