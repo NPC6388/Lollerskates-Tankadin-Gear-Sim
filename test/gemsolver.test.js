@@ -5,7 +5,7 @@ import { SCALES } from '../src/weights.js';
 import { bestGem, bestMeta, metaActivated, gemColors } from '../src/gems.js';
 import { bestEnchant } from '../src/enchants.js';
 import { professionPerks } from '../src/professions.js';
-import { recommendEnchants, solveLoadout, gemWeights } from '../src/gemsolver.js';
+import { recommendEnchants, solveLoadout, gemWeights, planItemGems } from '../src/gemsolver.js';
 import { parseExport, equippableItems } from '../src/import.js';
 import { UNBUFFED_EXPORT } from './fixtures/lollerskate-unbuffed.js';
 
@@ -112,6 +112,28 @@ test('socket bonus: keeps the raw gem when the bonus is not worth it', () => {
   assert.equal(out.gems.choices[0].name, raw.gem.name);              // kept the raw best gem
   assert.equal(out.gems.stats.spellDamage, raw.gem.stats.spellDamage); // its spell damage
   assert.equal(out.gems.stats.defenseRating, undefined);             // bonus forfeited
+});
+
+test('gate-aware: keeps a defense socket bonus a threat set would forfeit while below the cap', () => {
+  // Threat objective alone forfeits a +4 defense bonus on a BLUE socket (matching is a threat
+  // downgrade worth more than the bonus) — same call the chest makes on a 1:4 set.
+  const item = { slot: 'chest', stats: {}, sockets: { blue: 1 }, socketBonus: { stat: 'defenseRating', value: 4 } };
+  const off = planItemGems(item, SCALES.threatAOE, { names: [] });
+  assert.equal(off.stats.defenseRating, undefined); // forfeited on the pure threat objective
+  // Below the cap (gateScale given), the defense bonus is load-bearing for legality: priced on the
+  // cap scale, matching wins, so the bonus is banked (gem defense + the +4 bonus).
+  const on = planItemGems(item, SCALES.threatAOE, { names: [] }, undefined, { gateScale: SCALES.survivalUncrushable });
+  assert.ok((on.stats.defenseRating || 0) >= 4, 'defense bonus kept when gate-aware');
+});
+
+test('free bonus: banks a socket bonus when the globally best gem already fits the socket', () => {
+  // A scale that only values spell damage: the best gem is a RED spell-damage gem, and the socket
+  // is red, so matching costs nothing. Even though the bonus stat (parry) is worth 0 here, it is
+  // free to keep — the >= tie-break banks it rather than forfeiting.
+  const w = { spellDamage: 1 };
+  const item = { slot: 'hands', stats: {}, sockets: { red: 1 }, socketBonus: { stat: 'parryRating', value: 4 } };
+  const out = planItemGems(item, w, { names: [] });
+  assert.equal(out.stats.parryRating, 4); // free bonus banked
 });
 
 test('cap-aware: drops the crush-removal premium once already uncrushable', () => {

@@ -25,6 +25,14 @@ export function gemWeights(weights, { atCapWeights, uncrushable } = {}) {
 
 const SOCKET_COLORS = { socketRed: 'red', socketYellow: 'yellow', socketBlue: 'blue' };
 
+// Socket-bonus stats that feed the hard GATES (uncrushable / crit immunity): avoidance, block,
+// defense, resilience, and agility (-> dodge). When the set is still BELOW the uncrush cap, a
+// bonus made of these is load-bearing for legality, not a luxury — so the worth-it test must
+// price it on the cap scale (where avoidance is valued), not the threat objective (where it's ~0).
+export const GATE_STATS = new Set([
+  'defenseRating', 'dodgeRating', 'parryRating', 'blockRating', 'resilienceRating', 'agility',
+]);
+
 function addStats(into, stats, mult = 1) {
   for (const [k, v] of Object.entries(stats)) into[k] = (into[k] || 0) + v * mult;
 }
@@ -90,7 +98,13 @@ function itemSockets(item) {
 // socket bonus beats slotting the globally best gem in every socket. Returns the chosen
 // gems and the stats they add (relative to empty sockets — combine with item.baseStats, not
 // the resolved item.stats, to avoid double-counting the gems already worn).
-export function planItemGems(item, weights, perks = {}, maxPhase) {
+export function planItemGems(item, weights, perks = {}, maxPhase, opts = {}) {
+  // Gate-aware worth-it: while the set is still below the uncrush cap (opts.gateScale given), a
+  // socket bonus made of GATE stats is load-bearing for legality. Decide THIS item's A/B on the
+  // cap scale so the cheap avoidance bonus (and the avoidance gems that earn it) win — exactly the
+  // pieces the set leans defensive on. Above the cap (no gateScale) the threat objective is used.
+  const bonusStat = item.socketBonus && item.socketBonus.stat;
+  const dW = (opts.gateScale && bonusStat && GATE_STATS.has(bonusStat)) ? opts.gateScale : weights;
   const gemOpts = (extra) => ({ jewelcrafting: !!perks.jcGems, ...(maxPhase ? { maxPhase } : {}), ...extra });
   const sockets = itemSockets(item);
   const colored = [];
@@ -102,7 +116,7 @@ export function planItemGems(item, weights, perks = {}, maxPhase) {
 
   if (colored.length) {
     // Option A — ignore the bonus: globally best gem in every socket.
-    const raw = bestGem(weights, gemOpts());
+    const raw = bestGem(dW, gemOpts());
     const scoreA = raw ? raw.score * colored.length : 0;
 
     // Option B — chase the bonus: best color-fitting gem per socket, then add the bonus.
@@ -111,7 +125,7 @@ export function planItemGems(item, weights, perks = {}, maxPhase) {
       let sB = 0, feasible = true;
       const bChoices = [], bStats = {};
       for (const color of colored) {
-        const pick = bestGem(weights, gemOpts({ socketColor: color, matchColor: true }));
+        const pick = bestGem(dW, gemOpts({ socketColor: color, matchColor: true }));
         if (!pick) { feasible = false; break; }
         sB += pick.score;
         bChoices.push({ socket: color, ...pick.gem });
@@ -119,13 +133,16 @@ export function planItemGems(item, weights, perks = {}, maxPhase) {
       }
       if (feasible) {
         const bonusStats = { [item.socketBonus.stat]: item.socketBonus.value };
-        sB += score(bonusStats, weights);
+        sB += score(bonusStats, dW);
         addStats(bStats, bonusStats);
         optB = { score: sB, choices: bChoices, stats: bStats };
       }
     }
 
-    if (optB && optB.score > scoreA) {
+    // Take the bonus on a TIE (>=), not just a strict win: when the color-fitting gems score the
+    // same as the globally best gem — i.e. the gems we'd slot anyway already match the sockets —
+    // matching costs nothing, so we should bank the free bonus rather than forfeit it.
+    if (optB && optB.score >= scoreA) {
       choices.push(...optB.choices);
       addStats(stats, optB.stats);
     } else if (raw) {

@@ -151,3 +151,19 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   value edges ahead. Effect: the cloak enchant now picks **Greater Agility** over **Cloak - Dodge**
   (relevant once Steelweave is phase-gated out). The **uncrushable-cap** scale is left dodge-ahead
   on purpose — reaching the crush cap is about raw avoidance per point, where dodge rating wins.
+- **Gate-aware socket bonuses.** The per-item socket-bonus worth-it test (`planItemGems`, option A
+  vs B) scored only on the goal weights, so on a threat-leaning set (e.g. 1:4) a focus piece would
+  **forfeit a gate-stat bonus** — most importantly a chest's **+4 defense** — because matching the
+  off-color (blue) socket costs more *threat* than the bonus is worth on that scale. But defense is
+  avoidance: that bonus is load-bearing for the **uncrushable** gate, and the threat objective prices
+  it at ~0. `planItemGems` gains a `gateScale` opt and a `GATE_STATS` set (defense/dodge/parry/block/
+  resilience/agility); the runner re-gems **gate-aware** (the worth-it test priced on the cap scale)
+  whenever the socket-bonus-aware set **misses a hard gate** (crush / crit / min-HP), so focus pieces
+  reclaim those bonuses — the cheapest stats back toward the gate — and the flag stays on through the
+  reclaim pass so it can't be undone. A bonus that *isn't* gate-relevant is left alone unless taking
+  it is free (next entry); stamina bonuses aren't gate stats, so a shoulder's +4 stam stays
+  threat-optimal.
+- **Free socket bonuses are no longer dropped on a tie.** The worth-it test took the bonus only on a
+  strict win (`>`), so when the gems you'd slot anyway already match the sockets — matching costs
+  nothing — a bonus whose stat is worth ~0 on the goal scale was forfeited rather than banked. Now
+  `>=`: a tie goes to the matching option, so any **free** socket bonus is kept.

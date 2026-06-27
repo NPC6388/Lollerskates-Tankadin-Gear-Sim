@@ -189,8 +189,13 @@ function runGoal(goal, items, ctx) {
   // returns the plans (with .gems/.enchant filled), the meta list, the summed added stats, and the
   // evaluated set. Meta-aware: resolveMetas picks metas on the goal objective (mutates the fresh
   // plans it's handed). Re-callable with a different scale map for the reclaim pass below.
+  // gateAware (set below): once the set comes up crushable, re-gem with the socket-bonus worth-it
+  // test priced on the cap scale, so focus pieces KEEP gate-stat bonuses (defense/dodge/parry/…)
+  // they'd otherwise forfeit for a sliver of threat — the cheapest avoidance back toward the cap.
+  let gateAware = false;
   const gemSet = (scaleOf) => {
-    const plans = res.items.map((v) => { const sc = scaleOf(v); return { v, scale: sc, plan: planItemGems(v, sc, perks, maxPhase) }; });
+    const gemOpts = gateAware ? { gateScale: CAP_SCALE } : {};
+    const plans = res.items.map((v) => { const sc = scaleOf(v); return { v, scale: sc, plan: planItemGems(v, sc, perks, maxPhase, gemOpts) }; });
     const metas = resolveMetas(plans, objScale, ctx);
     const added = {};
     const gemChoices = [];
@@ -219,6 +224,20 @@ function runGoal(goal, items, ctx) {
   // Start from the optimizer's variant choice (its cap variants -> def gems).
   const scaleOf = new Map(res.items.map((v) => [v, v._gem === 'cap' ? CAP_SCALE : objScale]));
   let g = gemSet((v) => scaleOf.get(v));
+
+  // GATE RECOVERY. If the socket-bonus-aware set misses a hard gate (crush/crit/min-HP), the
+  // cheapest stats back toward it are usually the gate-stat socket bonuses the threat objective just
+  // forfeited (e.g. a chest's +4 defense — avoidance AND defense toward crit immunity). Re-gem
+  // gate-aware so focus pieces reclaim those bonuses; keep it if it gets the set legal or at least
+  // moves a failing gate the right way. (Stays on for the reclaim pass below so it can't be undone.)
+  if (!finalLegal(g.evald)) {
+    gateAware = true;
+    const gg = gemSet((v) => scaleOf.get(v));
+    const improved = finalLegal(gg.evald)
+      || gg.evald.totalAvoidanceWithHS > g.evald.totalAvoidanceWithHS
+      || gg.evald.critReduction > g.evald.critReduction;
+    if (improved) g = gg; else gateAware = false;
+  }
 
   // RECLAIM the gate overshoot. The optimizer picks cap (def-gem) variants from APPROXIMATE raw-gem
   // stats during the search, but the socket-bonus-aware final set often clears the gates without

@@ -4,6 +4,43 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 — Gate-aware socket bonuses (fresh TGS scan pass)
+
+**Trigger:** on a fresh scan (`scratchpad/export-current.txt`), the player noticed the **raid
+threat 1:4** set forfeited the **shoulder** (+4 stam) and **chest** (+4 defense) socket bonuses,
+and tied the lost chest *defense* to the set being crushable even with Kings + MotW.
+
+### Diagnosis (reproduced)
+Both forfeits are the **blue** socket: the best threat gem is **Veiled Noble Topaz** (orange =
+red+yellow), which doesn't fit blue. `planItemGems`' worth-it test (option A all-best-gem vs B
+match-for-bonus) scored only on the goal weights; at 1:4 the blue-socket downgrade orange→purple
+(Glowing Nightseye) costs ~11.6 obj pts while +4 def is worth only ~4.4 — so it forfeits. Correct
+for *threat*, but the chest's +4 **defense** is avoidance that feeds the **uncrushable gate**, which
+the threat scale prices at ~0. On this scan the set still clears the cap (≈102.95% / 102.4%), so it
+sat right on the cliff; on the player's tighter config that forfeit tips it crushable. (Shoulder +4
+*stam* is not a gate stat — that forfeit is genuinely threat-optimal.)
+
+### Shipped (this commit)
+- **Gate-aware worth-it test.** `planItemGems` gains a `gateScale` opt + exported `GATE_STATS`
+  (defense/dodge/parry/block/resil/agility). When a piece's socket bonus is a gate stat and
+  `gateScale` is given, the A/B decision is priced on the **cap scale**, so the cheap avoidance
+  bonus (and the gems that earn it) win.
+- **Runner gate recovery.** `runner.js` re-gems gate-aware whenever the socket-bonus-aware set comes
+  up **crushable**, keeps it if avoidance rose, and leaves the flag **on through the reclaim pass**
+  so reclaim (which re-gems threat) can't silently undo it.
+- **Free bonus on a tie.** Worth-it tie-break `>` → `>=`: if the gems you'd slot anyway already match
+  the sockets, the bonus is free, so bank it instead of forfeiting (per the player's follow-up).
+- Tests: +2 in `gemsolver.test.js` (gate-aware keeps a defense bonus a threat set forfeits; free
+  bonus banked when the best gem already fits). Full suite **103 pass**.
+
+### Caveat / pick up here
+On THIS scan no ratio ships a crushable set (the optimizer's def-gem variant search already
+over-satisfies the cap to ~102.95%), so the runner gate-recovery path is a **safety net** validated
+by unit test, not yet by an end-to-end crushable scan. If the player still sees crushable, get that
+exact config (professions / phase / trinket locks) to repro the integration path directly.
+
+---
+
 ## 2026-06-26 — Threat-set tuning: buff stacking, spell crit, Veiled/Ornate gems
 
 **Goal:** close the gap where the player's hand-built single-target threat set beat the sim's
