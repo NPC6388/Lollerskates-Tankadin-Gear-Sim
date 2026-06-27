@@ -195,11 +195,14 @@ const wh = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/t
 // Wowhead's power.js adds the icon + hover tooltip to any item link; fall back to plain text
 // (color by gem color) when we have no id.
 const gemLink = (g) => g.id ? wh(g.id, g.name, 'gem') : `<span class="gem g-${GEM_COLOR[g.name] || 'meta'}">${g.name}</span>`;
-// Prefix a recommended gem with a SOCKET-COLOR dot so it's placed in the matching socket (the
-// socket bonus only lights up when each gem sits in a socket of its color; export order is unreliable).
+// Each recommended gem is shown in its own cell: the SOCKET COLOR on top, the gem beneath it — so the
+// player sockets by color. The socket bonus only lights up when each gem sits in a socket of its color,
+// and the export's socket ORDER is unreliable (Lua pairs()), so color is the only safe instruction.
+const isColor = (c) => c === 'red' || c === 'yellow' || c === 'blue';
 const SOCK_LABEL = { red: 'Red', yellow: 'Yellow', blue: 'Blue' };
-const gemRow = (g) => (g.socket && SOCK_LABEL[g.socket]
-  ? `<span class="sock sock-${g.socket}" title="${SOCK_LABEL[g.socket]} socket"></span>` : '') + gemLink(g);
+const socketChip = (s) => isColor(s) ? `<span class="sock-chip sock-${s}">${SOCK_LABEL[s]} socket</span>`
+  : (s === 'meta' ? `<span class="sock-chip sock-meta">Meta</span>` : '');
+const gemCell = (g) => `<div class="gem-cell">${socketChip(g.socket)}<div class="gem-name">${gemLink(g)}</div></div>`;
 // Enchants link by scroll item when one exists, else by the enchanting spell (trainer-taught).
 const whSpell = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/tbc/spell=${id}" target="_blank" rel="noopener">${text}</a>`;
 const enchLink = (e) => e.id ? wh(e.id, e.name, 'ds-ench') : e.spell ? whSpell(e.spell, e.name, 'ds-ench') : `<span class="ds-ench">${e.name}</span>`;
@@ -258,7 +261,7 @@ function slotHTML(r, slotKey, side) {
   const ps = r.perSlot[slotKey] || {};
   const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : (ps.locked ? '<span class="defgem">kept</span>' : '');
   const ench = ps.enchant ? `<div class="ds-ench-row">${enchLink(ps.enchant)}</div>` : '';
-  const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemRow).join('')}</div>` : '';
+  const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemCell).join('')}</div>` : '';
   return `<div class="ds-slot ${side}">
     ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${tag}
     ${ench}${gems}
@@ -291,6 +294,12 @@ function setCard(r) {
     .map((m) => `⚠ ${m.name} won't activate — needs ${m.requires}`).join('<br>');
   const noId = [...new Set(Object.values(r.perSlot).filter((ps) => ps.enchant && !ps.enchant.effectId).map((ps) => ps.enchant.name))];
   const exportNote = noId.length ? `<div class="metawarn">Export: no Sixty Upgrades ID for ${noId.join(', ')} — omitted from the string.</div>` : '';
+  // Gems can't be auto-applied, and the export's socket order isn't reliable — tell the player to
+  // place each gem in the socket whose COLOR is shown above it, so socket bonuses actually activate.
+  const needsManualSocket = Object.values(r.perSlot).some((ps) => (ps.gems || []).some((g) => isColor(g.socket)));
+  const socketNote = needsManualSocket
+    ? `<div class="socketnote">💎 Gems can't be applied automatically. Socket each gem into the <b>matching-color</b> socket shown above it — match by <b>color, not order</b> (socket order varies in-game), or the socket bonus won't activate.</div>`
+    : '';
 
   const doll = `<div class="doll">
     <div class="col left">${LEFT_SLOTS.map((k) => slotHTML(r, k, 'left')).join('')}</div>
@@ -321,6 +330,7 @@ function setCard(r) {
     </div>
     ${buffNote(r.buffImpact)}
     ${doll}
+    ${socketNote}
     ${metaWarn ? `<div class="metawarn">${metaWarn}</div>` : ''}
     ${exportNote}
     ${panels}

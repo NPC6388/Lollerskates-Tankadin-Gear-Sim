@@ -22,8 +22,13 @@ isn't worth it — that's intended). Tests: `test/gem-socket.test.js` (gems tagg
 of the item; Justicar shoulder maps one gem per yellow/blue socket). Suite **112 pass**.
 
 **Follow-up:** CLI still prints gems as an aggregate (no per-socket color) — fine for a dev tool; the
-web UI is the player-facing readout. Could add a forfeit indicator so an off-color dot isn't mistaken
-for a bonus placement.
+web UI is the player-facing readout.
+
+**Update (same session):** per player request, replaced the bare color dot with a **per-socket cell**
+— socket-color chip on top, the gem beneath it — and added a **manual-socketing note** on each set
+card (gems can't be auto-applied; socket by COLOR not order, or the bonus won't light up). Open polish:
+forfeited-bonus fills still show their physical socket chip (a gem may sit off-color when the bonus
+isn't worth it) — could mark those "(any socket)" so they're not mistaken for a bonus placement.
 
 ---
 

@@ -197,3 +197,7 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   while resolved lists YELLOW,BLUE), so placement must be COLOR-based: `perSlot.gems[*]` now carries
   its `socket` color and the web paper-doll shows a colored socket dot per gem. Place each gem in the
   matching-color socket and the bonus lights up regardless of physical order.
+- **Per-socket gem layout + manual-socketing note.** The paper-doll now shows each recommended gem in
+  its own cell — the **socket color** chip on top, the **gem that goes in it** directly beneath — and
+  each set card carries a reminder that gems can't be applied automatically and must be socketed by
+  COLOR (not order, which varies in-game) or the bonus won't activate. Replaces the bare color dot.
