@@ -217,3 +217,10 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   which `lockEligible` already checks — a leg without leg armor is treated incomplete (solver adds it),
   one with it can lock. Added a regression test. (TBC belts take **no** slot enhancement — the Eternal
   Belt Buckle is a WotLK addition — so the waist correctly has none; all TBC enhancement types are covered.)
+- **Import no longer drops stat-less equip-slot items.** `equippableItems` previously required at
+  least one parsed stat, silently hiding owned gear whose value is a non-stat effect — a
+  Consecration/threat **libram**, a pure on-use **trinket**. Now it keeps anything with a recognized
+  equip slot (scored on whatever stats it has, 0 if none) so the piece is at least selectable and its
+  slot fillable; non-gear (shirts/tabards/quest items) still has no equip slot and stays excluded.
+  (Note: a libram still needs its threat effect MODELED to be auto-preferred — being in the pool only
+  makes it available, not better. And bank gear is only captured when the bank window is OPEN during /tgs.)

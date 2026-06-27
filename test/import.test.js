@@ -149,10 +149,26 @@ test('v2: equip locations map to slots', () => {
   assert.equal(equipLocToSlot('INVTYPE_BAG'), null);
 });
 
-test('v2: equippableItems keeps gear, drops stat-less', () => {
+test('v2: equippableItems keeps every equip-slot item, including stat-less ones', () => {
+  // Stat-less equip-slot gear (e.g. a special-effect libram, a pure on-use trinket) is KEPT so it's
+  // still selectable — the ring 12344 has no mapped stats but a real slot, so it stays in the pool.
   const eq = equippableItems(parseExport(V2));
   const slots = eq.map((i) => i.slot).sort();
-  assert.deepEqual(slots, ['head', 'offhand']); // ring 12344 has no mapped stats -> dropped
+  assert.deepEqual(slots, ['head', 'offhand', 'ring']);
+  const ring = eq.find((i) => i.slot === 'ring');
+  assert.deepEqual(ring.stats, {}); // kept despite no mapped stats
+});
+
+test('equippableItems still excludes non-gear (no recognized equip slot)', () => {
+  // A relic/libram with only a non-stat effect is kept (slot = relic), but a shirt/tabard is not.
+  const text = [
+    'TGS11', 'C:name=x',
+    'I:item:32368::::::::70::::::::::|INVTYPE_RELIC|ilvl=110|||Libram of the Eternal Rest',
+    'I:item:45::::::::70::::::::::|INVTYPE_BODY|ilvl=1||Squire\'s Shirt',
+  ].join('\n');
+  const eq = equippableItems(parseExport(text));
+  assert.deepEqual(eq.map((i) => i.slot), ['relic']); // libram kept, shirt excluded
+  assert.equal(eq[0].name, 'Libram of the Eternal Rest');
 });
 
 test('parseItemString pulls id / enchant / gems / suffix', () => {

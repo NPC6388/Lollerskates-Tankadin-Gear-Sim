@@ -192,8 +192,12 @@ export function parseExport(text) {
   return out;
 }
 
-// Keep only items the optimizer can place: a recognized equip slot and at least
-// one mapped stat (stat-less items can't be scored).
+// Keep every item the optimizer can PLACE: anything with a recognized equip slot. We deliberately
+// DON'T require a parsed stat anymore — some real gear scores its value through an effect the tooltip
+// parser doesn't capture as a stat (a Consecration/threat libram, a pure on-use trinket). Dropping
+// those silently hid owned gear from the optimizer; now they stay in the pool (scored on whatever
+// stats they do have, 0 if none) so the slot is at least fillable and the piece is selectable.
+// Non-gear (shirts, tabards, quest items) has no mapped equip slot, so it's still excluded.
 export function equippableItems(parsed) {
-  return parsed.items.filter((it) => it.slot && it.stats && Object.keys(it.stats).length > 0);
+  return parsed.items.filter((it) => it.slot && it.stats);
 }

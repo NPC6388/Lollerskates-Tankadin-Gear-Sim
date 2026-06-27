@@ -4,6 +4,30 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (e) — Scan completeness: stat-less gear no longer dropped
+
+**Trigger:** player asked why the AOE set uses Libram of Repentance not Libram of (the) Eternal Rest,
+then flagged "the scan isn't picking up all my gear."
+
+**Findings:**
+- The libram is NOT in the export at all (only one relic line, Repentance id 29388 = blockRating 42).
+  The addon exports every item it can read a LINK for (no stat filter), and reads bank contents only
+  while the bank window is OPEN — so the most likely cause is the libram was in a CLOSED bank during /tgs.
+- **Latent import bug fixed:** `equippableItems` required ≥1 parsed stat, so it silently dropped any
+  equip-slot item whose value is a non-stat effect (a threat/Consecration libram, a pure on-use
+  trinket). Now it keeps anything with a recognized slot (scored on whatever stats it has). Non-gear
+  (shirt/tabard/quest) has no equip slot, still excluded. Tests updated + added (116 pass).
+
+**Still open (told the player):**
+- A libram only becomes *available* in the pool — its threat effect isn't MODELED as a stat, so it
+  scores ~0 and won't auto-beat Repentance's block for AOE until libram effects are modeled.
+- No way to force a specific relic (only trinkets have locks). A relic-lock or libram-effect modeling
+  is the next step if they want Eternal Rest actually chosen.
+- Possible addon improvement: report item counts by source (equipped/bags/bank) + warn if the bank
+  looks closed, so completeness is verifiable. Not done yet (would bump addon to v12).
+
+---
+
 ## 2026-06-27 (d) — Sixty Upgrades weights panel + leg-armor lock check
 
 - **SU stat-weights panel** (`index.html` #weights-panel, `web/app.js` renderWeights). Shows the
