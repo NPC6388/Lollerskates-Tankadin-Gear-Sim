@@ -164,6 +164,7 @@ function runOptimize() {
       const results = optimizeSets(items, {
         professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
         faction: $('faction').value, useImbuedMeta: $('imbuedMeta').checked,
+        keepGemsEnchants: keepFromScope($('keepScope').value),
         talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
       });
       render(results);
@@ -176,6 +177,16 @@ function runOptimize() {
   }, 20);
 }
 const num = (v) => (v ? +v : null);
+
+// "Keep gems & enchants" scope preset -> optimizeSets.keepGemsEnchants option.
+function keepFromScope(scope) {
+  switch (scope) {
+    case 'all': return true;                                          // every completed item
+    case 'equipped': return { equippedOnly: true };                  // worn completed items
+    case 'current': return { equippedOnly: true, ignoreCompleteness: true }; // worn items, even unfinished
+    default: return false;                                            // 'off' — re-gem everything
+  }
+}
 
 // ---- render -----------------------------------------------------------------
 const fmt = (n) => Math.round(n).toLocaleString();
@@ -240,7 +251,7 @@ function slotHTML(r, slotKey, side) {
   const it = r.selection[slotKey];
   if (!it) return `<div class="ds-slot ${side} empty"><span class="ds-label">${SLOT_LABEL[slotKey]}</span></div>`;
   const ps = r.perSlot[slotKey] || {};
-  const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : '';
+  const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : (ps.locked ? '<span class="defgem">kept</span>' : '');
   const ench = ps.enchant ? `<div class="ds-ench-row">${enchLink(ps.enchant)}</div>` : '';
   const gems = (ps.gems && ps.gems.length) ? `<div class="ds-gems">${ps.gems.map(gemLink).join('')}</div>` : '';
   return `<div class="ds-slot ${side}">

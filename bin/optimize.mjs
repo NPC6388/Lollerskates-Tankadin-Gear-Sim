@@ -20,6 +20,14 @@ const BUFF = 'raid';                // 'raid' (Kings+MotW, they stack) | 'kings'
 const PHASE = 2;                    // cap gems to this content phase
 const FACTION = 'Aldor';            // Aldor | Scryer (shoulder inscriptions)
 const USE_IMBUED = true;            // include the Imbued Unstable Diamond meta
+// KEEP_GEMS scope: ''/0 off | 1/all = keep all completed | equipped | current (worn, even unfinished)
+const KEEP_GEMS = (() => {
+  const v = (process.env.KEEP_GEMS || '').toLowerCase();
+  if (v === '1' || v === 'all') return true;
+  if (v === 'equipped') return { equippedOnly: true };
+  if (v === 'current') return { equippedOnly: true, ignoreCompleteness: true };
+  return false;
+})();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const exportPath = process.argv[2] || path.join(__dirname, '..', 'scratchpad', 'export.txt');
@@ -30,7 +38,7 @@ if (!fs.existsSync(exportPath)) {
 
 const parsed = parseExport(toExportText(fs.readFileSync(exportPath, 'utf8')));
 const items = equippableItems(parsed);
-const results = optimizeSets(items, { professions: PROFESSIONS, buff: BUFF, maxPhase: PHASE, faction: FACTION, useImbuedMeta: USE_IMBUED, talentRanks: parsed.talentRanks });
+const results = optimizeSets(items, { professions: PROFESSIONS, buff: BUFF, maxPhase: PHASE, faction: FACTION, useImbuedMeta: USE_IMBUED, talentRanks: parsed.talentRanks, keepGemsEnchants: KEEP_GEMS });
 
 const ORDER = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'weapon', 'offhand', 'relic'];
 
@@ -49,7 +57,7 @@ for (const r of results) {
   console.log(`\n========== ${r.goal.name} (${r.goal.focus}) ==========`);
   console.log(`legal:${r.legal}  uncrit:${e.raidCritImmune} (${e.critReduction.toFixed(2)}%)  uncrush:${e.uncrushable} (${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%)`);
   console.log(`EHP ${Math.round(e.ehpPhysical).toLocaleString()}   SP ${Math.round(a.spellPower)}   spellHit ${spellHitPct(a).toFixed(2)}%   spellCrit ${Math.round(a.spellCritRating || 0)}rtg   stam ${Math.round(a.stamina)}   armor ${Math.round(a.armor).toLocaleString()}   def ${a.defenseSkill.toFixed(0)}   resil ${Math.round(a.resilienceRating)}`);
-  for (const k of ORDER) { const it = r.selection[k]; if (it) console.log(`  ${k.padEnd(9)} ${it.name || it.itemId}${it.itemLevel ? ' (i' + it.itemLevel + ')' : ''}${it._gem === 'cap' ? '  [def-gemmed]' : ''}`); }
+  for (const k of ORDER) { const it = r.selection[k]; if (it) console.log(`  ${k.padEnd(9)} ${it.name || it.itemId}${it.itemLevel ? ' (i' + it.itemLevel + ')' : ''}${it._gem === 'cap' ? '  [def-gemmed]' : ''}${it._gem === 'locked' ? '  [kept]' : ''}`); }
   const gc = {}; for (const g of r.gemChoices) gc[g.name] = (gc[g.name] || 0) + 1;
   console.log('  gems:', Object.entries(gc).map(([n, c]) => `${c}x ${n}`).join(', ') || '(none)');
   for (const m of r.metas) if (!m.active) console.log(`  ⚠ meta ${m.name} INACTIVE — needs ${m.requires}`);

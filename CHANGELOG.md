@@ -167,3 +167,25 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   strict win (`>`), so when the gems you'd slot anyway already match the sockets — matching costs
   nothing — a bonus whose stat is worth ~0 on the goal scale was forfeited rather than banked. Now
   `>=`: a tie goes to the matching option, so any **free** socket bonus is kept.
+- **"Keep existing gems/enchants" build mode.** New `optimizeSets` option `keepGemsEnchants`
+  (`true` = every item — budget mode; an item-id array or `{ itemIds, slots }` = lock specific
+  shared pieces). A **locked** item is used exactly as it sits: scored on its resolved stats, never
+  re-gemmed or re-enchanted, with its CURRENT gems + enchant reported (ids → names via the curated
+  DBs). Mechanically it's a single variant (no focus/cap split) contributing `resolved − base` on
+  top of `baseStats`, so there's no double-count; the per-slot readout gains a `locked` flag (web
+  paper-doll shows a **kept** tag, CLI shows **[kept]**, exports the kept gem/enchant ids). Motivation:
+  budget players who can't re-cut gems / buy enchants per set, and items physically **shared across
+  sets** that can't be re-gemmed on every swap. CLI: `KEEP_GEMS=1 node bin/optimize.mjs`; web: the
+  "Keep current gems & enchants" checkbox.
+  - **Only COMPLETE items lock.** `lockEligible` gates locking: an item with an **empty socket** (gem
+    count < socket count) or a **missing enchant** (one the solver would otherwise apply, given the
+    player's perks/phase/faction) is never locked — there's nothing finished to preserve, so the
+    solver gems/enchants it normally. This makes "keep all" mean *keep what you've finished, optimize
+    the rest*, which is the useful budget default without per-item toggling.
+  - **Scope presets** instead of a 40-item checklist. `keepGemsEnchants` now also takes
+    `{ equippedOnly?, ignoreCompleteness? }`, surfaced in the web UI as a dropdown:
+    **Re-gem everything** (off) / **Keep all completed** (`true`) / **Keep equipped completed**
+    (`{equippedOnly:true}`) / **Keep current set as-is** (`{equippedOnly:true, ignoreCompleteness:true}`
+    — freezes worn items even when unfinished). CLI mirrors via `KEEP_GEMS=all|equipped|current`.
+    Caveat: "as-is" freezes worn gems/enchants but the optimizer may still swap a slot to a strictly
+    better item (which then gets gemmed) — a true no-swap "evaluate my exact set" mode is a follow-up.

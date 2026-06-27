@@ -4,6 +4,51 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (b) — "Keep existing gems/enchants" build mode
+
+Implemented the backlog item from earlier today: a build mode that uses items **as they sit** —
+no re-gem/-enchant — for budget players and for items **shared across sets** that can't be re-gemmed
+on every swap.
+
+### Shipped (this commit)
+- **Engine** (`runner.js`): `optimizeSets` option `keepGemsEnchants` — `true` (lock all),
+  an item-id array, or `{ itemIds, slots }`. Locked items become a **single variant** scored on
+  resolved stats (no focus/cap split); final gemming skips `planItemGems`/`bestEnchant` and instead
+  contributes the `resolved − base` delta (kept gems + enchant + active socket bonus) on top of
+  `baseStats` — no double-count. Current gems/enchant are reported by mapping the export's gem
+  item-ids + enchant effect-id back to names via the curated DBs (`GEM_BY_ID`, `ENCHANT_BY_EFFECT`);
+  unknown ids fall back to a generic label. Per-slot readout gains a `locked` flag.
+- **CLI** (`bin/optimize.mjs`): `KEEP_GEMS=1` env toggle; selection lines show `[kept]`.
+- **Web** (`index.html` / `app.js`): "Keep current gems & enchants" checkbox → `keepGemsEnchants`;
+  paper-doll shows a **kept** tag; the Sixty-Upgrades export uses the kept gem/enchant ids.
+- **Tests**: `test/keep-gems.test.js` (3) — keep-all locks socketed pieces to their current gems
+  (no threat re-gem; control asserts the unlocked run DOES re-gem); no double-count (set SP == sum of
+  picked items' resolved SP); per-item lock keeps only the named item, others still optimize. Suite **106 pass**.
+
+### Refinement (player feedback, same session)
+- **Only COMPLETE items lock** (`lockEligible`). An item with an empty socket (gem count < socket
+  count) or a missing enchant the solver would apply (perks/phase/faction-aware) is treated as
+  UNLOCKED, so the solver finishes it. Effect: "keep all" = preserve finished gems/enchants, optimize
+  the unfinished — the useful budget default with no per-item list needed. Tests: +2 (eligibility
+  truth table; keep-all skips an item with a blanked gem). Suite **108 pass**.
+- **Scope presets (player chose dropdown over a 40-item list).** `keepGemsEnchants` extended to
+  `{ equippedOnly?, ignoreCompleteness? }`; web dropdown + `KEEP_GEMS=all|equipped|current`:
+  Re-gem everything / Keep all completed / Keep equipped completed / Keep current set as-is
+  (the last sets `ignoreCompleteness` so worn-but-unfinished items still freeze). Tests +3 (110 total).
+  **Caveat / follow-up:** "as-is" freezes the worn gems/enchants but does NOT pin item *selection* —
+  the optimizer can still swap a slot to a strictly better item (then gemmed). A true no-swap
+  "evaluate exactly what I'm wearing" mode (force-select equipped per slot) is the next increment if wanted.
+
+### Limitations / follow-ups
+- Meta activation tally doesn't count a **locked** item's current gem colors toward a *non*-locked
+  item's meta requirement (locked plans contribute no colored choices). Fine for all-locked (no meta
+  is re-picked) and harmless for partial locks (recolor only touches focus sockets), but a locked
+  blue-heavy chest won't help a head's "3+ blue" meta activate. Note for later if it bites.
+- Lock = "as it sits now": a locked item with **empty** sockets stays empty (we keep current, we
+  don't cheap-gem). Intended, but worth a UI hint so budget users aren't surprised.
+
+---
+
 ## 2026-06-27 — Gate-aware socket bonuses (fresh TGS scan pass)
 
 **Trigger:** on a fresh scan (`scratchpad/export-current.txt`), the player noticed the **raid
@@ -40,6 +85,7 @@ by unit test, not yet by an end-to-end crushable scan. If the player still sees 
 exact config (professions / phase / trinket locks) to repro the integration path directly.
 
 ### Backlog (player request — do AFTER the current config pass)
+- ✅ **SHIPPED** (see the 2026-06-27 (b) entry above).
 - **"Keep existing gems/enchants" option.** A toggle to build sets WITHOUT re-gemming/re-enchanting —
   treat each item's currently-socketed gems + applied enchant as **fixed** (score off resolved
   `item.stats`, skip `planItemGems`/`bestEnchant` for locked items). Two motivations: (1) **budget**

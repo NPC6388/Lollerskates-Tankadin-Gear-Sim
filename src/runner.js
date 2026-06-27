@@ -6,10 +6,10 @@
 // item and gem IT for defense when that beats a tankier swap. Final gems are recomputed
 // socket-bonus-aware via solveLoadout.
 
-import { aggregate, BUFFS, TALENTS, talentsFromRanks } from './model.js';
+import { aggregate, BUFFS, TALENTS, talentsFromRanks, STAT_KEYS } from './model.js';
 import { evaluateSet } from './character.js';
-import { bestGem, bestMeta, gemColors, metaActivated, META_GEMS, CURRENT_PHASE } from './gems.js';
-import { bestEnchant } from './enchants.js';
+import { bestGem, bestMeta, gemColors, metaActivated, GEMS, META_GEMS, CURRENT_PHASE } from './gems.js';
+import { bestEnchant, ENCHANTS } from './enchants.js';
 import { score } from './scoring.js';
 import { SCALES, blendScale } from './weights.js';
 import { planItemGems } from './gemsolver.js';
@@ -41,6 +41,72 @@ const baseOf = (it) => (it.baseStats && Object.keys(it.baseStats).length) ? it.b
 const sumInto = (into, s, m = 1) => { for (const [k, v] of Object.entries(s || {})) into[k] = (into[k] || 0) + v * m; };
 const hasSockets = (it) => { const s = it.sockets || {}; return !!(s.red || s.yellow || s.blue || s.meta); };
 
+// --- "Keep existing gems/enchants" support -------------------------------------------------
+// For LOCKED items the solver leaves the currently-socketed gems + applied enchant in place. The
+// resolved item.stats already fold those in (plus any active socket bonus), so a locked item just
+// contributes resolved-minus-base (the gem/enchant delta) on top of baseStats — no re-gemming.
+const lockedDelta = (it) => {
+  const base = baseOf(it), res = it.stats || {};
+  const out = {};
+  for (const k of STAT_KEYS) { const d = (res[k] || 0) - (base[k] || 0); if (d) out[k] = d; }
+  return out;
+};
+
+// id -> name lookups so a locked item can REPORT its current gems/enchant (the addon export carries
+// gem item-ids + the enchant effect-id, not names). Falls back to a generic label for anything not
+// in the curated DBs (e.g. a gem the solver doesn't stock).
+const GEM_BY_ID = new Map();
+for (const g of [...GEMS, ...META_GEMS]) if (g.id) GEM_BY_ID.set(g.id, g);
+const ENCHANT_BY_EFFECT = new Map();
+for (const list of Object.values(ENCHANTS)) for (const e of list) if (e.enchant) ENCHANT_BY_EFFECT.set(e.enchant, e);
+const currentGems = (it) => (it.gems || []).map((id) => {
+  const g = GEM_BY_ID.get(id);
+  return g ? { name: g.name, id: g.id } : { name: `Gem ${id}`, id };
+});
+const currentEnchant = (it) => {
+  const id = it.enchantId;
+  if (!id) return null;
+  const e = ENCHANT_BY_EFFECT.get(id);
+  return e ? { name: e.name, id: e.id || null, spell: e.spell || null, effectId: e.enchant || id }
+           : { name: `Enchant ${id}`, id: null, spell: null, effectId: id };
+};
+
+// Is an item COMPLETE enough to lock? An item with EMPTY sockets or a MISSING enchant (one the
+// optimizer would otherwise apply) is never locked — there's nothing finished to preserve there, so
+// we let the solver gem/enchant it even in keep-mode. "Complete" = every socket filled AND (the slot
+// takes no enchant given the player's perks/phase, OR it already has one).
+export function lockEligible(item, { perks = { names: [] }, faction = null, maxPhase, objScale } = {}) {
+  const s = item.sockets || {};
+  const socketCount = (s.red || 0) + (s.yellow || 0) + (s.blue || 0) + (s.meta || 0);
+  if ((item.gems || []).length < socketCount) return false; // an empty socket -> let the solver gem it
+  const en = bestEnchant(item.slot, objScale || SCALES.balanced, perks, { faction, maxPhase });
+  if (en && !item.enchantId) return false; // an applicable enchant is missing -> let the solver add it
+  return true;
+}
+
+// Normalize the keepGemsEnchants option into { pred, ignoreCompleteness }. Accepts:
+//   true                      lock every (completed) item — budget "keep all completed"
+//   itemId[]                  lock specific shared pieces (by item-id)
+//   { itemIds?, slots?, equippedOnly?, ignoreCompleteness? }
+//     equippedOnly: restrict to currently-equipped items (the "keep equipped" / "current set" scopes)
+//     ignoreCompleteness: lock even items with empty sockets / no enchant (the "as-is" scope)
+// Returns null when nothing would lock.
+function keepConfig(spec) {
+  if (!spec) return null;
+  if (spec === true) return { pred: () => true, ignoreCompleteness: false };
+  if (Array.isArray(spec)) {
+    const s = new Set(spec);
+    return s.size ? { pred: (it) => s.has(it.itemId), ignoreCompleteness: false } : null;
+  }
+  const ids = new Set(spec.itemIds || []);
+  const slots = new Set(spec.slots || []);
+  const equippedOnly = !!spec.equippedOnly;
+  const named = ids.size || slots.size;
+  if (!named && !equippedOnly) return null;
+  const pred = (it) => (!equippedOnly || !!it.equipped) && (!named || ids.has(it.itemId) || slots.has(it.slot));
+  return { pred, ignoreCompleteness: !!spec.ignoreCompleteness };
+}
+
 // Approximate (raw-gem) stats for one gem intent — drives SELECTION; final gems recomputed below.
 // meta-selection options: phase cap + any excluded metas (e.g. Imbued Unstable when toggled off).
 const metaOptsFor = (ctx) => ({ ...(ctx.maxPhase ? { maxPhase: ctx.maxPhase } : {}), ...(ctx.metaExclude && ctx.metaExclude.length ? { exclude: ctx.metaExclude } : {}) });
@@ -70,6 +136,14 @@ function buildVariant(it, gemScale, enchScale, ctx) {
 
 function itemVariants(it, objScale, ctx) {
   const mk = (tag, stats) => ({ ...it, stats, _gem: tag });
+  // Locked items can't be re-gemmed/-enchanted, so there's a single variant scored on the item's
+  // current (resolved) stats — no focus/cap split (the cap variant only exists to re-gem for defense).
+  // Only items the player WANTS kept AND that are actually complete (no empty socket / missing
+  // enchant) lock; an incomplete item falls through to the normal focus/cap re-gem path.
+  if (ctx.keep && ctx.keep(it)
+      && (ctx.keepIgnoreCompleteness || lockEligible(it, { perks: ctx.perks, faction: ctx.faction, maxPhase: ctx.maxPhase, objScale }))) {
+    return [mk('locked', { ...(it.stats || {}) })];
+  }
   const focus = mk('focus', buildVariant(it, objScale, objScale, ctx));
   if (!hasSockets(it)) return [focus];
   return [focus, mk('cap', buildVariant(it, CAP_SCALE, objScale, ctx))];
@@ -195,12 +269,21 @@ function runGoal(goal, items, ctx) {
   let gateAware = false;
   const gemSet = (scaleOf) => {
     const gemOpts = gateAware ? { gateScale: CAP_SCALE } : {};
-    const plans = res.items.map((v) => { const sc = scaleOf(v); return { v, scale: sc, plan: planItemGems(v, sc, perks, maxPhase, gemOpts) }; });
+    // Locked items keep their current gems/enchant: no re-gem, just the resolved-minus-base delta.
+    const plans = res.items.map((v) => v._gem === 'locked'
+      ? { v, scale: null, locked: true, plan: { choices: [], stats: lockedDelta(v), metaCount: 0 } }
+      : { v, scale: scaleOf(v), plan: planItemGems(v, scaleOf(v), perks, maxPhase, gemOpts) });
     const metas = resolveMetas(plans, objScale, ctx);
     const added = {};
     const gemChoices = [];
     for (const p of plans) {
-      sumInto(added, p.plan.stats);
+      sumInto(added, p.plan.stats); // for locked items this delta already includes the kept enchant
+      if (p.locked) {
+        p.gems = currentGems(p.v);
+        p.enchant = currentEnchant(p.v);
+        gemChoices.push(...p.gems);
+        continue;
+      }
       const en = bestEnchant(p.v.slot, p.scale, perks, { faction, maxPhase });
       if (en) sumInto(added, en.enchant.stats);
       gemChoices.push(...p.plan.choices);
@@ -287,7 +370,7 @@ function runGoal(goal, items, ctx) {
   const perSlot = {};
   for (const [slotKey, it] of Object.entries(res.selection)) {
     const p = plans.find((x) => x.v === it);
-    perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap' } : { gems: [], enchant: null, metas: [], defGemmed: false };
+    perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap', locked: it._gem === 'locked' } : { gems: [], enchant: null, metas: [], defGemmed: false, locked: false };
   }
   return { goal, selection: res.selection, items: res.items, legal: res.legal, evald, agg, gemChoices, metas, perSlot, buffImpact };
 }
@@ -306,6 +389,9 @@ const BUFF_MODE = {
 // Main entry. items = equippableItems(parseExport(text)). options:
 //   professions: string[]   buff: 'kings'|'motw'|'none'   maxPhase?: number   trinketLocks?: {icon,eye}
 //   goals?: GOAL_PRESETS-shaped[] (override, e.g. with UI-tweaked ratios)
+//   keepGemsEnchants?: true | itemId[] | { itemIds?, slots?, equippedOnly?, ignoreCompleteness? }
+//     keep current gems/enchants (no re-gem/-enchant). true = all completed items; equippedOnly =
+//     only worn items; ignoreCompleteness = lock even incomplete items ("current set as-is")
 export function optimizeSets(items, options = {}) {
   // back-compat: legacy `buffed: true` -> full raid buffs (Kings + MotW, which stack).
   const mode = BUFF_MODE[options.buff] || (options.buffed ? BUFF_MODE.raid : BUFF_MODE.none);
@@ -321,6 +407,9 @@ export function optimizeSets(items, options = {}) {
     // Talent-driven stat modifiers from the scanned build (TR: line); null = default 0/43/18.
     talents: options.talentRanks && Object.keys(options.talentRanks).length ? talentsFromRanks(options.talentRanks) : null,
     locks: options.trinketLocks || DEFAULT_TRINKET_LOCKS,
+    // "Keep existing gems/enchants" — see keepConfig for accepted shapes. Locked items use their
+    // current gems/enchant, never re-gemmed; only COMPLETE items lock unless ignoreCompleteness.
+    ...(() => { const k = keepConfig(options.keepGemsEnchants); return { keep: k && k.pred, keepIgnoreCompleteness: k ? k.ignoreCompleteness : false }; })(),
   };
   const goals = options.goals || GOAL_PRESETS;
   return goals.map((g) => runGoal(g, items, ctx));

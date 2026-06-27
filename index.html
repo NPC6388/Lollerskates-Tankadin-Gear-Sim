@@ -59,6 +59,14 @@
             <option value="none">None (unbuffed)</option>
           </select>
           <label class="check"><input type="checkbox" id="imbuedMeta" checked /> Use Imbued Unstable Diamond (spell-damage meta)</label>
+          <label for="keepScope">Keep gems &amp; enchants</label>
+          <select id="keepScope">
+            <option value="off" selected>Re-gem everything</option>
+            <option value="all">Keep all completed</option>
+            <option value="equipped">Keep equipped completed</option>
+            <option value="current">Keep current set as-is</option>
+          </select>
+          <small>Locked items keep their current gems/enchants (budget / items shared across sets). &ldquo;Completed&rdquo; skips pieces with empty sockets or no enchant so the solver finishes them; &ldquo;as-is&rdquo; freezes worn items even when unfinished.</small>
           <small>Kings &amp; MotW DO stack (flat + percentage) — &ldquo;raid&rdquo; applies both. ⚠ Buffs aren't carried by the export; set them in Sixty Upgrades after importing.</small>
         </div>
         <div class="field">
