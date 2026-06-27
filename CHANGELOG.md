@@ -277,3 +277,7 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the player's working single-target AND survival scales. Each scale's button now copies
   `JSON.stringify` of its non-zero entries. How-to updated (copy JSON → paste into SU Custom Stat
   Weights); the Pawn string is gone.
+- **Verified Sixty Upgrades accepts every emitted weight key**, including `spellCritRating` (player
+  pasted the updated Single-Target/AOE JSON into SU with no error and `spellCritRating` is listed). So
+  the SU weights export needs no key filtering — the full non-zero scale (incl. `blockValueBonus` and
+  the socket weights) imports cleanly.

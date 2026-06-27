@@ -16,9 +16,11 @@ pasted a working single-target scale. The earlier "Copy Pawn string" was my wron
   accepts that key, so nothing is excluded). How-to in `index.html` updated (copy JSON → SU Custom Stat
   Weights); CSS class `.copy-pawn` → `.copy-weights`. Suite **120 pass**.
 - The emitted single-target JSON matches the player's working one except it now also includes
-  `spellCritRating: 0.45` (added when spell crit became scored). Unverified SU keys to watch:
-  `spellCritRating` and the survival-only `health/blockValue/dodgeRating/parryRating/resilienceRating/
-  armor` — flagged to the player to confirm SU accepts them (will drop/rename any it rejects).
+  `spellCritRating: 0.45` (added when spell crit became scored). **Player verified SU accepts every key
+  including `spellCritRating`** (pasted the updated Single-Target/AOE JSON, no error, key is listed) —
+  so no key filtering is needed; the full non-zero scale imports cleanly.
+- Scale drift to re-copy: Survival unchanged; **Single-Target** gains `spellCritRating 0.45`; **AOE**
+  has `spellHitRating` 2.2→0.5 (level-72 trash) + `spellCritRating 0.7`.
 
 ---
 
