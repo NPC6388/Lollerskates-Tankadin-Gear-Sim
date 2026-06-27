@@ -83,6 +83,8 @@ export function parseItemString(s) {
   };
 }
 
+import { libramStats } from './librams.js';
+
 // socket-count stat keys -> color, for exposing a per-item socket layout
 const SOCKET_STAT_KEYS = { socketRed: 'red', socketYellow: 'yellow', socketBlue: 'blue', socketMeta: 'meta' };
 function socketsFromStats(stats = {}) {
@@ -185,6 +187,10 @@ export function parseExport(text) {
         // field, which only lists currently-EMPTY sockets.
         item.sockets = socketsFromStats(item.baseStats || stats);
         item.socketBonus = parseSocketBonus(bonusSeg);
+        // Librams score through a special equip effect the tooltip parser misses (e.g. +Consecration
+        // damage). Override with the modeled effective stats so the libram is valued correctly.
+        const lib = libramStats(item);
+        if (lib) { item.stats = lib; item.baseStats = { ...lib }; }
       }
       out.items.push(item);
     }

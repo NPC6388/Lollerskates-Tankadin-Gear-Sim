@@ -77,6 +77,10 @@ export const STAT_KEYS = [
   'defenseRating', 'dodgeRating', 'parryRating', 'blockRating',
   'blockValue', 'spellDamage', 'hitRating', 'expertiseRating',
   'spellHitRating', 'spellCritRating', 'resilienceRating', 'armor',
+  // Modeled threat-only effect (NOT spell power): flat +damage to Consecration, from a libram.
+  // Scored by the threat scales (high for AOE — Consecration hits every target), never counted as
+  // spell power, so it doesn't perturb the spell-power reconciliation.
+  'consecrationDamage',
 ];
 
 export function sumStats(items) {

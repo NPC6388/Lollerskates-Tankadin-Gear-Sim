@@ -4,6 +4,34 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-27 (f) — Libram effect modeling (Consecration libram wins AOE)
+
+**Context:** player asked why AOE picked Libram of Repentance over Libram of the Eternal Rest, and
+gave the mechanic: in AOE, Holy Shield charges are consumed early so Repentance's "+42 block while
+Holy Shield active" bonus drops, whereas Eternal Rest's +47 Consecration damage keeps benefiting
+(Consecration hits every target). Tooltips confirmed: Eternal Rest = +47 Consecration dmg;
+Repentance = +42 block rating while Holy Shield active.
+
+**Shipped:**
+- `src/librams.js` — models known librams as EFFECTIVE stats (overrides parsed stats, no double-count),
+  matched by id or name. Eternal Rest → `consecrationDamage:47`; Repentance → `blockRating:42`.
+  `import.js` applies it.
+- New modeled stat **`consecrationDamage`** in `STAT_KEYS` + weights — NOT spell power (keeps the
+  spell-power reconcile intact). ~0.4/SP-pt single-target, ~2× SP for AOE (per-target). Added to
+  `PARTS.threat`/`aoeThreat`, the named threat `SCALES`, and `balanced`.
+- **AOE Trash goal now blends `aoeThreat`** (was the single-target `threat` part — previously the AOE
+  set differed from raid only by the looser crush gate, so Consecration's AOE value was invisible).
+  `runner.js` preset ratio `{ehp:1, aoeThreat:2}`; `web/app.js` slider axis `aoeThreat` ("AOE Threat").
+- Verified: AOE → Eternal Rest; raid/survival/balanced → Repentance. Tests `test/librams.test.js`
+  (id/name match; AOE>ST Consecration value; per-goal relic split). Suite **119 pass**.
+
+**Note:** weight magnitudes (0.4 ST / ~2× AOE per SP-point) are reasoned approximations, not a derived
+threat sim — easy to retune in `weights.js` if the player wants a different ST/AOE balance. Repentance's
+block is modeled at full uptime (accurate for ST/survival; slightly generous in AOE, but Eternal Rest
+wins AOE decisively regardless).
+
+---
+
 ## 2026-06-27 (e) — Scan completeness: stat-less gear no longer dropped
 
 **Trigger:** player asked why the AOE set uses Libram of Repentance not Libram of (the) Eternal Rest,

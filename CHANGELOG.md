@@ -224,3 +224,15 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   slot fillable; non-gear (shirts/tabards/quest items) still has no equip slot and stays excluded.
   (Note: a libram still needs its threat effect MODELED to be auto-preferred — being in the pool only
   makes it available, not better. And bank gear is only captured when the bank window is OPEN during /tgs.)
+- **Libram effect modeling + AOE goal now uses AOE-threat weighting.** Librams score through a special
+  equip effect the tooltip parser can't read as a stat, so `src/librams.js` models known Prot librams
+  as effective stats (overriding parsed stats, no double-count): **Libram of the Eternal Rest** →
+  `consecrationDamage: 47`, **Libram of Repentance** → `blockRating: 42`. New modeled stat
+  `consecrationDamage` (a flat add to Consecration; NOT spell power, so spell-power reconciliation is
+  untouched) is scored by the threat scales — modest single-target (~0.4/SP-pt: Consecration is one of
+  several holy threat sources), **high for AOE** (~2× SP: Consecration hits every target). The **AOE
+  Trash** goal now blends `aoeThreat` (was the single-target `threat` part — it only differed from the
+  raid set by a looser crush gate), so it actually optimizes AOE threat. Net result: the AOE set picks
+  **Libram of the Eternal Rest**, while raid/survival/balanced keep **Libram of Repentance** — matching
+  the mechanic that Holy Shield (and thus Repentance's conditional block bonus) stays up single-target
+  but is consumed early in AOE, where the unconditional Consecration libram wins.

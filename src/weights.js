@@ -10,6 +10,7 @@ const ZERO = {
   hitRating: 0, expertiseRating: 0,
   spellDamage: 0, spellHitRating: 0, spellCritRating: 0,
   health: 0, resilienceRating: 0, armor: 0,
+  consecrationDamage: 0,
   metaSockets: 0, redSockets: 0, yellowSockets: 0, blueSockets: 0,
 };
 
@@ -21,6 +22,7 @@ export const SCALES = {
     intellect: 0.1, strength: 0.55, agility: 0.05, defenseRating: 0.04,
     blockRating: 0.3, hitRating: 0.85, expertiseRating: 1.1,
     spellDamage: 1.5, spellHitRating: 1.65, spellCritRating: 0.45,
+    consecrationDamage: 0.6, // ~0.4/SP-pt of single-target Consecration threat, anchored to SP 1.5
     metaSockets: 18, redSockets: 13.5, yellowSockets: 9, blueSockets: 7,
   }),
 
@@ -28,6 +30,7 @@ export const SCALES = {
   threatSingleAtCap: scale({
     intellect: 0.1, strength: 0.55, agility: 0.05, defenseRating: 0.04,
     blockRating: 0.3, spellDamage: 1.5, spellCritRating: 0.45,
+    consecrationDamage: 0.6,
     metaSockets: 18, redSockets: 13.5, yellowSockets: 9, blueSockets: 7,
   }),
 
@@ -36,6 +39,7 @@ export const SCALES = {
     intellect: 0.15, strength: 0.4, agility: 0.05, defenseRating: 0.06,
     blockRating: 0.6, hitRating: 0.5, expertiseRating: 0.7,
     spellDamage: 2.5, spellHitRating: 2.2, spellCritRating: 0.7,
+    consecrationDamage: 5.0, // Consecration hits EVERY target — its flat damage add is the premier AOE threat
     metaSockets: 18, redSockets: 22.5, yellowSockets: 14, blueSockets: 11,
   }),
 
@@ -66,6 +70,7 @@ export const SCALES = {
     dodgeRating: 1.06, parryRating: 0.85, defenseRating: 1.2,
     blockRating: 1.2, blockValue: 0.05, blockValueBonus: 0.05,
     hitRating: 0.6, expertiseRating: 0.9, spellDamage: 1.0, spellHitRating: 1.1, spellCritRating: 0.3,
+    consecrationDamage: 0.4,
     health: 0.08, resilienceRating: 0.05, armor: 0.06,
     metaSockets: 18, redSockets: 9, yellowSockets: 9, blueSockets: 12,
   }),
@@ -90,8 +95,10 @@ export const PARTS = {
   ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 1.05, dodgeRating: 1.0, parryRating: 0.8, defenseRating: 1.1, blockRating: 0.3, intellect: 0.05 },
   // spellCritRating: a spell crit adds +0.5x damage (CRIT_MULT.spell); ~0.3 per rating point
   // relative to spellDamage 1.0 — small, so it breaks near-ties toward crit rather than chasing it.
-  threat: { spellDamage: 1, spellHitRating: 1.1, spellCritRating: 0.3, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },
-  aoeThreat: { spellDamage: 1.4, spellHitRating: 1.3, spellCritRating: 0.4, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12 },
+  // consecrationDamage: Consecration's flat-damage libram effect. ~0.4 per SP-point single-target
+  // (Consecration is one of several holy threat sources); in AOE it hits EVERY target, so ~2x SP.
+  threat: { spellDamage: 1, spellHitRating: 1.1, spellCritRating: 0.3, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1, consecrationDamage: 0.4 },
+  aoeThreat: { spellDamage: 1.4, spellHitRating: 1.3, spellCritRating: 0.4, hitRating: 0.5, expertiseRating: 0.7, strength: 0.35, blockRating: 0.6, intellect: 0.12, consecrationDamage: 2.8 },
   sta: { stamina: 1 },
 };
 

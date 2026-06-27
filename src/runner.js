@@ -27,7 +27,7 @@ export const DEFAULT_TRINKET_LOCKS = { icon: 29370, eye: 28789 }; // Icon of the
 export const GOAL_PRESETS = [
   { id: 'raid', name: 'Raid Threat', focus: 'EHP : threat 1:2', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true }, lockEye: true },
   { id: 'survival', name: 'Survival', focus: 'EHP : threat 2:1', ratio: { ehp: 2, threat: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: false },
-  { id: 'aoe', name: 'AOE Trash', focus: 'EHP : threat 1:2, crush ≥97.4%', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true, uncrushableTarget: CAPS.uncrushableCombined - 5 }, lockEye: true },
+  { id: 'aoe', name: 'AOE Trash', focus: 'EHP : AOE threat 1:2, crush ≥97.4%', ratio: { ehp: 1, aoeThreat: 2 }, gates: { raid: true, requireUncrushable: true, uncrushableTarget: CAPS.uncrushableCombined - 5 }, lockEye: true },
   { id: 'balanced', name: 'Balanced', focus: 'EHP : threat 1:1', ratio: { ehp: 1, threat: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: true },
 ];
 

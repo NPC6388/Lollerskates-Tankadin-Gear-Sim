@@ -23,10 +23,10 @@ for (const g of META_GEMS) GEM_COLOR[g.name] = 'meta';
 const GOAL_SIDES = {
   raid: { left: 'ehp', right: 'threat' },
   survival: { left: 'ehp', right: 'threat' },
-  aoe: { left: 'ehp', right: 'threat' },
+  aoe: { left: 'ehp', right: 'aoeThreat' }, // AOE Trash uses AOE-threat weighting (Consecration-heavy)
   balanced: { left: 'ehp', right: 'threat' },
 };
-const AXIS_LABEL = { threat: 'Threat', ehp: 'EHP' };
+const AXIS_LABEL = { threat: 'Threat', aoeThreat: 'AOE Threat', ehp: 'EHP' };
 // Per-set minimum-HP gate (raid-buffed health floor), enforced as a hard constraint like
 // uncrit/uncrush. Applies to every goal incl. AOE Trash. 10k default = effectively off.
 const MINHP = { min: 10000, max: 14000, step: 500, default: 10000 };
