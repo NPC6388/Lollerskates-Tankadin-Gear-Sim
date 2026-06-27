@@ -12,8 +12,8 @@ pasted a working single-target scale. The earlier "Copy Pawn string" was my wron
 
 - `web/app.js`: replaced `pawnString` with `suWeightsJson(key)` = `JSON.stringify` of the scale's
   non-zero entries; button relabeled **Copy weights (JSON)**; on-page table now lists all non-zero
-  entries (incl. socket weights). Excludes `blockValueBonus` (internal meta block-value % pseudo-stat,
-  not an SU gear stat) via `SU_EXCLUDE`. How-to in `index.html` updated (copy JSON → SU Custom Stat
+  entries (incl. socket weights AND blockValueBonus — the player's working survival scale confirmed SU
+  accepts that key, so nothing is excluded). How-to in `index.html` updated (copy JSON → SU Custom Stat
   Weights); CSS class `.copy-pawn` → `.copy-weights`. Suite **120 pass**.
 - The emitted single-target JSON matches the player's working one except it now also includes
   `spellCritRating: 0.45` (added when spell crit became scored). Unverified SU keys to watch:

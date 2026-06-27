@@ -111,10 +111,9 @@ const WSTAT_NAME = { // our stat key -> readable name (for the on-page table)
   resilienceRating: 'Resilience Rating', armor: 'Armor', health: 'Health',
   metaSockets: 'Meta socket', redSockets: 'Red socket', yellowSockets: 'Yellow socket', blueSockets: 'Blue socket',
 };
-// Keys that exist in our scales but are NOT Sixty Upgrades gear stats — internal pseudo-stats we must
-// not emit into the SU JSON (blockValueBonus is a meta-gem block-value % multiplier, not a gear stat).
-const SU_EXCLUDE = new Set(['blockValueBonus']);
-const nonZeroEntries = (key) => Object.entries(SCALES[key]).filter(([k, v]) => v !== 0 && !SU_EXCLUDE.has(k));
+// Sixty Upgrades accepts the full key set this sim uses (a player's working survival scale even
+// includes blockValueBonus), so the JSON is simply the scale's non-zero entries.
+const nonZeroEntries = (key) => Object.entries(SCALES[key]).filter(([, v]) => v !== 0);
 const suWeightsJson = (key) => JSON.stringify(Object.fromEntries(nonZeroEntries(key)), null, 4);
 function renderWeights() {
   const host = $('weights'); if (!host) return;

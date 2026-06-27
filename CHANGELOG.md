@@ -273,7 +273,7 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   sometimes puts them in the wrong holes."
 - **Weights copy button now emits Sixty Upgrades JSON (was a Pawn string).** SU's custom stat-weights
   format is a flat JSON of `{ ourKey: weight }` using the same stat keys this sim uses (including the
-  meta/red/yellow/blue socket weights), omitting zeros — confirmed against a working scale the player
-  uses. Each scale's button now copies `JSON.stringify` of its non-zero entries; the internal pseudo-stat
-  `blockValueBonus` (a meta block-value % multiplier, not an SU gear stat) is excluded. How-to updated
-  (copy JSON → paste into SU Custom Stat Weights); the Pawn string is gone.
+  meta/red/yellow/blue socket weights, and even `blockValueBonus`), omitting zeros — confirmed against
+  the player's working single-target AND survival scales. Each scale's button now copies
+  `JSON.stringify` of its non-zero entries. How-to updated (copy JSON → paste into SU Custom Stat
+  Weights); the Pawn string is gone.
