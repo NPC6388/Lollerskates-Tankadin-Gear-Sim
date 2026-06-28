@@ -295,3 +295,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the set — the note now shows each buffed stat with its downstream effect computed live: stamina
   (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
   "+25.1 agility (≈+1.00% dodge)".
+- **Per-slot "near-identical alternatives" in the readout.** Each paper-doll slot now lists up to 3
+  other owned items that score within **1% of the whole-set objective** of the picked piece, each with
+  its OWN recommended gems/sockets and the set delta (e.g. "+0.43%"). The optimizer's objective is
+  linear in summed item stats, so a slot's marginal value is just `score(item.stats, objScale)` and the
+  candidate-vs-pick delta IS the set delta — normalized by the full-set score so "near-identical" means
+  swapping that one piece barely moves the set (the player's "basically the same"). An option that
+  would miss a gate if dropped in as-is (e.g. a threat neck that gives up the picked neck's resilience)
+  is **flagged "needs re-gem"** rather than hidden, since it's still viable once you recover the gate
+  elsewhere. This is why, in a high-threat (1:4) raid set, the Brooch of Unquenchable Fury shows as a
+  neck alternative to the Pendant of Dominance: equal threat, but it needs the Pendant's lost
+  resilience re-gemmed back to stay uncrittable. `runner.js` `nearAlternatives` (+ `ALT_EPS`/`ALT_MAX`),
+  exposed as `perSlot[slot].alternatives`; `optimizer.js` exports `distinctOk`; rendered by
+  `app.js` `altsHTML`. Tests: `test/alternatives.test.js`.

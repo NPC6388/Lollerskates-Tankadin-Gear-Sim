@@ -4,6 +4,42 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-28 — Diagnosed two "missing" reports + shipped per-slot alternatives
+
+**Context:** player pulled a fresh export (now owns Brooch of Unquenchable Fury) and reported (1)
+gem sockets only showing on Veteran's Lamellar Bracers + Aldori Legacy Defender, (2) the Brooch
+not appearing in a 1:4 / 10k-min raid set.
+
+### Diagnosis (no bug in current code)
+- Pulled the live SavedVariables straight off disk:
+  `C:\Program Files (x86)\World of Warcraft\_anniversary_\WTF\Account\51718250#1\SavedVariables\TankadinGearSim.lua`
+  (TGS11, 200 items). Extracted to `scratchpad/export-new.txt`.
+- **Sockets:** the current code parses all **19 socketed items** correctly via the web load path
+  (`toExportText`→`parseExport`). The two items that "showed" are exactly the ones with
+  **currently-empty** sockets (their `EMPTY_SOCKET_*` lives in BOTH the resolved and base fields);
+  gem-filled items carry the layout only in the **base** field. So the player's browser was running
+  **stale JS** that reads sockets from the resolved field only (pre-v8 behavior). `origin/main` ==
+  local, so the deploy is current → it's a browser cache. Fix = hard refresh / re-upload.
+- **Brooch:** not a bug. At 1:4 buffed, the optimizer picks **Pendant of Dominance** (ties the Brooch
+  on spell power — 812 vs 812 — but adds a gem socket, +16 resilience, more stamina; the Brooch's only
+  edge is raw spell hit, which the sim makes up elsewhere). The Brooch is ~tied, slightly behind on EHP.
+
+### Shipped — per-slot near-identical alternatives (committed? see git)
+- `runner.js` `nearAlternatives(slotKey, chosen)`: for each slot, lists owned items whose objective
+  contribution is within **1% of the WHOLE-SET objective** (`ALT_EPS`, `ALT_MAX=3`), each with its own
+  `planItemGems` gems/sockets and `objDelta`. Objective is linear in summed stats, so slot delta == set
+  delta; normalized by `res.objectiveValue`. A swap that would miss a gate as a pure drop-in is kept but
+  flagged `dropInLegal:false` (not hidden) — that's how the **Brooch surfaces as a neck alt (+0.43%,
+  "needs re-gem")**. Exposed as `perSlot[slot].alternatives`.
+- `optimizer.js` exports `distinctOk`. `app.js` `altsHTML` renders the block; `style.css` `.ds-alts*`.
+- Tests: `test/alternatives.test.js` (3) → **125 pass**.
+
+**Pick up here:** confirm in the live browser after a hard refresh that (a) gem-filled items now show
+their sockets and (b) the new "≈ also viable" lists render. Consider whether "needs re-gem" is too
+frequent (the set sits near the gate boundary, so most avoidance-changing swaps trip it).
+
+---
+
 ## 2026-06-27 — SESSION WRAP / pick up here
 
 Big day on the gear sim (entries **a–j** below have the detail). All work committed + pushed to

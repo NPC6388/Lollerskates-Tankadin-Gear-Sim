@@ -13,12 +13,14 @@ import { bestEnchant, ENCHANTS } from './enchants.js';
 import { score } from './scoring.js';
 import { SCALES, blendScale } from './weights.js';
 import { planItemGems } from './gemsolver.js';
-import { buildPool, optimizeHeuristic } from './optimizer.js';
+import { buildPool, optimizeHeuristic, distinctOk } from './optimizer.js';
 import { professionPerks } from './professions.js';
 import { CAPS, RATING } from './constants.js';
 
 const HS = 30;                               // Holy Shield +30% block in the uncrushable check
 const CAP_SCALE = SCALES.survivalUncrushable; // gems that most cheaply buy avoidance/defense
+const ALT_EPS = 0.01;                        // a slot alternative is "near-identical" within 1% of the WHOLE-SET objective
+const ALT_MAX = 3;                           // at most this many alternatives shown per slot
 export const DEFAULT_TRINKET_LOCKS = { icon: 29370, eye: 28789 }; // Icon of the Silver Crescent / Eye of Magtheridon
 
 // Preset goals as TUNABLE EHP:threat ratios (blendScale builds the objective). Every goal uses
@@ -405,8 +407,54 @@ function runGoal(goal, items, ctx) {
   for (const [slotKey, it] of Object.entries(res.selection)) {
     const p = plans.find((x) => x.v === it);
     perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap', locked: it._gem === 'locked', socketBonus: p.socketBonus || null, bonusKept: p.bonusKept } : { gems: [], enchant: null, metas: [], defGemmed: false, locked: false, socketBonus: null, bonusKept: null };
+    perSlot[slotKey].alternatives = nearAlternatives(slotKey, it);
   }
   return { goal, selection: res.selection, items: res.items, legal: res.legal, evald, agg, gemChoices, metas, perSlot, buffImpact };
+
+  // Near-identical alternatives for a slot: OTHER owned items whose objective contribution is within
+  // ALT_EPS of the chosen item AND that keep the set legal when swapped in. The objective is LINEAR
+  // in the summed item stats (score(sumStats, objScale)), so a slot's marginal value is just
+  // score(item.stats, objScale) — the chosen-vs-candidate delta IS the whole-set objective delta.
+  // We normalize that delta by the WHOLE-SET objective (res.objectiveValue), so "near-identical"
+  // means swapping this one piece barely moves the overall set (the player's "basically the same"),
+  // not that it's close as a fraction of this one slot. Legality (non-linear) is re-checked per swap
+  // on the same approximate variant stats the selection used. Each alternative carries its OWN
+  // gems/sockets so the player can compare in place.
+  function nearAlternatives(slotKey, chosen) {
+    if (!chosen) return [];
+    const chosenScore = score(chosen.stats, objScale);
+    const denom = Math.max(Math.abs(res.objectiveValue || 0), 1); // whole-set objective (avoid div0)
+    const slotScale = scaleOf.get(chosen) || objScale; // gem alternatives like the slot is treated
+    // One entry per itemId (an item enters the pool as a focus AND a cap variant) — keep its best.
+    const byId = new Map();
+    for (const v of pool[slotKey] || []) {
+      if (v.itemId === chosen.itemId) continue;
+      const sc = score(v.stats, objScale);
+      const cur = byId.get(v.itemId);
+      if (!cur || sc > cur.sc) byId.set(v.itemId, { v, sc });
+    }
+    const alts = [];
+    for (const { v, sc } of byId.values()) {
+      if (Math.abs(sc - chosenScore) / denom > ALT_EPS) continue;
+      const trialSel = { ...res.selection, [slotKey]: v };
+      if (!distinctOk(trialSel, distinct)) continue; // don't dup the paired ring/trinket
+      const trialItems = Object.values(trialSel).filter(Boolean);
+      // Does the set stay legal if you just DROP this in (no other changes)? If not, it's still a
+      // near-identical option — it just needs the gates recovered elsewhere (e.g. re-gemming a slot
+      // for the resilience it gives up). We flag that rather than hide it, so the player sees it.
+      const dropInLegal = finalLegal(evaluateSet(aggregate(trialItems, aggOpts)));
+      const plan = planItemGems(v, slotScale, perks, maxPhase, {});
+      const coloredCh = plan.choices.filter((c) => c.color && FITS[c.color]);
+      alts.push({
+        itemId: v.itemId, name: v.name || null, objDelta: (sc - chosenScore) / denom, dropInLegal,
+        gems: plan.choices.map((c) => ({ name: c.name, id: c.id || null, socket: c.socket || null })),
+        socketBonus: v.socketBonus || null,
+        bonusKept: !!v.socketBonus && coloredCh.length > 0 && coloredCh.every((c) => FITS[c.color].includes(c.socket)),
+      });
+    }
+    alts.sort((a, b) => b.objDelta - a.objDelta);
+    return alts.slice(0, ALT_MAX);
+  }
 }
 
 // Stat-buff modes. Kings (+10% to primaries) and MotW (+14 flat) DO stack in-game — different

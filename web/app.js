@@ -359,8 +359,25 @@ function slotHTML(r, slotKey, side) {
   }
   return `<div class="ds-slot ${side}">
     ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${tag}
-    ${ench}${gems}
+    ${ench}${gems}${altsHTML(ps.alternatives)}
   </div>`;
+}
+
+// Near-identical alternatives for a slot: other owned items that score within ~1% of the picked one
+// on this goal's objective. Each shows its own gems/sockets and the set delta; "needs re-gem" marks
+// an option that, dropped in as-is, would miss a gate (you'd recover it by re-gemming another slot).
+const altDelta = (d) => Math.abs(d) < 5e-4 ? '≈ same' : (d > 0 ? '+' : '−') + (Math.abs(d) * 100).toFixed(2) + '%';
+function altsHTML(alts) {
+  if (!alts || !alts.length) return '';
+  const rows = alts.map((a) => {
+    const gc = (a.gems && a.gems.length) ? `<div class="ds-gems alt">${a.gems.map((g) => gemCell(g, true)).join('')}</div>` : '';
+    const regem = a.dropInLegal === false ? `<span class="alt-regem" title="Dropping this in as-is would miss a gate — re-gem another slot for the avoidance/resilience it gives up.">needs re-gem</span>` : '';
+    return `<div class="ds-alt">
+      <span class="alt-line">${wh(a.itemId, a.name || a.itemId, 'ds-alt-item')}<span class="alt-delta" title="Change to this goal's overall set score">${altDelta(a.objDelta)}</span>${regem}</span>
+      ${gc}
+    </div>`;
+  }).join('');
+  return `<div class="ds-alts"><div class="ds-alts-h">≈ also viable</div>${rows}</div>`;
 }
 
 const panel = (title, rows) =>

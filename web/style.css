@@ -134,6 +134,16 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .bonus-on { margin-top: 3px; font-size: 11px; color: #86e0a0; }
 .bonus-off { margin-top: 3px; font-size: 11px; color: var(--muted); }
 .ds-slot.right .bonus-on, .ds-slot.right .bonus-off { text-align: right; }
+/* Near-identical alternatives: other owned items that score within ~1% of the pick. */
+.ds-alts { margin-top: 7px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.ds-alts-h { font-size: 10px; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.ds-alt { margin-top: 4px; }
+.ds-alt .alt-line { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ds-slot.right .ds-alt .alt-line { justify-content: flex-end; }
+.ds-alt-item { font-size: 13px; font-weight: 500; text-decoration: none; opacity: .9; }
+.alt-delta { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.alt-regem { font-size: 10px; color: var(--warn); border: 1px solid rgba(214,164,90,.4); border-radius: 8px; padding: 0 6px; }
+.ds-alt .ds-gems { margin-top: 2px; opacity: .85; }
 /* Manual-socketing reminder (gems can't be auto-applied; place by color). */
 .socketnote { margin: 8px 0; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(120,150,255,.10); border: 1px solid rgba(120,150,255,.35); color: var(--text); }
 
@@ -167,4 +177,5 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
   .ds-slot.right { text-align: left; }
   .ds-slot.right .ds-gems { justify-content: flex-start; }
   .ds-slot.right .defgem { margin-left: 6px; margin-right: 0; }
+  .ds-slot.right .ds-alt .alt-line { justify-content: flex-start; }
 }

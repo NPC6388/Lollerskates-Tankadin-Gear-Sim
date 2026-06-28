@@ -64,7 +64,7 @@ export function buildPool(items, { lock = {}, exclude2H = true } = {}) {
 }
 
 // Every distinct-group must hold unique itemIds.
-function distinctOk(sel, distinct) {
+export function distinctOk(sel, distinct) {
   for (const group of distinct) {
     const ids = group.map((s) => sel[s] && sel[s].itemId).filter((x) => x != null);
     if (new Set(ids).size !== ids.length) return false;
