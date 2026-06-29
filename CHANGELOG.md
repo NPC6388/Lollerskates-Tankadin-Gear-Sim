@@ -449,3 +449,10 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Rebuild the zip when the addon changes (see `addon/README.md`).
 - **Refresh opens at the top.** Set `history.scrollRestoration = 'manual'` so a reload lands at the top
   of the page instead of restoring the prior scroll position.
+- **Fixed survival SP collapsing when the floor binds and the slider leans threat.** At a binding
+  Min-HP floor, threat-leaning survival ratios had their recovery candidates gem below the floor and
+  get discarded, falling back to the pure-stamina max-HP set (spell power cratering, e.g. 561→360 going
+  1.5:1→1:1 at 14k). The floor recovery now sweeps a range of EHP-leans (all seeded from max-HP), keeps
+  only the ones whose FINAL set holds the floor, and picks the floor-holder the goal's OWN ratio scores
+  highest — so SP holds at the floor-capped max instead of collapsing. Below a binding floor the slider
+  still trades smoothly (SP rises with threat).

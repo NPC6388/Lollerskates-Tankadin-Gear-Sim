@@ -577,21 +577,20 @@ export function optimizeSets(items, options = {}) {
       // Floor is genuinely unreachable with this gear/keep-settings → best-effort tankiest set, flagged.
       return maxHp.agg.health > r.agg.health ? { ...maxHp, goal: g, legal: false, hpBestEffort: true } : r;
     }
-    // Floor IS reachable — the ratio search just got stuck below it. The floor is the EHP target, so
-    // beyond it we want MAX THREAT (meet the floor, then maximize spell power). Seed both a ratio-kept
-    // and a pure-threat recovery from the max-HP set (so each starts above the floor and trades the
-    // excess stamina back for threat down to the gate), then keep whichever holds the floor with the
-    // HIGHEST spell power — the seeded climb is heuristic and one framing or the other wins per floor.
+    // Floor IS reachable — the ratio search just got stuck below it. Beyond the floor the slider still
+    // governs EHP-vs-threat, so: sweep a range of EHP-leans (all seeded from the max-HP set so each
+    // starts above the floor and trades the excess stamina for threat down to the gate), keep only the
+    // ones whose FINAL gemmed set still holds the floor, and pick the floor-holder the GOAL'S OWN ratio
+    // scores highest. A threat-leaning goal can't gem itself to the floor (its threat gems sink HP
+    // under it), but a slightly more stamina-heavy lean holds the floor while the goal's ratio still
+    // picks the most threat among the holders — so SP rises as the slider moves toward threat.
     const seed = {};
     for (const [slot, it] of Object.entries(maxHp.selection)) if (it) seed[slot] = it.itemId;
-    const cands = [
-      runGoal(g, items, ctx, seed),                              // EHP-emphasis ratio kept
-      runGoal({ ...g, ratio: { threat: 1 } }, items, ctx, seed), // pure threat above the floor
-    ].filter((c) => c.agg.health + 1e-9 >= floor && c.legal);
-    if (cands.length) {
-      const best = cands.reduce((a, b) => (b.agg.spellPower > a.agg.spellPower ? b : a));
-      return { ...best, goal: g };
-    }
-    return { ...maxHp, goal: g, legal: maxHp.legal };
+    const objScale = blendScale(g.ratio);
+    const leans = [g.ratio, { ehp: 1, threat: 1 }, { ehp: 1.5, threat: 1 }, { ehp: 2, threat: 1 }, { ehp: 3, threat: 1 }];
+    const cands = [maxHp, ...leans.map((r) => runGoal({ ...g, ratio: r }, items, ctx, seed))]
+      .filter((c) => c.agg.health + 1e-9 >= floor && c.legal);
+    const best = cands.reduce((a, b) => (score(b.agg._raw, objScale) > score(a.agg._raw, objScale) ? b : a), maxHp);
+    return { ...best, goal: g, legal: best.agg.health + 1e-9 >= floor && best.legal };
   });
 }
