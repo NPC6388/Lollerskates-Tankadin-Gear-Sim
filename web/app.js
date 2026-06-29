@@ -34,8 +34,18 @@ const GOAL_SIDES = {
 };
 const AXIS_LABEL = { threat: 'Threat', aoeThreat: 'AOE Threat', ehp: 'EHP' };
 // Per-set minimum-HP gate (raid-buffed health floor), enforced as a hard constraint like
-// uncrit/uncrush. Applies to every goal incl. AOE Trash. 10k default = effectively off.
-const MINHP = { min: 10000, max: 14000, step: 500, default: 10000 };
+// uncrit/uncrush. 10k = effectively off.
+const MINHP = { min: 10000, max: 14000, step: 500 };
+// Per-goal UI defaults: starting slider value (v) and Min-HP floor (minHP: null = no Min-HP gate /
+// no slider for that goal). The Balanced slider is special — it slides between the SURVIVAL set
+// (left) and the RAID THREAT set (right), so it has no fixed ratio of its own and no Min-HP floor.
+const UI_DEFAULTS = {
+  raid:     { v: 3,    minHP: 11500 }, // EHP 1 : 4 Threat
+  survival: { v: -0.5, minHP: 14000 }, // EHP 1.5 : 1 Threat
+  aoe:      { v: 3,    minHP: 10500 }, // EHP 1 : 4 AOE Threat
+  balanced: { v: 0,    minHP: null  }, // midpoint of Survival ↔ Raid Threat; no Min-HP
+};
+const isBalanced = (id) => id === 'balanced';
 const fmtHp = (h) => (h / 1000).toFixed(1) + 'k';
 const fmtW = (w) => (Number.isInteger(w) ? String(w) : w.toFixed(1));
 function ratioFor(id, v) {
@@ -44,8 +54,13 @@ function ratioFor(id, v) {
   return { left, right, Lw, Rw, ratio: { [left]: Lw, [right]: Rw } };
 }
 const ratioText = (id, v) => { const r = ratioFor(id, v); return `${AXIS_LABEL[r.left]} ${fmtW(r.Lw)} : ${fmtW(r.Rw)} ${AXIS_LABEL[r.right]}`; };
-// Default slider position from a preset's ratio (one side is always 1).
-const defaultV = (g) => { const { left, right } = GOAL_SIDES[g.id]; return (g.ratio[right] || 1) - (g.ratio[left] || 1); };
+// Balanced slider value v in [-3,3] -> blend fraction t in [0,1] (0 = full Survival, 1 = full Raid Threat).
+const balanceT = (v) => (v + 3) / 6;
+const balancedText = (v) => {
+  const thr = Math.round(balanceT(v) * 100);
+  return thr === 50 ? 'midpoint · 50% Survival / 50% Threat' : `${100 - thr}% Survival / ${thr}% Threat`;
+};
+const defaultVOf = (id) => (UI_DEFAULTS[id] ? UI_DEFAULTS[id].v : 0);
 
 let items = null;        // equippable items from the export
 let parsed = null;       // full parse (character + items)
@@ -63,29 +78,41 @@ function init() {
   $('prof1').value = 'Enchanting';
 
   $('goalConfig').innerHTML = GOAL_PRESETS.map((g) => {
+    const bal = isBalanced(g.id);
     const { left, right } = GOAL_SIDES[g.id];
-    const v = defaultV(g);
+    const v = defaultVOf(g.id);
+    const leftLbl = bal ? 'Survival' : AXIS_LABEL[left];
+    const rightLbl = bal ? 'Threat' : AXIS_LABEL[right];
+    const readout = bal ? balancedText(v) : ratioText(g.id, v);
+    const minHP = UI_DEFAULTS[g.id] ? UI_DEFAULTS[g.id].minHP : 10000;
+    // Balanced has no Min-HP gate (it blends two sets that already carry their own floors).
+    const minhpCell = minHP == null
+      ? `<div class="minhp-cell"><span class="minhp-label muted">No Min HP gate</span></div>`
+      : `<div class="minhp-cell">
+        <span class="minhp-label">Min HP</span>
+        <input type="range" class="minhp-slider" min="${MINHP.min}" max="${MINHP.max}" step="${MINHP.step}" value="${minHP}" />
+        <span class="minhp-val">${fmtHp(minHP)}</span>
+      </div>`;
     return `<div class="goal-row" data-goal="${g.id}">
       <span class="name">${g.name}</span>
       <div class="slider-cell">
         <div class="slider-wrap">
-          <span class="end left">${AXIS_LABEL[left]}</span>
+          <span class="end left">${leftLbl}</span>
           <input type="range" class="ratio-slider" min="-3" max="3" step="0.5" value="${v}" />
-          <span class="end right">${AXIS_LABEL[right]}</span>
+          <span class="end right">${rightLbl}</span>
         </div>
-        <div class="ratio">${ratioText(g.id, v)}</div>
+        <div class="ratio">${readout}</div>
       </div>
-      <div class="minhp-cell">
-        <span class="minhp-label">Min HP</span>
-        <input type="range" class="minhp-slider" min="${MINHP.min}" max="${MINHP.max}" step="${MINHP.step}" value="${MINHP.default}" />
-        <span class="minhp-val">${fmtHp(MINHP.default)}</span>
-      </div>
+      ${minhpCell}
     </div>`;
   }).join('');
-  // The EHP↔threat slider updates the ratio text; the Min-HP slider updates its own kHP label.
+  // The slider updates its readout (Balanced shows the Survival↔Threat blend); Min-HP updates its kHP.
   $('goalConfig').querySelectorAll('.ratio-slider').forEach((r) => {
     const id = r.closest('.goal-row').dataset.goal;
-    r.addEventListener('input', (e) => { e.target.closest('.slider-cell').querySelector('.ratio').textContent = ratioText(id, +e.target.value); });
+    r.addEventListener('input', (e) => {
+      const txt = isBalanced(id) ? balancedText(+e.target.value) : ratioText(id, +e.target.value);
+      e.target.closest('.slider-cell').querySelector('.ratio').textContent = txt;
+    });
   });
   $('goalConfig').querySelectorAll('.minhp-slider').forEach((r) => {
     r.addEventListener('input', (e) => { e.target.closest('.minhp-cell').querySelector('.minhp-val').textContent = fmtHp(+e.target.value); });
@@ -203,7 +230,7 @@ function renderLogic() {
     </ul>
 
     <h4>5 · The four sets &amp; the sliders</h4>
-    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Each goal blends an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with its own Min-HP floor. AOE Trash additionally uses AOE-threat weighting and drops the crush gate.</p>
+    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Raid Threat, Survival and AOE Trash each blend an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with their own Min-HP floor (AOE also uses AOE-threat weighting and drops the crush gate). <strong>Balanced is a blend dial:</strong> its slider slides between your Survival set (left) and your Raid Threat set (right) — interpolating their ratios — so the ends reproduce those two sets and the middle splits the difference. Balanced has no Min-HP floor of its own.</p>
 
     <h4>6 · Gems, enchants &amp; metas</h4>
     <ul>
@@ -282,12 +309,24 @@ function populateTrinketLocks() {
 
 // ---- run --------------------------------------------------------------------
 function currentGoals() {
+  const vOf = (id) => +$('goalConfig').querySelector(`.goal-row[data-goal="${id}"] .ratio-slider`).value;
+  const ratioOf = (id) => ratioFor(id, vOf(id)).ratio; // {ehp, threat} for raid/survival
+  const raidRatio = ratioOf('raid');
+  const survRatio = ratioOf('survival');
   return GOAL_PRESETS.map((g) => {
     const row = $('goalConfig').querySelector(`.goal-row[data-goal="${g.id}"]`);
     const v = +row.querySelector('.ratio-slider').value;
-    const minHealth = +row.querySelector('.minhp-slider').value;
+    if (isBalanced(g.id)) {
+      // Balanced slides between the Survival set (t=0) and the Raid Threat set (t=1): blend their
+      // ratios, so the endpoints reproduce those sets and the middle splits the difference. No Min-HP.
+      const t = balanceT(v);
+      const lerp = (a, b) => (a || 0) + ((b || 0) - (a || 0)) * t;
+      const ratio = { ehp: lerp(survRatio.ehp, raidRatio.ehp), threat: lerp(survRatio.threat, raidRatio.threat) };
+      return { ...g, focus: `Survival ↔ Threat · ${balancedText(v)}`, ratio, gates: { ...g.gates } };
+    }
+    const minhpEl = row.querySelector('.minhp-slider');
+    const minHealth = minhpEl ? +minhpEl.value : 0;
     const r = ratioFor(g.id, v);
-    // Merge the min-HP floor into the goal's hard gates (10k default is effectively non-binding).
     return { ...g, focus: ratioText(g.id, v), ratio: r.ratio, gates: { ...g.gates, minHealth } };
   });
 }
