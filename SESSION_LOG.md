@@ -4,6 +4,41 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-28 (pm) — Shield Block enchant parser bug (sim couldn't match the hand-built threat set)
+
+**Report:** player's hand-made 1:4 threat set (806 SP, uncrushable w/ Kings+MotW) beat the sim's set
+on every threat metric; player runs the threat set with **"keep equipped completed"** intentionally
+(committed to its gems/enchants, optimizing the OTHER sets around it). Target settings: 1:4, 11.5k
+min HP, Scryer, no imbued meta, Kings+MotW.
+
+**Root cause (found by reconciling the sim against the player's ECS character sheet):** dodge / parry /
+defense / resilience all matched the sheet to <0.05% — the gap was **block**. The "Enchant Shield –
+Shield Block" enchant (id 2655, +15 block rating) renders as **"+15 Shield Block Rating"**; the
+addon's `%+(%d+) block rating` phrase requires "+N block rating" with nothing between, so the "shield"
+qualifier made it miss — the +15 block rating was dropped from the export. (Confirmed via wowhead
+spell=27946; a +18-stamina shield enchant parsed fine, isolating it to the block-rating wording.)
+Effect: a truly uncrushable set read as crushable (100.91% vs 102.82% w/ the +15), so in keep-mode the
+optimizer refused to keep the Merciless shield and over-defended with Aldori → 783 SP vs the player's
+806.
+
+**Fix shipped:** `addon/TankadinGearSim/TankadinGearSim.lua` `parseClause` now catches any clause
+naming "block rating" (never "block value"), qualifier-agnostic. `.toc` → 0.7.1; export VERSION stays
+11 (content fix, not a wire change). **Verified end-to-end** by injecting the +15 into the player's
+fresh export (exported 17:21) and re-running the exact settings: SP 806 / 9.18% hit / 11,897 hp /
+102.82% uncrush / 5.63% crit, selecting Merciless + Brooch + Wristguards + Sergeant's Cape — i.e. the
+player's hand-built set, exactly.
+
+**Player action required:** re-copy `addon/TankadinGearSim/` into the live AddOns folder
+(`C:\Program Files (x86)\World of Warcraft\_anniversary_\Interface\AddOns\TankadinGearSim\`),
+`/reload`, `/tgs`, re-import. (Offered to copy it for them.) The current/old exports still lack the
+block rating until then.
+
+**Note:** the export-time SavedVariables lives at
+`...\_anniversary_\WTF\Account\51718250#1\SavedVariables\TankadinGearSim.lua` — readable straight off
+disk for reconciliation (decode the `["export"]` Lua string).
+
+---
+
 ## 2026-06-28 — Diagnosed two "missing" reports + shipped per-slot alternatives
 
 **Context:** player pulled a fresh export (now owns Brooch of Unquenchable Fury) and reported (1)

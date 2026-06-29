@@ -171,6 +171,16 @@ local function parseClause(clause, add)
     for _, pk in pairs(PRIMARY) do add(pk, tonumber(alln)) end
     return
   end
+  -- Block RATING can carry a qualifier word the fixed phrases miss: the Shield Block enchant
+  -- renders as "+15 Shield Block Rating" (note "shield" between the number and "block rating"),
+  -- which "%+(%d+) block rating" doesn't match — so it was being silently dropped (the set then
+  -- looked ~1.9% short on block / crushable). Catch any clause naming "block rating" (never
+  -- "block value") and take its number. Clauses are already single-stat (split on " and " / ","),
+  -- so an early return here can't swallow a second stat.
+  if clause:find("block rating", 1, true) then
+    local v = clause:match("(%d+)")
+    if v then add("ITEM_MOD_BLOCK_RATING", tonumber(v)); return end
+  end
   -- primary: "+43 stamina" / gem "+12 stamina" (un-anchored so socketed-gem lines count)
   local n, word = clause:match("%+(%d+)%s+(%a+)")
   if n and PRIMARY[word] then add(PRIMARY[word], tonumber(n)) end

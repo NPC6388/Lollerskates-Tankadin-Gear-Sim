@@ -295,6 +295,19 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the set — the note now shows each buffed stat with its downstream effect computed live: stamina
   (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
   "+25.1 agility (≈+1.00% dodge)".
+- **Addon v0.7.1 — Shield Block enchant now parsed (block rating was being dropped).** The
+  "Enchant Shield – Shield Block" enchant renders on the item as **"+15 Shield Block Rating"** — with
+  "shield" wedged between the number and "block rating" — so the addon's `%+(%d+) block rating` phrase
+  never matched and the +15 block rating was silently lost from the export (other enchants, incl. the
+  +18 stamina shield enchant, parsed fine). That made any Shield-Block-enchanted shield look ~1.9%
+  short on block, so a genuinely uncrushable set read as **crushable** — and in keep-mode the optimizer
+  would refuse to keep the player's threat shield and over-defend (e.g. swap a Merciless Gladiator's
+  Barrier for an Aldori Legacy Defender), costing ~23 spell power. `parseClause` now catches any clause
+  naming "block rating" (never "block value") regardless of qualifier words. Verified end-to-end: with
+  the fix, the sim's 1:4 / 11.5k / keep-equipped set reproduces the player's hand-built threat set
+  exactly (806 SP, 9.18% hit, 102.82% uncrushable, uncrittable — Merciless + Brooch kept). `.toc`
+  bumped to 0.7.1; export wire VERSION stays 11 (resolved-field CONTENT improved, format unchanged) —
+  re-copy the addon, `/reload`, `/tgs`, re-import.
 - **Per-slot "near-identical alternatives" in the readout.** Each paper-doll slot now lists up to 3
   other owned items that score within **1% of the whole-set objective** of the picked piece, each with
   its OWN recommended gems/sockets and the set delta (e.g. "+0.43%"). The optimizer's objective is
