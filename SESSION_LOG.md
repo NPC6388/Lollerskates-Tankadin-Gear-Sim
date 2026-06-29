@@ -4,6 +4,31 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-28 (eve) — Three player-requested levers: pins, scrolls, RF-into-EHP
+
+Shipped all three (130 tests pass):
+- **Pin item to slot + re-optimize.** Per-goal `pinnedSlots[goalId][slotKey]` from the UI; pin button
+  on the picked item and every "≈ also viable" alternate. `runGoal` restricts that slot's pool to the
+  pinned item's variants (keeps focus/cap so gemming stays flexible) and optimizes the rest around it.
+  UI: gold slot edge + "📌 pinned · unpin", alternatives hidden while pinned.
+- **Consumable scrolls** (`src/scrolls.js`): Agility/Strength/Intellect V (+20, ride the buff block so
+  Kings ×1.1 applies) and Protection V (+301 armor via a new `flatArmor` channel that bypasses the
+  Toughness item-armor mult). Checkboxes in the config panel; `optimizeSets({ scrolls: [...] })`.
+- **Imp RF −6% → EHP.** `talentsFromRanks` emits `impRighteousFuryDR` (rank×0.02); `aggregate` exposes
+  `damageTakenMult`; `evaluateSet` divides physical EHP by it. Flat factor → rankings unchanged, EHP
+  number ~6% higher at 3/3. No test asserted absolute EHP, so safe.
+
+Also confirmed (answers to the player's questions): "Lock this set's gems/enchants" is **additive** —
+it adds the displayed set's item-ids to `lockedItemIds`, OR-combined with the keep-scope dropdown
+(doesn't replace; locks gems/enchants only, NOT slot selection — which is exactly what the new pin
+feature adds).
+
+Model files touched: model.js (TALENTS/talentsFromRanks/aggregate), character.js (EHP), runner.js
+(ctx buff merge + pins), scrolls.js (new), app.js + index.html + style.css (UI). Tests:
+test/scrolls-pins-rf.test.js.
+
+---
+
 ## 2026-06-28 (late pm) — "poor results" turned out to be a wrong-gear scan + one real label bug
 
 After the addon v0.7.1 fix, player re-scanned and still saw a weak Raid set (721 SP, 5.69% hit,

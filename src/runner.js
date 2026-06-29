@@ -15,6 +15,7 @@ import { SCALES, blendScale } from './weights.js';
 import { planItemGems } from './gemsolver.js';
 import { buildPool, optimizeHeuristic, distinctOk } from './optimizer.js';
 import { professionPerks } from './professions.js';
+import { scrollStats } from './scrolls.js';
 import { CAPS, RATING } from './constants.js';
 
 const HS = 30;                               // Holy Shield +30% block in the uncrushable check
@@ -279,6 +280,14 @@ function runGoal(goal, items, ctx) {
   const objScale = blendScale(goal.ratio);
   const prepared = items.flatMap((it) => itemVariants(it, objScale, ctx));
   const { pool, distinct, locked } = buildPool(prepared, { lock: lockFor(goal, locks) });
+  // UI "pin to slot": force a chosen/alternate item into its slot for THIS goal, then optimize the
+  // rest around it. Restrict the slot's pool to the pinned item's variants (keep its focus/cap
+  // variants so it can still be gemmed for threat or defense). Unknown/unowned pins are ignored.
+  for (const [slot, itemId] of Object.entries(ctx.pins[goal.id] || {})) {
+    if (!pool[slot]) continue;
+    const kept = pool[slot].filter((v) => v.itemId === Number(itemId));
+    if (kept.length) pool[slot] = kept;
+  }
   const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, ...aggOpts };
   const res = optimizeHeuristic(pool, oGoal, { distinct, locked });
 
@@ -477,10 +486,22 @@ const BUFF_MODE = {
 export function optimizeSets(items, options = {}) {
   // back-compat: legacy `buffed: true` -> full raid buffs (Kings + MotW, which stack).
   const mode = BUFF_MODE[options.buff] || (options.buffed ? BUFF_MODE.raid : BUFF_MODE.none);
+  // Consumable scrolls (opt-in) stack on top of the buff: primary-stat scrolls merge into the flat
+  // buff block (so Kings' +10% applies), Scroll of Protection's armor rides a separate flat channel.
+  const scr = scrollStats(options.scrolls || []);
+  const mergedBuffs = { ...(mode.opts.buffs || {}) };
+  for (const [k, v] of Object.entries(scr.buffs)) mergedBuffs[k] = (mergedBuffs[k] || 0) + v;
+  const buff = {
+    ...mode.opts,
+    ...(Object.keys(mergedBuffs).length ? { buffs: mergedBuffs } : {}),
+    ...(scr.flatArmor ? { flatArmor: scr.flatArmor } : {}),
+  };
   const ctx = {
     perks: professionPerks(options.professions || []),
-    buff: mode.opts,
+    buff,
     buffName: mode.name,
+    // Per-goal forced item picks (UI "pin to slot"): { [goalId]: { [slotKey]: itemId } }.
+    pins: options.pins || {},
     maxPhase: options.maxPhase,
     // Aldor/Scryer for faction-locked shoulder inscriptions; null = consider both.
     faction: options.faction || null,

@@ -295,6 +295,23 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the set — the note now shows each buffed stat with its downstream effect computed live: stamina
   (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
   "+25.1 agility (≈+1.00% dodge)".
+- **Pin an item to a slot, then re-optimize around it.** Each paper-doll slot's picked item and every
+  "≈ also viable" alternate now has a **pin** button: pinning forces that item into the slot for that
+  set and re-runs the optimizer on the other slots (the slot shows a gold edge + "📌 pinned · unpin",
+  and its alternatives hide while pinned). Pins are **per-goal** (`pinnedSlots[goalId][slotKey]`), so
+  the survival set isn't forced to a threat set's choice. Implemented by restricting that slot's pool
+  to the pinned item's variants (it can still be gemmed for threat or defense). `runner.js` threads
+  `options.pins`; the pinned item's focus/cap variants are preserved so gemming stays flexible.
+- **Consumable scrolls (opt-in) to free gem/enchant/item budget.** New Scrolls checkboxes — Scroll of
+  Agility V (+20 agi → dodge), Strength V (+20), Intellect V (+20), Protection V (+301 armor) — add
+  flat stats that feed the gates, so the optimizer can meet uncrush/uncrit with less gear and spend
+  the rest on threat. Primary-stat scrolls ride the buff block (so Kings' +10% applies, as in-game);
+  Protection's armor rides a new `flatArmor` channel that bypasses Toughness (which only boosts armor
+  FROM ITEMS). `src/scrolls.js`; stacks with Kings/MotW.
+- **Improved Righteous Fury's −6% damage taken now folds into EHP.** EHP was armor-only; the 3/3 Imp RF
+  damage reduction (gated on the scanned talent rank) now multiplies effective HP by 1/(1−DR) via
+  `aggregate`'s `damageTakenMult` → `evaluateSet`. It's a flat factor, so it lifts every set equally
+  and doesn't change gear rankings — it just makes the EHP number honest (~6% higher at 3/3).
 - **Per-set "gates met" now reflects the FINAL gemmed set, not the selection estimate.** The set
   header reported `legal` from the optimizer's heuristic (which judges gates on approximate raw-gem
   selection stats), so a set whose FINAL socket-bonus-aware gemming came up short of a gate could

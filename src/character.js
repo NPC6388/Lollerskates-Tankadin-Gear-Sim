@@ -23,9 +23,13 @@ export function evaluateSet(s) {
   // multiplied in here: the guide notes it has DIMINISHING returns (it smooths the average but not
   // the consecutive-hit spikes that kill you), so 1/(1-avoid) would overstate it. Avoidance is
   // valued in the weight scales instead (where its magnitude can be tuned), and shown separately.
+  // Flat damage reduction (Improved Righteous Fury's -6% while RF is up) DOES fold in: it scales
+  // every incoming hit, so it multiplies effective HP directly. It's a constant factor, so it lifts
+  // every set equally and doesn't change gear rankings — it just makes the EHP number honest.
+  const dmgTakenMult = s.damageTakenMult ?? 1;
   const ehpPhysical =
     s.armor != null && s.health != null
-      ? s.health / (1 - armorDR(s.armor))
+      ? s.health / (1 - armorDR(s.armor)) / dmgTakenMult
       : null;
 
   return {

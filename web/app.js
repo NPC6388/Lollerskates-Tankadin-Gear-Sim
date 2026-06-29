@@ -5,6 +5,7 @@ import { toExportText } from '../src/savedvars.js';
 import { optimizeSets, spellHitPct, GOAL_PRESETS, DEFAULT_TRINKET_LOCKS } from '../src/runner.js';
 import { PROFESSION_NAMES } from '../src/professions.js';
 import { GEMS, META_GEMS } from '../src/gems.js';
+import { SCROLLS } from '../src/scrolls.js';
 import { SCALES } from '../src/weights.js';
 import { CAPS, ARMOR_CONST } from '../src/constants.js';
 
@@ -46,6 +47,7 @@ let parsed = null;       // full parse (character + items)
 let activeTab = 0;
 let lastResults = null;  // last optimize results (for the per-set lock button)
 const lockedItemIds = new Set(); // item-ids whose gems/enchants are kept across every set
+const pinnedSlots = {};  // goalId -> { slotKey: itemId } — items forced into a slot for that set
 
 // ---- setup ------------------------------------------------------------------
 function init() {
@@ -82,6 +84,11 @@ function init() {
   $('goalConfig').querySelectorAll('.minhp-slider').forEach((r) => {
     r.addEventListener('input', (e) => { e.target.closest('.minhp-cell').querySelector('.minhp-val').textContent = fmtHp(+e.target.value); });
   });
+
+  $('scrolls').innerHTML = Object.entries(SCROLLS).map(([key, s]) => {
+    const amt = s.flat ? `+${s.value} armor` : `+${s.value} ${s.stat}`;
+    return `<label class="check"><input type="checkbox" class="scroll-cb" value="${key}" /> ${s.name} <span class="muted">(${amt})</span></label>`;
+  }).join('');
 
   $('exportText').addEventListener('input', () => tryParse($('exportText').value));
   $('exportFile').addEventListener('change', handleFile);
@@ -209,10 +216,11 @@ function runOptimize() {
     try {
       const professions = [$('prof1').value, $('prof2').value].filter(Boolean);
       const trinketLocks = { icon: num($('lockIcon').value), eye: num($('lockEye').value) };
+      const scrolls = [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value);
       const results = optimizeSets(items, {
         professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
         faction: $('faction').value, useImbuedMeta: $('imbuedMeta').checked,
-        keepGemsEnchants: buildKeepSpec(),
+        keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots,
         talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
       });
       lastResults = results;
@@ -324,6 +332,16 @@ function render(results) {
   $('sets').querySelectorAll('.lockx').forEach((x) => x.addEventListener('click', () => { lockedItemIds.delete(+x.dataset.id); runOptimize(); }));
   const cl = $('sets').querySelector('.clearlocks');
   if (cl) cl.addEventListener('click', () => { lockedItemIds.clear(); runOptimize(); });
+  // Pin / unpin an item to a slot for THIS set, then re-optimize the rest around it.
+  $('sets').querySelectorAll('.pin-btn').forEach((b) => b.addEventListener('click', () => {
+    (pinnedSlots[b.dataset.goal] ||= {})[b.dataset.slot] = +b.dataset.id;
+    runOptimize();
+  }));
+  $('sets').querySelectorAll('.unpin-btn').forEach((b) => b.addEventListener('click', () => {
+    const g = pinnedSlots[b.dataset.goal];
+    if (g) { delete g[b.dataset.slot]; if (!Object.keys(g).length) delete pinnedSlots[b.dataset.goal]; }
+    runOptimize();
+  }));
 }
 
 // Banner listing the items whose gems/enchants are locked across all sets (chips with an unlock ×).
@@ -339,9 +357,16 @@ function lockedBanner() {
 
 function slotHTML(r, slotKey, side) {
   const it = r.selection[slotKey];
+  const goalId = r.goal.id;
+  const pinnedId = (pinnedSlots[goalId] || {})[slotKey];
   if (!it) return `<div class="ds-slot ${side} empty"><span class="ds-label">${SLOT_LABEL[slotKey]}</span></div>`;
   const ps = r.perSlot[slotKey] || {};
   const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : (ps.locked ? '<span class="defgem">kept</span>' : '');
+  // Pin control: when the slot is pinned, the picked item IS the pin — offer to unpin; otherwise
+  // offer to pin the current pick (locks it so re-optimizing other slots won't swap it for this set).
+  const pinCtl = pinnedId
+    ? `<button class="unpin-btn" data-goal="${goalId}" data-slot="${slotKey}" title="Stop forcing this item; re-optimize the slot">📌 pinned · unpin</button>`
+    : `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${it.itemId}" title="Force this item into the slot and re-optimize the rest around it">pin</button>`;
   const ench = ps.enchant ? `<div class="ds-ench-row">${enchLink(ps.enchant)}</div>` : '';
   let gems = '';
   if (ps.gems && ps.gems.length) {
@@ -357,23 +382,26 @@ function slotHTML(r, slotKey, side) {
     }
     gems = cells + bonusLine;
   }
-  return `<div class="ds-slot ${side}">
-    ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${tag}
-    ${ench}${gems}${altsHTML(ps.alternatives)}
+  // Don't offer alternatives for a pinned slot (you've fixed the choice); show them otherwise.
+  const alts = pinnedId ? '' : altsHTML(ps.alternatives, goalId, slotKey);
+  return `<div class="ds-slot ${side}${pinnedId ? ' pinned' : ''}">
+    ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${tag}<span class="pin-ctl">${pinCtl}</span>
+    ${ench}${gems}${alts}
   </div>`;
 }
 
 // Near-identical alternatives for a slot: other owned items that score within ~1% of the picked one
-// on this goal's objective. Each shows its own gems/sockets and the set delta; "needs re-gem" marks
-// an option that, dropped in as-is, would miss a gate (you'd recover it by re-gemming another slot).
+// on this goal's objective. Each shows its own gems/sockets, the set delta, and a "pin" button to
+// force it into the slot; "needs re-gem" marks an option that, dropped in as-is, would miss a gate.
 const altDelta = (d) => Math.abs(d) < 5e-4 ? '≈ same' : (d > 0 ? '+' : '−') + (Math.abs(d) * 100).toFixed(2) + '%';
-function altsHTML(alts) {
+function altsHTML(alts, goalId, slotKey) {
   if (!alts || !alts.length) return '';
   const rows = alts.map((a) => {
     const gc = (a.gems && a.gems.length) ? `<div class="ds-gems alt">${a.gems.map((g) => gemCell(g, true)).join('')}</div>` : '';
     const regem = a.dropInLegal === false ? `<span class="alt-regem" title="Dropping this in as-is would miss a gate — re-gem another slot for the avoidance/resilience it gives up.">needs re-gem</span>` : '';
+    const pin = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${a.itemId}" title="Force this item into the slot and re-optimize the rest around it">pin</button>`;
     return `<div class="ds-alt">
-      <span class="alt-line">${wh(a.itemId, a.name || a.itemId, 'ds-alt-item')}<span class="alt-delta" title="Change to this goal's overall set score">${altDelta(a.objDelta)}</span>${regem}</span>
+      <span class="alt-line">${wh(a.itemId, a.name || a.itemId, 'ds-alt-item')}<span class="alt-delta" title="Change to this goal's overall set score">${altDelta(a.objDelta)}</span>${regem}${pin}</span>
       ${gc}
     </div>`;
   }).join('');

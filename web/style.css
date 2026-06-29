@@ -144,6 +144,18 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .alt-delta { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .alt-regem { font-size: 10px; color: var(--warn); border: 1px solid rgba(214,164,90,.4); border-radius: 8px; padding: 0 6px; }
 .ds-alt .ds-gems { margin-top: 2px; opacity: .85; }
+/* Pin-to-slot controls. */
+.pin-ctl { margin-left: 6px; }
+.ds-slot.right .pin-ctl { margin-left: 0; margin-right: 6px; }
+.pin-btn, .unpin-btn { font-size: 10px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.pin-btn:hover { color: var(--text); border-color: var(--accent, #5aa9e6); }
+.unpin-btn { color: var(--gold); border-color: rgba(214,180,90,.5); }
+.ds-alt .pin-btn { margin-left: 2px; }
+.ds-slot.pinned { border-left: 2px solid var(--gold); padding-left: 6px; }
+.ds-slot.right.pinned { border-left: 0; border-right: 2px solid var(--gold); padding-left: 0; padding-right: 6px; }
+/* Scrolls checkbox list. */
+.scrolls { display: flex; flex-direction: column; gap: 3px; }
+.scrolls .check { font-size: 12px; }
 /* Manual-socketing reminder (gems can't be auto-applied; place by color). */
 .socketnote { margin: 8px 0; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(120,150,255,.10); border: 1px solid rgba(120,150,255,.35); color: var(--text); }
 

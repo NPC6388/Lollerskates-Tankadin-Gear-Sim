@@ -39,6 +39,7 @@ export const TALENTS = {
   combatExpertise: 5,           // Combat Expertise 5/5: +5 expertise (flat)
   precisionSpellHitPct: 3,      // Precision 3/3: +3% spell hit
   precisionMeleeHitPct: 3,      // Precision 3/3: +3% melee hit
+  impRighteousFuryDR: 0.06,     // Improved Righteous Fury 3/3: -6% damage taken while RF is up
 };
 
 // Party/raid buffs the player runs with. Blessing of Kings is a +10% MULTIPLIER on the four
@@ -61,6 +62,7 @@ export function talentsFromRanks(ranks) {
   const sacredDuty = r('Sacred Duty', 2), combatExpertise = r('Combat Expertise', 5);
   const toughness = r('Toughness', 5), anticipation = r('Anticipation', 5);
   const deflection = r('Deflection', 5), precision = r('Precision', 3);
+  const impRF = r('Improved Righteous Fury', 3);
   return {
     anticipationDefenseSkill: anticipation * 4,
     deflectionParryPct: deflection * 1,
@@ -69,6 +71,7 @@ export function talentsFromRanks(ranks) {
     combatExpertise: combatExpertise * 1,
     precisionSpellHitPct: precision * 1,
     precisionMeleeHitPct: precision * 1,
+    impRighteousFuryDR: impRF * 0.02, // -2%/-4%/-6% damage taken while Righteous Fury is up
   };
 }
 
@@ -97,7 +100,7 @@ function healthFromStamina(stam) {
 // flat stat block added on top of gear for the raid-buffed view (e.g. Mark of the Wild,
 // Fortitude, Wizard Oil); omit it for the unbuffed sheet.
 export function aggregate(items, opts = {}) {
-  const { hsBlockBonus = 30, buffs = {} } = opts;
+  const { hsBlockBonus = 30, buffs = {}, flatArmor = 0 } = opts;
   // Blessing of Kings: +10% to the four primaries, applied AFTER flat buffs (base+gear+MotW).
   const kMult = opts.kings ? BUFFS.kingsMult : 1.0;
   // opts.talents (from talentsFromRanks) overrides the default build's talent modifiers.
@@ -122,7 +125,10 @@ export function aggregate(items, opts = {}) {
     parryPct: C.baseParryPct + T.deflectionParryPct + b('parryRating') / RATING.parryPer1 + defBonus,
     blockPct: C.baseBlockPct + b('blockRating') / RATING.blockPer1 + defBonus,
     hsBlockBonus,
-    armor: agility * C.armorPerAgility + b('armor') * T.toughnessItemArmorMult,
+    // Toughness boosts armor FROM ITEMS only; flatArmor (e.g. Scroll of Protection) bypasses it.
+    armor: agility * C.armorPerAgility + b('armor') * T.toughnessItemArmorMult + flatArmor,
+    // Improved Righteous Fury: -N% damage taken while RF is up — folded into EHP by evaluateSet.
+    damageTakenMult: 1 - (T.impRighteousFuryDR || 0),
     health: C.baseHealth + healthFromStamina(stamina),
     stamina,
     agility,
