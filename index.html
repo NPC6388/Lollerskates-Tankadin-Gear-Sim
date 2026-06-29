@@ -118,20 +118,22 @@
     </section>
 
     <section class="panel" id="weights-panel">
-      <h2>Sixty Upgrades stat weights</h2>
-      <p class="tag">The stat-weight scales this sim uses — paste them into Sixty Upgrades (or any
-        Pawn-compatible planner) to rank gear yourself.</p>
-      <details class="how" open>
-        <summary>How to use these in Sixty Upgrades</summary>
-        <ol>
-          <li>Pick the scale that matches your goal (single-target threat, AOE, survival, balanced) and click <strong>Copy weights (JSON)</strong>.</li>
-          <li>Open your character at <a href="https://sixtyupgrades.com" target="_blank" rel="noopener">sixtyupgrades.com</a>, go to <strong>Custom Stat Weights</strong>, and paste the JSON. Sixty Upgrades will now rank gear &amp; enchants by it.</li>
-          <li><strong>Caps come first.</strong> Weights don't enforce the hard gates — reach <strong>uncrittable</strong> (490 Defense, or 5.6% crit reduction) and <strong>uncrushable</strong> (102.4% combined avoidance with Holy Shield) before maximizing by weight.</li>
-        </ol>
+      <details class="how section">
+        <summary>Sixty Upgrades stat weights</summary>
+        <p class="tag">The stat-weight scales this sim uses — paste them into Sixty Upgrades (or any
+          Pawn-compatible planner) to rank gear yourself.</p>
+        <details class="how" open>
+          <summary>How to use these in Sixty Upgrades</summary>
+          <ol>
+            <li>Pick the scale that matches your goal (single-target threat, AOE, survival, balanced) and click <strong>Copy weights (JSON)</strong>.</li>
+            <li>Open your character at <a href="https://sixtyupgrades.com" target="_blank" rel="noopener">sixtyupgrades.com</a>, go to <strong>Custom Stat Weights</strong>, and paste the JSON. Sixty Upgrades will now rank gear &amp; enchants by it.</li>
+            <li><strong>Caps come first.</strong> Weights don't enforce the hard gates — reach <strong>uncrittable</strong> (490 Defense, or 5.6% crit reduction) and <strong>uncrushable</strong> (102.4% combined avoidance with Holy Shield) before maximizing by weight.</li>
+          </ol>
+        </details>
+        <div id="weights"></div>
       </details>
-      <div id="weights"></div>
 
-      <details class="how logic">
+      <details class="how section logic">
         <summary>How the sim works — the full logic</summary>
         <div id="logicBody"></div>
       </details>
