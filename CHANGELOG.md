@@ -436,3 +436,10 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   pointing at it. Global by design (unlike per-goal pins); `optimizeSets({ exclude: [itemId,…] })`.
 - **Min-HP label and value are nudge buttons.** Like the EHP/Threat end labels, the "Min HP" label
   now steps the floor down and its kHP value steps it up (one slider step each), with live re-optimize.
+- **Tighter survival floor recovery (meet floor, then max threat — robustly).** When the Min-HP floor
+  binds, the recovery now runs BOTH a ratio-kept and a pure-threat climb (each seeded from the max-HP
+  set) and keeps whichever holds the floor with the HIGHEST spell power. This removes the erratic
+  overshoot (a 14k floor that used to jump to ~15.0k/360 SP now lands 14,027/561) and makes raising the
+  floor a smooth HP↔SP trade (keep-equipped 14.0/14.25/14.5/14.75k → 14,027/561, 14,377/532,
+  14,656/503, 14,765/422). Residual jumps are just gear discreteness in keep-mode.
+- **"How the sim works" is its own panel.** Split it out of the stat-weights panel into a separate box.

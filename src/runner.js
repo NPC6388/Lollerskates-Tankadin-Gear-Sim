@@ -577,17 +577,21 @@ export function optimizeSets(items, options = {}) {
       // Floor is genuinely unreachable with this gear/keep-settings → best-effort tankiest set, flagged.
       return maxHp.agg.health > r.agg.health ? { ...maxHp, goal: g, legal: false, hpBestEffort: true } : r;
     }
-    // Floor IS reachable — the ratio search just got stuck below it. Re-run the goal's OWN ratio
-    // objective (so EHP-emphasis and the threat slider still govern the spend), but SEED it from the
-    // max-HP set so it starts above the floor; the climb then trades the excess stamina for threat per
-    // the ratio while the Min-HP gate keeps it from dropping back under. Result: floor met, then the
-    // slider maximizes threat on top — the mirror of the threat set.
+    // Floor IS reachable — the ratio search just got stuck below it. The floor is the EHP target, so
+    // beyond it we want MAX THREAT (meet the floor, then maximize spell power). Seed both a ratio-kept
+    // and a pure-threat recovery from the max-HP set (so each starts above the floor and trades the
+    // excess stamina back for threat down to the gate), then keep whichever holds the floor with the
+    // HIGHEST spell power — the seeded climb is heuristic and one framing or the other wins per floor.
     const seed = {};
     for (const [slot, it] of Object.entries(maxHp.selection)) if (it) seed[slot] = it.itemId;
-    const recovered = runGoal(g, items, ctx, seed);
-    // Keep whichever legal set best honors the goal (the recovered ratio set if it held the floor,
-    // else the max-HP set as a floor-meeting fallback).
-    if (recovered.agg.health + 1e-9 >= floor && recovered.legal) return recovered;
+    const cands = [
+      runGoal(g, items, ctx, seed),                              // EHP-emphasis ratio kept
+      runGoal({ ...g, ratio: { threat: 1 } }, items, ctx, seed), // pure threat above the floor
+    ].filter((c) => c.agg.health + 1e-9 >= floor && c.legal);
+    if (cands.length) {
+      const best = cands.reduce((a, b) => (b.agg.spellPower > a.agg.spellPower ? b : a));
+      return { ...best, goal: g };
+    }
     return { ...maxHp, goal: g, legal: maxHp.legal };
   });
 }
