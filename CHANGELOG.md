@@ -295,6 +295,14 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the set — the note now shows each buffed stat with its downstream effect computed live: stamina
   (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
   "+25.1 agility (≈+1.00% dodge)".
+- **Survival logic values full avoidance over block beyond the uncrush cap.** Per the principle that
+  once you're uncrushable, a dodge/parry/miss negates an entire ~5k spike hit while a block only shaves
+  ~275 off a hit that lands, the sim-internal EHP component (`PARTS.ehp`, used by the survival/balanced
+  blends — NOT any Sixty Upgrades scale) now rates `dodgeRating 1.1 / parryRating 0.9` (a touch above
+  stamina) and `blockRating 0.25` (down from 0.3), widening the full-avoidance-vs-block gap to ~4.4×.
+  Block isn't cut further because a survival piece should still beat a pure-threat one — past that point
+  the set abandons a block item for spell power (caught by the librams guardrail test). Reaching the cap
+  is still priced by `CAP_SCALE` (block chance 2.5×), unchanged. Tunable per the comment.
 - **Final meta-activation pass — no more silently-dead metas.** A threat-driven item swap could drop a
   gem color a meta needs (e.g. an agility scroll loosens the crush gate → feet swap from a blue-socketed
   boot to a socketless one → a kept head's "3+ blue" Powerful Earthstorm Diamond falls to 2 blue and

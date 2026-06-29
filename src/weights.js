@@ -82,14 +82,16 @@ export const SCALES = {
 // uncrush/crit gates are met they add nothing, and the gates already pull the set to the cap.
 // Component sub-weights, exported so a UI can rebuild scales from tunable ratios (see blendScale).
 export const PARTS = {
-  // EHP values FULL avoidance ≈ stamina: deaths are burst spikes (double-attacks / windfury) that
-  // out-run the health pool, and an extra dodge/parry/miss negates one of those hits entirely —
-  // so dodge ≈ 1 (= stamina), parry ≈ 0.8 (costs more rating per %), defense ≈ 1.1 (gives 4
-  // avoidance benefits). Block is kept LOW here — it's partial mitigation and wouldn't negate the
-  // burst hit; its real value is Holy Shield threat + reaching uncrush, valued in those scales.
-  // agility edges dodgeRating: less dodge per point, but it ALSO gives armor (2/agi) + melee crit
-  // and scales with Kings (×1.1), where flat dodge rating doesn't — net a touch more total value.
-  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 1.05, dodgeRating: 1.0, parryRating: 0.8, defenseRating: 1.1, blockRating: 0.3, intellect: 0.05 },
+  // EHP values FULL avoidance over BLOCK once past the uncrush cap (reaching the cap is priced by
+  // CAP_SCALE, block chance 2.5×). Beyond it a dodge/parry/miss negates a whole ~5k spike hit, while
+  // a block only shaves block-value (~275) off a hit that still LANDS — so dodge/parry/miss are worth
+  // far more here. dodge 1.1 / parry 0.9 sit a touch ABOVE stamina (1) to reflect that edge; block is
+  // pulled down to 0.25 (≈ dodge/4.4). Block isn't taken lower because a SURVIVAL piece should still
+  // beat a pure-THREAT one — drop it much further and the set abandons a block item for spell power
+  // (the librams.test guardrail). defense 1.1 gives all of miss/dodge/parry (+block), so it stays
+  // strong. agility edges dodge: less dodge/point but also armor (2/agi), melee crit, and Kings ×1.1.
+  // TUNABLE — widen the dodge/parry vs block gap toward burst progression, narrow it toward farm.
+  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 1.15, dodgeRating: 1.1, parryRating: 0.9, defenseRating: 1.1, blockRating: 0.25, intellect: 0.05 },
   // spellCritRating: a spell crit adds +0.5x damage (CRIT_MULT.spell); ~0.3 per rating point
   // relative to spellDamage 1.0 — small, so it breaks near-ties toward crit rather than chasing it.
   threat: { spellDamage: 1, spellHitRating: 1.1, spellCritRating: 0.3, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },

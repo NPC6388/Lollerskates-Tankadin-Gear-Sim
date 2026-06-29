@@ -4,6 +4,19 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-28 (night) — Survival: full avoidance > block beyond the cap
+
+Player asked the survival logic to value miss/dodge/parry over block once past the crush cap (a
+dodge negates a whole ~5k hit; a block only shaves ~275). Lever = sim-internal `PARTS.ehp` (NOT an SU
+scale — SU export uses `SCALES`). First tried block 0.3→0.15; that broke `librams.test` (survival
+flipped from Libram of Repentance (block) to Libram of the Eternal Rest (pure Consecration threat) —
+devaluing block so far that a survival set abandons a defensive piece for threat is wrong). Settled on
+RAISING full avoidance + a modest block cut: `dodge 1.0→1.1, parry 0.8→0.9, agility 1.05→1.15,
+block 0.3→0.25` (gap ~4.4×, floored so block still beats pure threat for survival). Reaching the cap
+still priced by CAP_SCALE (block 2.5×). 133 tests pass. Survival set dodge 24.1→25.1%.
+
+---
+
 ## 2026-06-28 (late eve) — Meta final pass, faction auto-detect, unpin-all
 
 - **Bug (player-found):** with keep-equipped + agility scroll, the 1:4 set swapped Battlescar Boots
