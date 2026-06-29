@@ -25,6 +25,15 @@ footer { text-align: center; color: var(--muted); padding: 24px; font-size: 13px
 .how summary { cursor: pointer; color: var(--accent); }
 .how ol { margin: 10px 0 0; padding-left: 20px; }
 .how code { background: #000; padding: 1px 5px; border-radius: 4px; color: #d7d9de; font-size: 13px; }
+/* Long "how the sim works" box: roomier, scannable, scrolls if very tall. */
+.how.logic { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.how.logic[open] { max-height: 70vh; overflow-y: auto; }
+.how.logic h4 { margin: 16px 0 4px; font-size: 13px; color: var(--gold); }
+.how.logic h4:first-of-type { margin-top: 10px; }
+.how.logic ul { margin: 4px 0 0; padding-left: 20px; }
+.how.logic li { margin: 4px 0; line-height: 1.5; font-size: 13px; }
+.how.logic p { line-height: 1.55; font-size: 13px; }
+.how.logic strong { color: var(--text); }
 
 textarea {
   width: 100%; min-height: 120px; resize: vertical; background: #12141a; color: var(--text);

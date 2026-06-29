@@ -295,6 +295,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the set — the note now shows each buffed stat with its downstream effect computed live: stamina
   (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
   "+25.1 agility (≈+1.00% dodge)".
+- **"How the sim works" explainer.** A collapsed box after the stat-weight scales documents the full
+  engine logic top to bottom — the first-principles character model (base + talents + gear + Kings/MotW),
+  the hard gates (uncrittable / uncrushable / min-HP) with their real constants, EHP (armor + Imp RF,
+  why avoidance isn't multiplied in, full-avoidance-over-block beyond the cap), the spell-power threat
+  model + scored set bonuses, the four sliders, gemming/meta/enchant logic, and the manual overrides.
+  `index.html` (`details.how.logic`) + `style.css`.
 - **The optimizer now scores tier set bonuses (was blind to them).** Previously `setBonuses` was
   computed for display but no objective used it, so a leg/shoulder swap that completed or broke a 2pc/4pc
   was invisible to selection. Each bonus is now modeled as an equivalent flat-stat bundle (like the
