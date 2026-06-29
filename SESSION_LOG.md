@@ -4,6 +4,28 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-28 (late pm) — "poor results" turned out to be a wrong-gear scan + one real label bug
+
+After the addon v0.7.1 fix, player re-scanned and still saw a weak Raid set (721 SP, 5.69% hit,
+**not uncrittable 5.54%**) — exactly reproducible. Long reconciliation revealed the fresh export
+(19:53) was taken **in the player's PvP set with PvP/Ret talents** (Anticipation=0, Deflection=3,
+def skill 443 → 4.83% crit reduction → genuinely crittable), NOT the tank threat set. So the sim was
+right; the scan was wrong. **No sim/talent bug.** Player just needs to re-scan in the tank set + tank
+spec. (Lesson: when reconciling, check the export's `T:`/`TR:` talents AND that equipped gear matches
+the expected set before assuming an engine bug. The `defenseSkill`/`critReduction` mismatch vs the ECS
+sheet was the tell.)
+
+**One real bug fixed along the way:** the set header's "all gates met" used `res.legal` (the heuristic's
+APPROXIMATE selection-stat gate check), so it could claim legal while the FINAL gemmed set missed a
+gate — contradicting the red per-gate badge the player saw ("Uncrittable 5.54%" next to "all gates
+met"). `runGoal` now returns `legal: finalLegal(evald)`. 125 tests pass.
+
+**Reverted (not shipped):** a speculative keep-mode "seed the search from the worn set" change to
+optimizeHeuristic — it didn't address the real issue (the worn set was genuinely illegal under the
+PvP spec) and was unvalidated, so it was backed out to keep the diff to the honest-label fix only.
+
+---
+
 ## 2026-06-28 (pm) — Shield Block enchant parser bug (sim couldn't match the hand-built threat set)
 
 **Report:** player's hand-made 1:4 threat set (806 SP, uncrushable w/ Kings+MotW) beat the sim's set

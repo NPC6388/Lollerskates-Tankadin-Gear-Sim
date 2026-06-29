@@ -409,7 +409,7 @@ function runGoal(goal, items, ctx) {
     perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap', locked: it._gem === 'locked', socketBonus: p.socketBonus || null, bonusKept: p.bonusKept } : { gems: [], enchant: null, metas: [], defGemmed: false, locked: false, socketBonus: null, bonusKept: null };
     perSlot[slotKey].alternatives = nearAlternatives(slotKey, it);
   }
-  return { goal, selection: res.selection, items: res.items, legal: res.legal, evald, agg, gemChoices, metas, perSlot, buffImpact };
+  return { goal, selection: res.selection, items: res.items, legal: finalLegal(evald), evald, agg, gemChoices, metas, perSlot, buffImpact };
 
   // Near-identical alternatives for a slot: OTHER owned items whose objective contribution is within
   // ALT_EPS of the chosen item AND that keep the set legal when swapped in. The objective is LINEAR

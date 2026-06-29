@@ -295,6 +295,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the set — the note now shows each buffed stat with its downstream effect computed live: stamina
   (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
   "+25.1 agility (≈+1.00% dodge)".
+- **Per-set "gates met" now reflects the FINAL gemmed set, not the selection estimate.** The set
+  header reported `legal` from the optimizer's heuristic (which judges gates on approximate raw-gem
+  selection stats), so a set whose FINAL socket-bonus-aware gemming came up short of a gate could
+  still read "all gates met" while the per-gate badge correctly showed the failure (e.g. "Uncrittable
+  5.54%" red next to "all gates met"). `runGoal` now returns `legal: finalLegal(evald)` — the actual
+  final set's gate status — so the summary line and the badges agree.
 - **Addon v0.7.1 — Shield Block enchant now parsed (block rating was being dropped).** The
   "Enchant Shield – Shield Block" enchant renders on the item as **"+15 Shield Block Rating"** — with
   "shield" wedged between the number and "block rating" — so the addon's `%+(%d+) block rating` phrase
