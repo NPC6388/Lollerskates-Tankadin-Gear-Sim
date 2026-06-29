@@ -91,6 +91,7 @@ function init() {
     const v = defaultVOf(g.id);
     const leftLbl = bal ? 'Survival' : AXIS_LABEL[left];
     const rightLbl = bal ? 'Threat' : AXIS_LABEL[right];
+    const step = bal ? 0.05 : 0.5; // Balanced is a fine blend dial; the ratio sliders snap to ratios
     const readout = bal ? balancedText(v) : ratioText(g.id, v);
     const minHP = UI_DEFAULTS[g.id] ? UI_DEFAULTS[g.id].minHP : 10000;
     // Balanced has no Min-HP knob — its floor is DERIVED (blended from your Survival & Raid floors),
@@ -106,9 +107,9 @@ function init() {
       <span class="name">${g.name}</span>
       <div class="slider-cell">
         <div class="slider-wrap">
-          <span class="end left">${leftLbl}</span>
-          <input type="range" class="ratio-slider" min="-3" max="3" step="0.5" value="${v}" />
-          <span class="end right">${rightLbl}</span>
+          <button class="end left" type="button" title="Nudge toward ${leftLbl}">${leftLbl}</button>
+          <input type="range" class="ratio-slider" min="-3" max="3" step="${step}" value="${v}" />
+          <button class="end right" type="button" title="Nudge toward ${rightLbl}">${rightLbl}</button>
         </div>
         <div class="ratio">${readout}</div>
       </div>
@@ -130,6 +131,13 @@ function init() {
       updateBalMinHP(); // Survival/Raid floors feed Balanced's derived floor
     });
   });
+  // The EHP/Threat end labels are buttons: clicking nudges the slider one step that way.
+  $('goalConfig').querySelectorAll('button.end').forEach((b) => b.addEventListener('click', () => {
+    const slider = b.closest('.slider-wrap').querySelector('.ratio-slider');
+    const dir = b.classList.contains('right') ? 1 : -1;
+    slider.value = (+slider.value + dir * (+slider.step)).toFixed(2); // range input clamps to min/max
+    slider.dispatchEvent(new Event('input'));
+  }));
   updateBalMinHP();
 
   $('scrolls').innerHTML = Object.entries(SCROLLS).map(([key, s]) => {
