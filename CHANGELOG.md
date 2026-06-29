@@ -429,3 +429,8 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Min-HP gate holds the floor. So survival now emphasizes EHP, holds Min-HP as a hard gate, then spends
   the rest on threat per the slider (the mirror of the threat set): keep-equipped survival at a 14k
   floor went from an overshot 14,995/360 SP to 14,027/561 SP. Min-HP slider range widened to 10k–20k.
+- **Exclude items (inverse of pin).** Each shown item (the pick and every "≈ also viable" alternate)
+  now has an **exclude** button that drops that item from EVERY set's pool and re-optimizes — for gear
+  you don't actually have, or just don't want suggested. Excluded items show in a 🚫 banner with a
+  re-include × and Clear all (mirrors the locked-gems banner). Excluding an item also clears any pin
+  pointing at it. Global by design (unlike per-goal pins); `optimizeSets({ exclude: [itemId,…] })`.

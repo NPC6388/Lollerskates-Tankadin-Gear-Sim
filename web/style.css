@@ -119,6 +119,7 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 /* Per-set actions (lock + export) and the locked-items banner. */
 .set-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .lockedbar { margin: 0 0 10px; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(240,198,116,.10); border: 1px solid rgba(240,198,116,.35); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lockedbar.excl { background: rgba(224,109,109,.10); border-color: rgba(224,109,109,.35); }
 .lockchip { display: inline-flex; align-items: center; gap: 4px; background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 1px 4px 1px 8px; }
 .lockx { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; }
 .lockx:hover { color: var(--bad); }
@@ -165,6 +166,8 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .pin-btn, .unpin-btn { font-size: 10px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
 .pin-btn:hover { color: var(--text); border-color: var(--accent, #5aa9e6); }
 .unpin-btn { color: var(--gold); border-color: rgba(214,180,90,.5); }
+.excl-btn { font-size: 10px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; margin-left: 2px; }
+.excl-btn:hover { color: var(--bad); border-color: var(--bad); }
 .ds-alt .pin-btn { margin-left: 2px; }
 .ds-slot.pinned { border-left: 2px solid var(--gold); padding-left: 6px; }
 .ds-slot.right.pinned { border-left: 0; border-right: 2px solid var(--gold); padding-left: 0; padding-right: 6px; }

@@ -77,6 +77,7 @@ let lastResults = null;  // last optimize results (for the per-set lock button)
 let faction = null;      // Aldor/Scryer, auto-detected from the equipped shoulder inscription
 const lockedItemIds = new Set(); // item-ids whose gems/enchants are kept across every set
 const pinnedSlots = {};  // goalId -> { slotKey: itemId } — items forced into a slot for that set
+const excludedItemIds = new Set(); // item-ids dropped from EVERY set (inverse of pin)
 
 // ---- setup ------------------------------------------------------------------
 function init() {
@@ -369,7 +370,7 @@ function optimizeNow(live) {
     const results = optimizeSets(items, {
       professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
       faction, useImbuedMeta: $('imbuedMeta').checked,
-      keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots,
+      keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots, exclude: [...excludedItemIds],
       talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
     });
     lastResults = results;
@@ -483,7 +484,7 @@ function render(results) {
   $('tabs').querySelectorAll('button').forEach((b) =>
     b.addEventListener('click', () => { activeTab = +b.dataset.i; render(results); }));
 
-  $('sets').innerHTML = lockedBanner() + setCard(results[activeTab]);
+  $('sets').innerHTML = lockedBanner() + excludedBanner() + setCard(results[activeTab]);
   const eb = $('sets').querySelector('.export-btn');
   if (eb) eb.addEventListener('click', () => exportSet(results[activeTab], eb));
   // Lock this set's items: add every selected item-id to the kept list, then re-optimize so the
@@ -508,6 +509,28 @@ function render(results) {
   }));
   const ua = $('sets').querySelector('.unpin-all-btn');
   if (ua) ua.addEventListener('click', () => { delete pinnedSlots[ua.dataset.goal]; runOptimize(); });
+  // Exclude an item from every set (drops it from the pool); also clear any pin pointing at it.
+  $('sets').querySelectorAll('.excl-btn').forEach((b) => b.addEventListener('click', () => {
+    const id = +b.dataset.id;
+    excludedItemIds.add(id);
+    for (const g of Object.values(pinnedSlots)) for (const s of Object.keys(g)) if (g[s] === id) delete g[s];
+    runOptimize();
+  }));
+  $('sets').querySelectorAll('.exclx').forEach((x) => x.addEventListener('click', () => { excludedItemIds.delete(+x.dataset.id); runOptimize(); }));
+  const ce = $('sets').querySelector('.clearexcl');
+  if (ce) ce.addEventListener('click', () => { excludedItemIds.clear(); runOptimize(); });
+}
+
+// Banner listing items excluded from every set (chips with a re-include ×). Names come from the
+// pre-exclusion item list so an already-dropped item still shows its name.
+function excludedBanner() {
+  if (!excludedItemIds.size) return '';
+  const chips = [...excludedItemIds].map((id) => {
+    const it = (items || []).find((i) => i.itemId === id);
+    return `<span class="lockchip">${it ? (it.name || id) : id}<button class="exclx" data-id="${id}" title="re-include">×</button></span>`;
+  }).join('');
+  return `<div class="lockedbar excl">🚫 <b>Excluded</b> (never used in any set): ${chips}
+    <button class="ghost clearexcl" type="button">Clear all</button></div>`;
 }
 
 // Banner listing the items whose gems/enchants are locked across all sets (chips with an unlock ×).
@@ -532,7 +555,8 @@ function slotHTML(r, slotKey, side) {
   // offer to pin the current pick (locks it so re-optimizing other slots won't swap it for this set).
   const pinCtl = pinnedId
     ? `<button class="unpin-btn" data-goal="${goalId}" data-slot="${slotKey}" title="Stop forcing this item; re-optimize the slot">📌 pinned · unpin</button>`
-    : `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${it.itemId}" title="Force this item into the slot and re-optimize the rest around it">pin</button>`;
+    : `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${it.itemId}" title="Force this item into the slot and re-optimize the rest around it">pin</button>`
+      + `<button class="excl-btn" data-id="${it.itemId}" title="Exclude this item from all sets">exclude</button>`;
   const ench = ps.enchant ? `<div class="ds-ench-row">${enchLink(ps.enchant)}</div>` : '';
   let gems = '';
   if (ps.gems && ps.gems.length) {
@@ -565,7 +589,8 @@ function altsHTML(alts, goalId, slotKey) {
   const rows = alts.map((a) => {
     const gc = (a.gems && a.gems.length) ? `<div class="ds-gems alt">${a.gems.map((g) => gemCell(g, true)).join('')}</div>` : '';
     const regem = a.dropInLegal === false ? `<span class="alt-regem" title="Dropping this in as-is would miss a gate — re-gem another slot for the avoidance/resilience it gives up.">needs re-gem</span>` : '';
-    const pin = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${a.itemId}" title="Force this item into the slot and re-optimize the rest around it">pin</button>`;
+    const pin = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${a.itemId}" title="Force this item into the slot and re-optimize the rest around it">pin</button>`
+      + `<button class="excl-btn" data-id="${a.itemId}" title="Exclude this item from all sets">exclude</button>`;
     return `<div class="ds-alt">
       <span class="alt-line">${wh(a.itemId, a.name || a.itemId, 'ds-alt-item')}<span class="alt-delta" title="Change to this goal's overall set score">${altDelta(a.objDelta)}</span>${regem}${pin}</span>
       ${gc}

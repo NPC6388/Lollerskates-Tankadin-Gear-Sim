@@ -557,6 +557,11 @@ export function optimizeSets(items, options = {}) {
     // current gems/enchant, never re-gemmed; only COMPLETE items lock unless ignoreCompleteness.
     ...(() => { const k = keepConfig(options.keepGemsEnchants); return { keep: k && k.pred, keepIgnoreCompleteness: k ? k.ignoreCompleteness : false }; })(),
   };
+  // Excluded items (UI "exclude" — the inverse of pin): drop them from the pool for EVERY set.
+  if (options.exclude && options.exclude.length) {
+    const ex = new Set(options.exclude);
+    items = items.filter((it) => !ex.has(it.itemId));
+  }
   const goals = options.goals || GOAL_PRESETS;
   // The web UI builds the Balanced goal's ratio by blending the Survival and Raid ratios (its slider
   // slides between the two sets), so the engine stays generic — every goal is just a ratio + gates.
