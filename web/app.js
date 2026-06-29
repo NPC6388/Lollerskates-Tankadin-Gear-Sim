@@ -100,9 +100,9 @@ function init() {
     const minhpCell = minHP == null
       ? `<div class="minhp-cell"><span class="minhp-label muted">Min HP (derived)</span><span class="minhp-val bal-minhp">—</span></div>`
       : `<div class="minhp-cell">
-        <span class="minhp-label">Min HP</span>
+        <button class="minhp-label mh-btn" type="button" data-dir="-1" title="Lower Min HP">Min HP</button>
         <input type="range" class="minhp-slider" min="${MINHP.min}" max="${MINHP.max}" step="${MINHP.step}" value="${minHP}" />
-        <span class="minhp-val">${fmtHp(minHP)}</span>
+        <button class="minhp-val mh-btn" type="button" data-dir="1" title="Raise Min HP">${fmtHp(minHP)}</button>
       </div>`;
     return `<div class="goal-row" data-goal="${g.id}">
       <span class="name">${g.name}</span>
@@ -139,6 +139,13 @@ function init() {
     const slider = b.closest('.slider-wrap').querySelector('.ratio-slider');
     const dir = b.classList.contains('right') ? 1 : -1;
     slider.value = (+slider.value + dir * (+slider.step)).toFixed(2); // range input clamps to min/max
+    slider.dispatchEvent(new Event('input'));
+  }));
+  // The "Min HP" label and its kHP value are also nudge buttons (down / up by one step).
+  $('goalConfig').querySelectorAll('.mh-btn').forEach((b) => b.addEventListener('click', () => {
+    const slider = b.closest('.minhp-cell').querySelector('.minhp-slider');
+    if (!slider) return;
+    slider.value = String(+slider.value + (+b.dataset.dir) * (+slider.step)); // range input clamps
     slider.dispatchEvent(new Event('input'));
   }));
   updateBalMinHP();

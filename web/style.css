@@ -79,6 +79,9 @@ input[type=text] { width: 100%; font-family: ui-monospace, monospace; font-size:
 .minhp-cell .minhp-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .minhp-cell input[type=range] { flex: 1; min-width: 70px; accent-color: var(--gold); }
 .minhp-cell .minhp-val { color: var(--gold); font-size: 12px; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+.minhp-cell button.mh-btn { background: none; border: none; padding: 0; cursor: pointer; font: inherit; }
+.minhp-cell button.mh-btn:hover { color: var(--accent); text-decoration: underline; }
+.minhp-cell button.minhp-val:hover { color: var(--accent); }
 
 button {
   border: 1px solid var(--line); background: var(--panel2); color: var(--text);

@@ -434,3 +434,5 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   you don't actually have, or just don't want suggested. Excluded items show in a 🚫 banner with a
   re-include × and Clear all (mirrors the locked-gems banner). Excluding an item also clears any pin
   pointing at it. Global by design (unlike per-goal pins); `optimizeSets({ exclude: [itemId,…] })`.
+- **Min-HP label and value are nudge buttons.** Like the EHP/Threat end labels, the "Min HP" label
+  now steps the floor down and its kHP value steps it up (one slider step each), with live re-optimize.
