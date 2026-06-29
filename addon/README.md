@@ -40,3 +40,12 @@ character stats for [Lollerskate's Tankadin Gear Sim](../README.md).
 Everything is read defensively, so a missing API on a given client build is skipped
 rather than erroring. If a stat comes through blank, tell the dev which one and it'll
 get a fallback.
+
+## Packaging (one-click download)
+
+The site's "Download the addon" button serves `addon/TankadinGearSim.zip` (the folder zipped so it
+extracts as `AddOns/TankadinGearSim/`). **Rebuild it whenever the .lua/.toc changes**, e.g. on Windows:
+
+    Compress-Archive -Path addon/TankadinGearSim -DestinationPath addon/TankadinGearSim.zip -Force
+
+(or `cd addon && zip -r TankadinGearSim.zip TankadinGearSim` on a unix shell), then commit the zip.

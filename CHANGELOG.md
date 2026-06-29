@@ -443,3 +443,7 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   floor a smooth HP↔SP trade (keep-equipped 14.0/14.25/14.5/14.75k → 14,027/561, 14,377/532,
   14,656/503, 14,765/422). Residual jumps are just gear discreteness in keep-mode.
 - **"How the sim works" is its own panel.** Split it out of the stat-weights panel into a separate box.
+- **One-click addon download in the export how-to.** The "Get the addon & your export" box now has a
+  Download button (`addon/TankadinGearSim.zip`, the folder zipped so it extracts as
+  `AddOns/TankadinGearSim/`) plus short install steps (unzip into `Interface\AddOns`, enable, `/tgs`).
+  Rebuild the zip when the addon changes (see `addon/README.md`).
