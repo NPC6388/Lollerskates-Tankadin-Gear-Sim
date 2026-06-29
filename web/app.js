@@ -374,10 +374,14 @@ function optimizeNow(live) {
     const professions = [$('prof1').value, $('prof2').value].filter(Boolean);
     const trinketLocks = { icon: num($('lockIcon').value), eye: num($('lockEye').value) };
     const scrolls = [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value);
+    // On live slider drags, seed each goal from its previous result so incremental nudges climb from
+    // the adjacent set (smooth, monotonic) rather than re-optimizing cold. Fresh runs seed from scratch.
+    const seeds = (live && lastResults) ? Object.fromEntries(lastResults.map((r) =>
+      [r.goal.id, Object.fromEntries(Object.entries(r.selection).filter(([, it]) => it).map(([s, it]) => [s, it.itemId]))])) : undefined;
     const results = optimizeSets(items, {
       professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
       faction, useImbuedMeta: $('imbuedMeta').checked,
-      keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots, exclude: [...excludedItemIds],
+      keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots, exclude: [...excludedItemIds], seeds,
       talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
     });
     lastResults = results;

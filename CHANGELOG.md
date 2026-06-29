@@ -456,3 +456,9 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   only the ones whose FINAL set holds the floor, and picks the floor-holder the goal's OWN ratio scores
   highest — so SP holds at the floor-capped max instead of collapsing. Below a binding floor the slider
   still trades smoothly (SP rises with threat).
+- **Smooth, monotonic slider drags (seed from the adjacent set).** Live slider re-optimizes now pass the
+  PREVIOUS result's per-slot selection as a seed, so each nudge climbs from the adjacent (good) set
+  instead of restarting the heuristic cold. This kills the small non-monotonic wiggles (e.g. an SP dip
+  while sliding toward threat, when it should only rise). Fresh (non-live) Optimize runs still seed from
+  scratch. Reuses the existing `seed` plumbing in `optimizeHeuristic`/`runGoal`; the web layer builds
+  `options.seeds` per goal from `lastResults` only on live drags.

@@ -566,7 +566,11 @@ export function optimizeSets(items, options = {}) {
   // The web UI builds the Balanced goal's ratio by blending the Survival and Raid ratios (its slider
   // slides between the two sets), so the engine stays generic — every goal is just a ratio + gates.
   return goals.map((g) => {
-    const r = runGoal(g, items, ctx);
+    // Live slider drags pass the PREVIOUS result's per-slot selection as a seed, so each nudge climbs
+    // from the adjacent (good) set instead of restarting cold — this kills the heuristic's small
+    // non-monotonic wiggles (an SP dip when the slider should only rise) as you sweep the dial.
+    const gseed = (options.seeds && options.seeds[g.id]) || {};
+    const r = runGoal(g, items, ctx, gseed);
     const floor = (g.gates && g.gates.minHealth) || 0;
     if (!floor || r.agg.health + 1e-9 >= floor) return r; // no floor, or it's already met
     // Min-HP is a HARD gate (like uncrit/uncrush) — the ratio search came up short. First find the

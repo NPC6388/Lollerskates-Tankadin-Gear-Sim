@@ -4,6 +4,22 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-29 — Seed live slider drags for smooth, monotonic SP (merged to main)
+
+Live slider re-optimizes (the debounced `optimizeNow(live)` on Balanced-slider drags) were re-running
+the greedy/repair heuristic COLD on every nudge, producing small non-monotonic wiggles — an SP dip
+while sliding toward threat when it should only rise. Fix: on live drags only, `optimizeNow` builds
+`options.seeds` (per goal: slot → itemId from `lastResults`) and threads it through `optimizeSets` →
+`runGoal` → `optimizeHeuristic`, so each nudge climbs from the adjacent (already-good) set instead of
+restarting. Reuses the `seed` plumbing that already existed for the floor-recovery EHP-lean sweep — no
+engine surface change beyond `optimizeSets` reading `options.seeds`. Fresh (non-live) Optimize runs pass
+`undefined` and still seed from scratch. Verified live with the player (slider now climbs SP smoothly,
+no dips). 135 tests pass.
+
+Touched: `src/runner.js` (optimizeSets reads per-goal seed), `web/app.js` (build seeds on live drags).
+
+---
+
 ## 2026-06-29 — Balanced = blend dial between Survival & Raid (merged to main)
 
 Built on branch `experiment/balanced-midpoint`, iterated with the player live (local `npm run serve`),
