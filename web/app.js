@@ -167,7 +167,7 @@ const WEIGHT_SCALES = [
   { key: 'threatSingleAtCap', label: 'Single-Target Threat (capped)', note: 'hit / expertise / spell-hit already capped' },
   { key: 'threatAOE', label: 'AOE Threat', note: 'multi-target — Consecration / Holy Shield scale per target' },
   { key: 'survivalUncrushable', label: 'Survival — reach Uncrushable', note: 'crush-removal premium on avoidance' },
-  { key: 'survivalEHP', label: 'Survival — EHP / Farm', note: 'avoidance at face value' },
+  { key: 'survivalEHP', label: 'Survival — EHP / Farm', note: 'beyond the cap — stamina-led, avoidance below it' },
   { key: 'balanced', label: 'Balanced', note: 'caps as constraints; ~1 SP ≈ 1 stamina beyond them' },
 ];
 const WSTAT_NAME = { // our stat key -> readable name (for the on-page table)

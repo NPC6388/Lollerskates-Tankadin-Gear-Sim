@@ -400,3 +400,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Optimize, dragging any goal slider re-optimizes live (debounced) so the numbers track the slider.
   Web-layer only (`app.js` `currentGoals`/`optimizeNow`/`scheduleLiveUpdate`); the engine stays
   ratio-generic.
+- **Survival beyond the cap now leads with stamina (avoidance valued below it).** Per the research note
+  (`research/avoidance-above-cap-vs-stamina.md`): once uncrushable, survival is a FLOOR objective —
+  avoidance only improves the average and only vs physical, while stamina (and armor) addresses the
+  worst-case spike AND magic damage. Pulled beyond-cap avoidance just under stamina in BOTH the sim's
+  internal blend (`PARTS.ehp`) and the exported `survivalEHP` SU scale: dodge 1.1→0.85, parry 0.9→0.7,
+  agility 1.15→0.95, defense 1.1→1.0 (survivalEHP block 1.02→0.25 to match; PARTS block already 0.25,
+  floored by the librams guardrail). Reaching the cap is unchanged (`survivalUncrushable`, block chance
+  2.5×). Effect on a 1.5:1/14k survival set: EHP 34.6k→37.0k, stamina +~75, still uncrushable. 135 tests
+  pass. (TBC has no rating diminishing returns — that's WotLK — so this rests on floor/spike/magic.)

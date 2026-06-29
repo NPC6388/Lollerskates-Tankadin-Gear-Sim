@@ -51,11 +51,15 @@ export const SCALES = {
     metaSockets: 18, redSockets: 9, yellowSockets: 9, blueSockets: 12,
   }),
 
-  // 5. Survival — uncrushable / EHP (farm; avoidance at face value)
+  // 5. Survival — beyond the uncrush cap / EHP (a FLOOR objective: stamina leads, since avoidance
+  // only helps the average and only vs physical — see research/avoidance-above-cap-vs-stamina.md).
+  // Mirrors the sim's beyond-cap valuation (PARTS.ehp): dodge/parry/defense sit just below stamina,
+  // block is minor. (To reach the cap in the first place, use the survivalUncrushable scale, where
+  // block chance is worth 2.5×.)
   survivalEHP: scale({
-    stamina: 1, intellect: 0.1, strength: 0.02, agility: 1.10,
-    dodgeRating: 1.06, parryRating: 0.85, defenseRating: 1.2,
-    blockRating: 1.02, blockValue: 0.05, blockValueBonus: 0.05,
+    stamina: 1, intellect: 0.1, strength: 0.02, agility: 0.95,
+    dodgeRating: 0.85, parryRating: 0.7, defenseRating: 1.0,
+    blockRating: 0.25, blockValue: 0.05, blockValueBonus: 0.05,
     hitRating: 0.1, expertiseRating: 0.2, spellDamage: 0.3, spellHitRating: 0.1,
     health: 0.08, resilienceRating: 0.05, armor: 0.06,
     metaSockets: 18, redSockets: 9, yellowSockets: 9, blueSockets: 12,
@@ -82,16 +86,18 @@ export const SCALES = {
 // uncrush/crit gates are met they add nothing, and the gates already pull the set to the cap.
 // Component sub-weights, exported so a UI can rebuild scales from tunable ratios (see blendScale).
 export const PARTS = {
-  // EHP values FULL avoidance over BLOCK once past the uncrush cap (reaching the cap is priced by
-  // CAP_SCALE, block chance 2.5×). Beyond it a dodge/parry/miss negates a whole ~5k spike hit, while
-  // a block only shaves block-value (~275) off a hit that still LANDS — so dodge/parry/miss are worth
-  // far more here. dodge 1.1 / parry 0.9 sit a touch ABOVE stamina (1) to reflect that edge; block is
-  // pulled down to 0.25 (≈ dodge/4.4). Block isn't taken lower because a SURVIVAL piece should still
-  // beat a pure-THREAT one — drop it much further and the set abandons a block item for spell power
-  // (the librams.test guardrail). defense 1.1 gives all of miss/dodge/parry (+block), so it stays
-  // strong. agility edges dodge: less dodge/point but also armor (2/agi), melee crit, and Kings ×1.1.
-  // TUNABLE — widen the dodge/parry vs block gap toward burst progression, narrow it toward farm.
-  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 1.15, dodgeRating: 1.1, parryRating: 0.9, defenseRating: 1.1, blockRating: 0.25, intellect: 0.05 },
+  // Beyond the uncrush cap (reaching it is priced by CAP_SCALE), survival is a FLOOR objective —
+  // what kills a tank is the worst-case consecutive-hit spike and incoming MAGIC damage, and only the
+  // floor (stamina, + armor) addresses both. Avoidance only improves the AVERAGE and only vs PHYSICAL
+  // damage (TBC has no rating diminishing returns — that's WotLK — so this rests on floor/spike/magic,
+  // not a DR curve). So STAMINA leads: dodge/parry sit just BELOW it, not above (research note
+  // research/avoidance-above-cap-vs-stamina.md; aligns with character.js, which deliberately keeps
+  // avoidance OUT of the EHP number for the same reason). agility ≈ top of avoidance (it also gives
+  // armor 2/agi + Kings ×1.1) but still < stamina; defense gives miss/dodge/parry so it stays near 1;
+  // block stays 0.25 (only shaves ~275 off a hit that lands — floored there so a survival piece still
+  // beats a pure-threat one, the librams.test guardrail). TUNABLE — lean further to stamina for
+  // burst/magic progression, raise avoidance toward farm (it smooths damage / eases healing).
+  ehp: { stamina: 1, health: 0.08, armor: 0.06, agility: 0.95, dodgeRating: 0.85, parryRating: 0.7, defenseRating: 1.0, blockRating: 0.25, intellect: 0.05 },
   // spellCritRating: a spell crit adds +0.5x damage (CRIT_MULT.spell); ~0.3 per rating point
   // relative to spellDamage 1.0 — small, so it breaks near-ties toward crit rather than chasing it.
   threat: { spellDamage: 1, spellHitRating: 1.1, spellCritRating: 0.3, hitRating: 0.6, expertiseRating: 0.9, strength: 0.4, blockRating: 0.4, intellect: 0.1 },
