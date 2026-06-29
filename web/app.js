@@ -123,12 +123,14 @@ function init() {
       const txt = isBalanced(id) ? balancedText(+e.target.value) : ratioText(id, +e.target.value);
       e.target.closest('.slider-cell').querySelector('.ratio').textContent = txt;
       if (isBalanced(id)) updateBalMinHP(); // Balanced's derived floor shifts as its blend moves
+      scheduleLiveUpdate(); // re-optimize live so the numbers track the slider
     });
   });
   $('goalConfig').querySelectorAll('.minhp-slider').forEach((r) => {
     r.addEventListener('input', (e) => {
       e.target.closest('.minhp-cell').querySelector('.minhp-val').textContent = fmtHp(+e.target.value);
       updateBalMinHP(); // Survival/Raid floors feed Balanced's derived floor
+      scheduleLiveUpdate();
     });
   });
   // The EHP/Threat end labels are buttons: clicking nudges the slider one step that way.
@@ -357,29 +359,43 @@ function currentGoals() {
   });
 }
 
+// Core optimize + render. `live` skips the button "Optimizing…" toggle and runs synchronously
+// (used by the debounced slider-drag updates so the numbers track the sliders without flicker).
+function optimizeNow(live) {
+  try {
+    const professions = [$('prof1').value, $('prof2').value].filter(Boolean);
+    const trinketLocks = { icon: num($('lockIcon').value), eye: num($('lockEye').value) };
+    const scrolls = [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value);
+    const results = optimizeSets(items, {
+      professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
+      faction, useImbuedMeta: $('imbuedMeta').checked,
+      keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots,
+      talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
+    });
+    lastResults = results;
+    render(results);
+  } catch (err) {
+    $('summary').innerHTML = `<p class="status err">${err.message || err}</p>`;
+    $('results-panel').hidden = false;
+  } finally {
+    if (!live) { $('optimizeBtn').disabled = false; $('optimizeBtn').textContent = 'Optimize'; }
+  }
+}
+
 function runOptimize() {
   if (!items) return;
   $('optimizeBtn').disabled = true; $('optimizeBtn').textContent = 'Optimizing…';
-  setTimeout(() => {
-    try {
-      const professions = [$('prof1').value, $('prof2').value].filter(Boolean);
-      const trinketLocks = { icon: num($('lockIcon').value), eye: num($('lockEye').value) };
-      const scrolls = [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value);
-      const results = optimizeSets(items, {
-        professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
-        faction, useImbuedMeta: $('imbuedMeta').checked,
-        keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots,
-        talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
-      });
-      lastResults = results;
-      render(results);
-    } catch (err) {
-      $('summary').innerHTML = `<p class="status err">${err.message || err}</p>`;
-      $('results-panel').hidden = false;
-    } finally {
-      $('optimizeBtn').disabled = false; $('optimizeBtn').textContent = 'Optimize';
-    }
-  }, 20);
+  setTimeout(() => optimizeNow(false), 20);
+}
+
+// Live re-optimize as the goal sliders move — debounced so dragging stays smooth (only fires after a
+// short pause), and only once gear is loaded AND a set has been shown (so the first run is the user's
+// explicit Optimize click, then the sliders become live).
+let liveTimer = null;
+function scheduleLiveUpdate() {
+  if (!items || !lastResults) return;
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(() => optimizeNow(true), 150);
 }
 const num = (v) => (v ? +v : null);
 
