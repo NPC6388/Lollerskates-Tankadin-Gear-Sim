@@ -30,6 +30,35 @@ export function setCounts(items) {
   return counts;
 }
 
+// Each tier bonus modeled as an EQUIVALENT flat-stat bundle (same keys the weight scales use), so the
+// optimizer can VALUE completing a set the same way it values stats — scored by the goal weights, so a
+// threat set rewards these (threat) bonuses while a survival set rightly mostly shrugs. The threat
+// bonuses are expressed as spell-power-equivalents from the threat model (src/threat.js) at ~800 SP:
+//   Justicar 2pc  +10% seal damage          ≈ +19 TPS  → ~25-30 SP; modeled 20 (conservative)
+//   Justicar 4pc  +15 dmg per Holy Shield block ≈ +13 TPS → ~21 SP; modeled 15
+//   Crystalforge 2pc +15 Retribution Aura per hit taken (situational, tank-only) → modeled 12
+//   Crystalforge 4pc +100 block value for 6s after Holy Shield → block value (survival, scored low)
+// TUNABLE — these are rotation-dependent estimates; adjust as the threat model is refined.
+export const SET_BONUS_STATS = {
+  justicar2pc: { spellDamage: 20 },
+  justicar4pc: { spellDamage: 15 },
+  crystalforge2pc: { spellDamage: 12 },
+  crystalforge4pc: { blockValue: 100 },
+};
+
+// Combined equivalent-stat bundle of every ACTIVE set bonus for a set of items (non-linear: 2pc/4pc
+// thresholds). Add score(setBonusStats(items), weights) to a set's objective to value set completion.
+export function setBonusStats(items) {
+  const c = setCounts(items);
+  const out = {};
+  const add = (b) => { for (const [k, v] of Object.entries(b)) out[k] = (out[k] || 0) + v; };
+  if ((c.Justicar || 0) >= 2) add(SET_BONUS_STATS.justicar2pc);
+  if ((c.Justicar || 0) >= 4) add(SET_BONUS_STATS.justicar4pc);
+  if ((c.Crystalforge || 0) >= 2) add(SET_BONUS_STATS.crystalforge2pc);
+  if ((c.Crystalforge || 0) >= 4) add(SET_BONUS_STATS.crystalforge4pc);
+  return out;
+}
+
 // Active set bonuses + the combat modifiers they confer. Threat modifiers are returned
 // so threat.js / a TPS objective can apply them; the per-set piece counts drive the UI.
 export function setBonuses(items) {

@@ -11,6 +11,7 @@ import { aggregate, justicarBonuses, sumStats } from './model.js';
 import { evaluateSet } from './character.js';
 import { score } from './scoring.js';
 import { SCALES } from './weights.js';
+import { setBonusStats } from './sets.js';
 import { BASE, CAPS } from './constants.js';
 
 const BUILTIN_OBJECTIVES = {
@@ -27,7 +28,11 @@ function objectiveFn(goal) {
   if (goal.objective === 'scale') {
     const w = goal.scaleWeights || SCALES[goal.scale];
     if (!w) throw new Error('scale objective needs goal.scale or goal.scaleWeights');
-    return (_e, _a, items) => score(sumStats(items), w);
+    // Score summed item stats PLUS active tier set bonuses (modeled as equivalent stats), so the
+    // optimizer values completing a 2pc/4pc — weighed by the goal scale, so it's a threat win on a
+    // threat set and ~nothing on a survival set. The set bonus only "wins" if it beats the stat delta
+    // of the alternative item, so it never keeps a clearly-worse piece just for the bonus.
+    return (_e, _a, items) => score(sumStats(items), w) + score(setBonusStats(items), w);
   }
   const f = BUILTIN_OBJECTIVES[goal.objective];
   if (!f) throw new Error(`Unknown objective: ${goal.objective}`);

@@ -4,9 +4,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseExport, equippableItems } from '../src/import.js';
-import { setBonuses } from '../src/sets.js';
+import { setBonuses, setBonusStats, SET_BONUS_STATS } from '../src/sets.js';
 import { justicarBonuses } from '../src/model.js';
 import { retributionAuraPerHit } from '../src/threat.js';
+import { score } from '../src/scoring.js';
+import { SCALES } from '../src/weights.js';
 import { UNBUFFED_EXPORT } from './fixtures/lollerskate-unbuffed.js';
 
 const items = equippableItems(parseExport(UNBUFFED_EXPORT)).filter((i) => i.equipped);
@@ -37,4 +39,26 @@ test('Crystalforge 2pc raises Retribution Aura threat per hit', () => {
 test('justicarBonuses resolves set pieces by item ID', () => {
   assert.equal(justicarBonuses(items).pieces, 3);
   assert.equal(justicarBonuses(items).twoPc, true);
+});
+
+test('setBonusStats: thresholds add the modeled equivalent stats (2pc/4pc, both sets)', () => {
+  const J = [29068, 29070, 29066, 29067, 29069].map((id) => ({ itemId: id })); // 5 Justicar
+  const C = [30121, 30125].map((id) => ({ itemId: id }));                       // 2 Crystalforge
+  assert.deepEqual(setBonusStats([]), {});
+  assert.deepEqual(setBonusStats(J.slice(0, 1)), {});                            // 1pc -> nothing
+  assert.deepEqual(setBonusStats(J.slice(0, 2)), SET_BONUS_STATS.justicar2pc);   // 2pc
+  assert.deepEqual(setBonusStats(J.slice(0, 4)), {                               // 4pc = 2pc + 4pc
+    spellDamage: SET_BONUS_STATS.justicar2pc.spellDamage + SET_BONUS_STATS.justicar4pc.spellDamage,
+  });
+  // The real 3pc-J + 2pc-C set: Justicar 2pc + Crystalforge 2pc, both spell power.
+  assert.equal(setBonusStats([...J.slice(0, 3), ...C]).spellDamage,
+    SET_BONUS_STATS.justicar2pc.spellDamage + SET_BONUS_STATS.crystalforge2pc.spellDamage);
+});
+
+test('a completed set bonus raises the scale objective (so the optimizer values it)', () => {
+  const oneJ = [{ itemId: 29068, stats: { stamina: 10 } }];
+  const twoJ = [{ itemId: 29068, stats: { stamina: 10 } }, { itemId: 29070, stats: {} }];
+  const obj = (its) => score(its.reduce((t, i) => { for (const [k, v] of Object.entries(i.stats || {})) t[k] = (t[k] || 0) + v; return t; }, {}), SCALES.threatSingleBelowCap)
+    + score(setBonusStats(its), SCALES.threatSingleBelowCap);
+  assert.ok(obj(twoJ) > obj(oneJ) + 5, '2pc Justicar adds threat value on a threat scale');
 });

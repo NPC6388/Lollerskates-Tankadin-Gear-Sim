@@ -295,6 +295,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the set — the note now shows each buffed stat with its downstream effect computed live: stamina
   (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
   "+25.1 agility (≈+1.00% dodge)".
+- **The optimizer now scores tier set bonuses (was blind to them).** Previously `setBonuses` was
+  computed for display but no objective used it, so a leg/shoulder swap that completed or broke a 2pc/4pc
+  was invisible to selection. Each bonus is now modeled as an equivalent flat-stat bundle (like the
+  libram effects) and added to the `scale` objective, scored by the goal weights — so it's a real win on
+  a threat set and ~nothing on a survival set. Threat bonuses are spell-power-equivalents derived from
+  the threat model at ~800 SP: Justicar 2pc (+10% seal ≈ +19 TPS) → 20 SP, Justicar 4pc (+15/HS block
+  ≈ +13 TPS) → 15, Crystalforge 2pc (+15 Ret Aura/hit, situational) → 12; Crystalforge 4pc (+100 block
+  value 6s post-HS) → block value. The bonus only "wins" if it beats the alternative item's stat delta,
+  so it never keeps a clearly-worse piece for the bonus. `sets.js` `SET_BONUS_STATS` / `setBonusStats`
+  (TUNABLE); `optimizer.js` adds `score(setBonusStats(items), w)` to the scale objective.
 - **Survival logic values full avoidance over block beyond the uncrush cap.** Per the principle that
   once you're uncrushable, a dodge/parry/miss negates an entire ~5k spike hit while a block only shaves
   ~275 off a hit that lands, the sim-internal EHP component (`PARTS.ehp`, used by the survival/balanced

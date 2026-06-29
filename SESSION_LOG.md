@@ -4,6 +4,25 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-28 (night) — Optimizer scores tier set bonuses
+
+Was blind to set bonuses (setBonuses computed for display only; no objective used it) — so a leg/
+shoulder swap that completed/broke a 2pc/4pc was invisible to selection. Now each bonus is modeled as
+an equivalent flat-stat bundle (`sets.js` `SET_BONUS_STATS`/`setBonusStats`) and added to the `scale`
+objective via `score(setBonusStats(items), w)` in optimizer.js — scored by the goal weights, so threat
+sets reward the (threat) bonuses and survival mostly shrugs. Values are spell-power-equivalents from
+threat.js at ~800 SP: J2pc 20 (+10% seal ≈ +19 TPS), J4pc 15 (+15/HS block ≈ +13 TPS), CF2pc 12
+(+15 Ret Aura/hit), CF4pc = blockValue 100. TUNABLE. Only wins vs the alternative item's stat delta —
+never keeps a clearly-worse piece. 135 tests pass. (Context: player's survival run picked T5 legs and
+"lost" a T4 2pc; the sim couldn't see the bonus. Note: the T4 2pc is +10% SEAL = a THREAT bonus, so on
+a pure survival set the leg choice should ride on stats — Justicar legs are the better SURVIVAL piece
+anyway: +32 stam, +31 parry, +12 agi vs T5's socket/defense/block.)
+
+Caveat not addressed: nearAlternatives deltas are still per-item stat-only (not set-bonus-aware), so an
+alternative that changes set count shows a slightly-off %. Minor display only.
+
+---
+
 ## 2026-06-28 (night) — Survival: full avoidance > block beyond the cap
 
 Player asked the survival logic to value miss/dodge/parry over block once past the crush cap (a
