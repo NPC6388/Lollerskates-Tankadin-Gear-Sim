@@ -63,6 +63,7 @@ const lockedDelta = (it) => {
 // in the curated DBs (e.g. a gem the solver doesn't stock).
 const GEM_BY_ID = new Map();
 for (const g of [...GEMS, ...META_GEMS]) if (g.id) GEM_BY_ID.set(g.id, g);
+const META_BY_NAME = new Map(META_GEMS.map((g) => [g.name, g]));
 const ENCHANT_BY_EFFECT = new Map();
 for (const list of Object.values(ENCHANTS)) for (const e of list) if (e.enchant) ENCHANT_BY_EFFECT.set(e.enchant, e);
 const currentGems = (it) => (it.gems || []).map((id) => {
@@ -291,23 +292,20 @@ function runGoal(goal, items, ctx) {
   const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, ...aggOpts };
   const res = optimizeHeuristic(pool, oGoal, { distinct, locked });
 
-  // Final gemming, socket-bonus-aware, PER ITEM so we can report gems/enchant by slot. Focus
-  // items gem by the goal scale, def-gemmed items by the cap scale. Built from baseStats so
-  // there's no double-count.
-  const baseStatsList = res.items.map((v) => ({ stats: baseOf(v) }));
-
-  // Gem the whole set under a per-item scale (objScale = goal/threat gems, CAP_SCALE = def gems);
-  // returns the plans (with .gems/.enchant filled), the meta list, the summed added stats, and the
-  // evaluated set. Meta-aware: resolveMetas picks metas on the goal objective (mutates the fresh
-  // plans it's handed). Re-callable with a different scale map for the reclaim pass below.
-  // gateAware (set below): once the set comes up crushable, re-gem with the socket-bonus worth-it
-  // test priced on the cap scale, so focus pieces KEEP gate-stat bonuses (defense/dodge/parry/…)
-  // they'd otherwise forfeit for a sliver of threat — the cheapest avoidance back toward the cap.
+  // Gem a SELECTION (slot -> item) under a per-item scale (objScale = goal/threat gems, CAP_SCALE =
+  // def gems); returns the plans (with .gems/.enchant filled), the meta list, the summed added stats,
+  // and the evaluated set. Defaults to res.selection but takes a trial selection for the meta-repair
+  // item-swap search below. Meta-aware: resolveMetas picks metas on the goal objective (mutates the
+  // fresh plans it's handed). gateAware (set below): once the set comes up crushable, re-gem with the
+  // socket-bonus worth-it test priced on the cap scale, so focus pieces KEEP gate-stat bonuses they'd
+  // otherwise forfeit for a sliver of threat — the cheapest avoidance back toward the cap.
   let gateAware = false;
-  const gemSet = (scaleOf) => {
+  const gemSet = (scaleOf, sel = res.selection) => {
+    const itemList = Object.values(sel).filter(Boolean);
+    const baseStatsList = itemList.map((v) => ({ stats: baseOf(v) }));
     const gemOpts = gateAware ? { gateScale: CAP_SCALE } : {};
     // Locked items keep their current gems/enchant: no re-gem, just the resolved-minus-base delta.
-    const plans = res.items.map((v) => v._gem === 'locked'
+    const plans = itemList.map((v) => v._gem === 'locked'
       ? { v, scale: null, locked: true, plan: { choices: [], stats: lockedDelta(v), metaCount: 0 } }
       : { v, scale: scaleOf(v), plan: planItemGems(v, scaleOf(v), perks, maxPhase, gemOpts) });
     const metas = resolveMetas(plans, objScale, ctx);
@@ -335,8 +333,19 @@ function runGoal(goal, items, ctx) {
       p.bonusKept = !!p.v.socketBonus && coloredCh.length > 0 && coloredCh.every((c) => FITS[c.color].includes(c.socket));
       p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, spell: en.enchant.spell || null, effectId: en.enchant.enchant || null } : null;
     }
+    // An INACTIVE kept meta gives NO stats in-game, but a locked item's resolved stats include the
+    // socketed meta gem — subtract it so the set isn't credited a dead meta (and a threat swap that
+    // kills the meta is correctly seen as a loss, not free spell power).
+    for (const p of plans) {
+      if (!p.locked || !p.metas) continue;
+      for (const m of p.metas) {
+        if (m.active) continue;
+        const mg = META_BY_NAME.get(m.name);
+        if (mg) sumInto(added, mg.stats, -1);
+      }
+    }
     const agg = aggregate([...baseStatsList, { stats: added }], aggOpts);
-    return { plans, metas, added, gemChoices, agg, evald: evaluateSet(agg) };
+    return { plans, metas, added, gemChoices, agg, evald: evaluateSet(agg), items: itemList, selection: sel };
   };
 
   // Does the FINAL (socket-bonus-aware) set still clear the goal's hard gates?
@@ -384,6 +393,40 @@ function runGoal(goal, items, ctx) {
       }
       if (!best) break;
       scaleOf.set(best.v, objScale);
+      g = best.trial;
+    }
+  }
+
+  // FINAL META PASS — verify every meta's color requirement actually holds, and repair when a
+  // threat-driven item swap dropped a color a meta needs (selection isn't meta-color-aware, and a
+  // kept meta's own sockets can't be recolored). If a meta is inactive, search non-locked slots for
+  // an owned item that restores it: take the single swap that turns every meta back on, stays legal,
+  // and scores best (the dead meta's stats are now honestly counted, so the trade is fair — if the
+  // threat truly outweighs the meta, no swap beats the current set and it's left as-is, still flagged).
+  if (g.metas.some((m) => !m.active)) {
+    const scFn = (v) => scaleOf.get(v) || objScale; // a swapped-in item gems on the goal (focus) scale
+    const objOf = (gs) => { const t = {}; for (const it of gs.items) sumInto(t, baseOf(it)); sumInto(t, gs.added); return score(t, objScale); };
+    let best = null;
+    const curObj = objOf(g);
+    for (const slotKey of Object.keys(res.selection)) {
+      const cur = res.selection[slotKey];
+      if (!cur || cur._gem === 'locked' || locked[slotKey]) continue; // don't disturb kept/locked picks
+      const seen = new Set([cur.itemId]);
+      for (const cand of pool[slotKey]) {
+        if (seen.has(cand.itemId)) continue;
+        seen.add(cand.itemId);
+        const trialSel = { ...res.selection, [slotKey]: cand };
+        if (!distinctOk(trialSel, distinct)) continue;
+        const trial = gemSet(scFn, trialSel);
+        if (trial.metas.some((m) => !m.active)) continue; // the swap must turn EVERY meta back on
+        if (!finalLegal(trial.evald)) continue;
+        const o = objOf(trial);
+        if (o > (best ? best.o : curObj)) best = { trial, o, slotKey, cand };
+      }
+    }
+    if (best) {
+      res.selection[best.slotKey] = best.cand;
+      res.items = Object.values(res.selection).filter(Boolean);
       g = best.trial;
     }
   }

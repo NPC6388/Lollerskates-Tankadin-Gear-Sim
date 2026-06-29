@@ -5,6 +5,7 @@ import { toExportText } from '../src/savedvars.js';
 import { optimizeSets, spellHitPct, GOAL_PRESETS, DEFAULT_TRINKET_LOCKS } from '../src/runner.js';
 import { PROFESSION_NAMES } from '../src/professions.js';
 import { GEMS, META_GEMS } from '../src/gems.js';
+import { detectFaction } from '../src/enchants.js';
 import { SCROLLS } from '../src/scrolls.js';
 import { SCALES } from '../src/weights.js';
 import { CAPS, ARMOR_CONST } from '../src/constants.js';
@@ -46,6 +47,7 @@ let items = null;        // equippable items from the export
 let parsed = null;       // full parse (character + items)
 let activeTab = 0;
 let lastResults = null;  // last optimize results (for the per-set lock button)
+let faction = null;      // Aldor/Scryer, auto-detected from the equipped shoulder inscription
 const lockedItemIds = new Set(); // item-ids whose gems/enchants are kept across every set
 const pinnedSlots = {};  // goalId -> { slotKey: itemId } — items forced into a slot for that set
 
@@ -157,6 +159,8 @@ function tryParse(text) {
   try {
     parsed = parseExport(toExportText(raw));
     items = equippableItems(parsed);
+    faction = detectFaction(items);
+    $('factionReadout').textContent = faction ? `${faction} (from shoulder inscription)` : 'Unknown — considering both';
     populateTrinketLocks();
     if (parsed.talents) $('talents').value = parsed.talents; // v10 export carries the talent string
     updateTalentSummary();
@@ -219,7 +223,7 @@ function runOptimize() {
       const scrolls = [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value);
       const results = optimizeSets(items, {
         professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
-        faction: $('faction').value, useImbuedMeta: $('imbuedMeta').checked,
+        faction, useImbuedMeta: $('imbuedMeta').checked,
         keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots,
         talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
       });
@@ -342,6 +346,8 @@ function render(results) {
     if (g) { delete g[b.dataset.slot]; if (!Object.keys(g).length) delete pinnedSlots[b.dataset.goal]; }
     runOptimize();
   }));
+  const ua = $('sets').querySelector('.unpin-all-btn');
+  if (ua) ua.addEventListener('click', () => { delete pinnedSlots[ua.dataset.goal]; runOptimize(); });
 }
 
 // Banner listing the items whose gems/enchants are locked across all sets (chips with an unlock ×).
@@ -472,6 +478,7 @@ function setCard(r) {
           ${minHp ? `<span class="gate ${hpPass ? 'pass' : 'fail'}">Min HP ${fmt(a.health)} / ${fmt(minHp)}</span>` : ''}
         </div>
         <div class="set-actions">
+          ${Object.keys(pinnedSlots[r.goal.id] || {}).length ? `<button class="unpin-all-btn ghost" type="button" data-goal="${r.goal.id}">📌 Unpin all (${Object.keys(pinnedSlots[r.goal.id]).length})</button>` : ''}
           <button class="lock-set-btn ghost" type="button">🔒 Lock this set's gems/enchants</button>
           <button class="export-btn" type="button">⬇ Export to Sixty Upgrades</button>
         </div>

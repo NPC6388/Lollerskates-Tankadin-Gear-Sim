@@ -4,6 +4,27 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-28 (late eve) — Meta final pass, faction auto-detect, unpin-all
+
+- **Bug (player-found):** with keep-equipped + agility scroll, the 1:4 set swapped Battlescar Boots
+  (blue socket) → Boots of the Righteous Path (no blue) for threat, dropping total blue 3→2 and
+  deactivating the kept head's Powerful Earthstorm Diamond (3+ blue) — silently losing +18 stam.
+  Selection isn't meta-color-aware, and a KEPT meta's sockets can't be recolored (resolveMetas only
+  recolors non-locked focus sockets). **Fix:** (1) `gemSet` now subtracts an inactive kept meta's stats
+  (locked resolved stats include the socketed meta gem), so a meta-killing swap reads as a loss; (2) a
+  final meta-repair pass — when any meta is inactive, search non-locked slots for an owned item that
+  restores the color, take the best legal swap that turns every meta back on. `gemSet(scaleOf, sel)`
+  refactored to gem a trial selection. Verified: the repro now keeps Battlescar + meta ON.
+- **Faction auto-detect** (`enchants.js` `detectFaction`/`factionFromEnchant`): shoulder inscriptions
+  are rep-locked, so read faction off the equipped shoulder enchant id (2978→Aldor, 2995→Scryer, …).
+  Dropdown removed; UI shows a readout (falls back to "considering both"). Player's = Scryer.
+- **Unpin all** button per set (clears that goal's pins).
+
+Tests: meta-faction.test.js (3) → 133 pass. Files: runner.js, enchants.js, app.js, index.html,
+style.css.
+
+---
+
 ## 2026-06-28 (eve) — Three player-requested levers: pins, scrolls, RF-into-EHP
 
 Shipped all three (130 tests pass):

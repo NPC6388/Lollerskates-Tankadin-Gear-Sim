@@ -64,6 +64,19 @@ export const ENCHANTS = {
 import { score } from './scoring.js';
 import { CURRENT_PHASE } from './gems.js';
 
+// Shoulder inscriptions are Aldor/Scryer rep-locked, so the one a player is wearing reveals their
+// faction — no need to ask. Map a shoulder enchant id -> faction; null for anything else.
+const SHOULDER_FACTION = {};
+for (const e of ENCHANTS.shoulder) if (e.faction && e.enchant) SHOULDER_FACTION[e.enchant] = e.faction;
+export function factionFromEnchant(enchantId) {
+  return SHOULDER_FACTION[enchantId] || null;
+}
+// Detect faction from the equipped shoulder's inscription; null if none recognized (consider both).
+export function detectFaction(items = []) {
+  const sh = items.find((it) => it.slot === 'shoulder' && it.equipped) || items.find((it) => it.slot === 'shoulder');
+  return sh ? factionFromEnchant(sh.enchantId) : null;
+}
+
 // Best enchant for a slot under a goal. Enchants gated by a profession are excluded unless the
 // player has it (perks.names). Faction-locked enchants (Aldor/Scryer shoulder inscriptions) are
 // excluded unless they match opts.faction; with no faction given, all are considered. Enchants are

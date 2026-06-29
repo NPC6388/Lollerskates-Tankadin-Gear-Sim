@@ -156,6 +156,8 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 /* Scrolls checkbox list. */
 .scrolls { display: flex; flex-direction: column; gap: 3px; }
 .scrolls .check { font-size: 12px; }
+/* Read-only field value (e.g. auto-detected faction). */
+.readout { font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel2); color: var(--text); }
 /* Manual-socketing reminder (gems can't be auto-applied; place by color). */
 .socketnote { margin: 8px 0; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(120,150,255,.10); border: 1px solid rgba(120,150,255,.35); color: var(--text); }
 

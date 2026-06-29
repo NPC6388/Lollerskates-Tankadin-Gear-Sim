@@ -295,6 +295,23 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the set — the note now shows each buffed stat with its downstream effect computed live: stamina
   (≈health), agility (≈% dodge), intellect (≈% spell crit), armor (≈% damage reduction), e.g.
   "+25.1 agility (≈+1.00% dodge)".
+- **Final meta-activation pass — no more silently-dead metas.** A threat-driven item swap could drop a
+  gem color a meta needs (e.g. an agility scroll loosens the crush gate → feet swap from a blue-socketed
+  boot to a socketless one → a kept head's "3+ blue" Powerful Earthstorm Diamond falls to 2 blue and
+  deactivates), and selection isn't meta-color-aware while a *kept* meta's own sockets can't be
+  recolored. Two fixes: (1) an INACTIVE kept meta no longer credits its stats (a locked item's resolved
+  stats include the socketed meta gem; that's now subtracted, so a swap that kills the meta is correctly
+  seen as a loss, not free threat); (2) a final pass that, when any meta is inactive, searches non-locked
+  slots for an owned item that restores the color and keeps the best legal swap that turns every meta
+  back on. If the threat genuinely outweighs the meta, no swap wins and the set is left as-is (still
+  flagged). `runner.js` `gemSet` now takes a trial selection; new tests assert active metas truly meet
+  their requirement on the final gems.
+- **Faction is auto-detected from your shoulder inscription (dropdown removed).** Aldor/Scryer shoulder
+  inscriptions are rep-locked, so the one you're wearing reveals your faction — the UI now reads it off
+  the equipped shoulder (`detectFaction`/`factionFromEnchant` in `enchants.js`) and shows it, instead of
+  asking. Falls back to "considering both" if no recognized inscription is equipped.
+- **"Unpin all" button.** Each set with pinned slots gets an "📌 Unpin all (N)" button that clears that
+  set's pins and re-optimizes (alongside the per-slot unpin).
 - **Pin an item to a slot, then re-optimize around it.** Each paper-doll slot's picked item and every
   "≈ also viable" alternate now has a **pin** button: pinning forces that item into the slot for that
   set and re-runs the optimizer on the other slots (the slot shows a gold edge + "📌 pinned · unpin",
