@@ -409,3 +409,8 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   floored by the librams guardrail). Reaching the cap is unchanged (`survivalUncrushable`, block chance
   2.5×). Effect on a 1.5:1/14k survival set: EHP 34.6k→37.0k, stamina +~75, still uncrushable. 135 tests
   pass. (TBC has no rating diminishing returns — that's WotLK — so this rests on floor/spike/magic.)
+- **"Load example" now ships a current TGS11 export (was TGS9).** The bundled `web/sample-export.txt`
+  was an old v9 export with no base-socket layout, talents, or item names — so the example couldn't
+  demonstrate socket-aware gemming, talent/faction auto-detect, or named items. Replaced with a current
+  TGS11 export of the same character (BOM stripped so the header parses). `keep-gems.test` was made
+  sample-agnostic (it had hard-coded the old sample's stamina chest gems).

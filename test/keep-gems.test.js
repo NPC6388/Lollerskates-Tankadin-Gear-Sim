@@ -19,19 +19,23 @@ test('keep-all: socketed pieces are locked and report their CURRENT gems, not re
   const opt = optimizeSets(items, base)[0];
   const kept = optimizeSets(items, { ...base, keepGemsEnchants: true })[0];
 
-  const chest = kept.selection.chest;
-  const ks = kept.perSlot.chest;
-  assert.equal(ks.locked, true, 'chest is locked');
-  assert.equal(ks.defGemmed, false);
-  // The sample chest is socketed with 3x Solid Star of Elune (24033); keep-mode must report those,
-  // and must NOT introduce the threat re-gem (Veiled Noble Topaz) the optimizer picks unlocked.
-  assert.deepEqual(ks.gems.map((g) => g.id).sort(), [...chest.gems].sort());
-  assert.ok(ks.gems.every((g) => g.name && !/^Gem /.test(g.name)), 'current gems resolved to names');
-  assert.ok(!ks.gems.some((g) => g.name === 'Veiled Noble Topaz'), 'no threat re-gem when locked');
-  assert.ok(opt.perSlot.chest.gems.some((g) => g.name === 'Veiled Noble Topaz'), 'unlocked DOES re-gem (control)');
-  // Keeping current (stamina) gems instead of threat re-gems trades spell power for stamina.
-  assert.ok(kept.agg.spellPower < opt.agg.spellPower, 'keep-mode forgoes the threat re-gem');
-  assert.ok(kept.agg.stamina > opt.agg.stamina, 'keep-mode keeps the stamina gems');
+  // Every kept (locked) socketed slot must report the item's CURRENT gems verbatim (resolved to
+  // names), never a re-gem — sample-agnostic: don't assume which gems the worn pieces happen to use.
+  let checked = 0;
+  for (const [slot, it] of Object.entries(kept.selection)) {
+    const ks = kept.perSlot[slot];
+    if (!it || !ks.locked || !(it.gems || []).length) continue;
+    assert.equal(ks.defGemmed, false, `${slot}: a locked item isn't def-gemmed`);
+    assert.deepEqual(ks.gems.map((g) => g.id).sort(), [...it.gems].sort(), `${slot}: reports the worn gem ids`);
+    assert.ok(ks.gems.every((g) => g.name && !/^Gem /.test(g.name)), `${slot}: gems resolved to names`);
+    checked++;
+  }
+  assert.ok(checked > 0, 'at least one kept socketed slot was verified');
+
+  // Control: with everything re-gemmable, the unlocked run DOES introduce the threat re-gem somewhere
+  // (Veiled Noble Topaz), proving keep-mode actually suppresses re-gemming rather than no-op-ing.
+  const reGems = Object.values(opt.perSlot).some((ps) => (ps.gems || []).some((g) => g.name === 'Veiled Noble Topaz'));
+  assert.ok(reGems, 'unlocked run re-gems with the threat gem (control)');
 });
 
 test('keep-all: no double-count — set spell power equals a plain aggregate of resolved item stats', () => {
