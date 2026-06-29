@@ -101,6 +101,7 @@ function init() {
   $('loadSample').addEventListener('click', loadSample);
   $('talents').addEventListener('input', updateTalentSummary);
   $('optimizeBtn').addEventListener('click', runOptimize);
+  document.querySelectorAll('.guide-link').forEach((a) => { a.href = GUIDE_URL; }); // header/footer guide links
   renderWeights();
   renderLogic();
 }
