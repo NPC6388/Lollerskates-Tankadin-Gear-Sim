@@ -7,8 +7,10 @@ import { PROFESSION_NAMES } from '../src/professions.js';
 import { GEMS, META_GEMS } from '../src/gems.js';
 import { detectFaction } from '../src/enchants.js';
 import { SCROLLS } from '../src/scrolls.js';
-import { SCALES } from '../src/weights.js';
-import { CAPS, ARMOR_CONST } from '../src/constants.js';
+import { SCALES, PARTS } from '../src/weights.js';
+import { SET_BONUS_STATS } from '../src/sets.js';
+import { CHARACTER, TALENTS, BUFFS } from '../src/model.js';
+import { CAPS, BASE, RATING, THREAT, ARMOR_CONST } from '../src/constants.js';
 
 const $ = (id) => document.getElementById(id);
 // Paper-doll columns, like the in-game character sheet.
@@ -98,6 +100,7 @@ function init() {
   $('talents').addEventListener('input', updateTalentSummary);
   $('optimizeBtn').addEventListener('click', runOptimize);
   renderWeights();
+  renderLogic();
 }
 
 // ---- Sixty Upgrades stat weights --------------------------------------------
@@ -142,6 +145,79 @@ function renderWeights() {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(str).then(ok, () => window.prompt('Copy this JSON for Sixty Upgrades:', str));
     else window.prompt('Copy this JSON for Sixty Upgrades:', str);
   }));
+}
+
+// "How the sim works" explainer — rendered from the LIVE constants/scales so it can never drift from
+// the engine. Every number below is interpolated from the same modules the optimizer uses; tune a
+// constant and this box updates with it.
+function renderLogic() {
+  const host = $('logicBody'); if (!host) return;
+  const R = RATING, P = PARTS.ehp;
+  const kings = BUFFS.kingsMult.toFixed(2);
+  const motw = BUFFS.markOfTheWild.stamina;
+  const impRfPct = Math.round((TALENTS.impRighteousFuryDR || 0) * 100);
+  const toughPct = Math.round((TALENTS.toughnessItemArmorMult - 1) * 100);
+  const staPct = Math.round((TALENTS.staminaMult - 1) * 100);
+  const avoidVsBlock = (P.dodgeRating / P.blockRating).toFixed(1);
+  const defBenefitPct = BASE.defenseBenefitPerSkill; // already a %
+  const j2 = SET_BONUS_STATS.justicar2pc.spellDamage;
+  const j4 = SET_BONUS_STATS.justicar4pc.spellDamage;
+  const c2 = SET_BONUS_STATS.crystalforge2pc.spellDamage;
+  host.innerHTML = `
+    <p class="muted">Everything runs in your browser as a <strong>first-principles forward model</strong>:
+      <code>final = race/class base + talents + gear + buffs</code>, using real TBC constants — no
+      back-fitting to a sheet. <em>The numbers below are read live from the engine, so they always match
+      what the optimizer actually uses.</em></p>
+
+    <h4>1 · The character model</h4>
+    <ul>
+      <li><strong>Stats:</strong> base (level-70 Blood Elf Paladin) + gear (summed item stats, gems &amp; enchants baked in) + flat buffs, then <strong>Blessing of Kings ×${kings}</strong> on the four primaries (applied <em>after</em> flat buffs like Mark of the Wild's +${motw}). Kings and MotW stack (percentage + flat).</li>
+      <li><strong>Talents</strong> (read from your export) at the guide's max ranks: Anticipation +${TALENTS.anticipationDefenseSkill} defense, Deflection +${TALENTS.deflectionParryPct}% parry, Toughness +${toughPct}% item armor, +${staPct}% stamina (Sacred Duty + Combat Expertise), Precision +${TALENTS.precisionSpellHitPct}% hit, Improved Righteous Fury −${impRfPct}% damage taken.</li>
+      <li><strong>Rating → %:</strong> defense ${R.defensePerSkill}/skill, dodge ${R.dodgePer1}/1%, parry ${R.parryPer1}/1%, block ${R.blockPer1}/1%, spell hit ${R.spellHitPer1}/1%, resilience ${R.resiliencePer1} per 1% crit reduction. Defense skill above ${BASE.baseDefenseSkill} gives <strong>+${defBenefitPct}%</strong> each to miss/dodge/parry/block and crit-avoidance.</li>
+      <li><strong>Health:</strong> first 20 stamina = 1 HP each, the rest ×${CHARACTER.hpPerStamina}. Armor from items (×Toughness) + 2/agility.</li>
+    </ul>
+
+    <h4>2 · The hard gates (constraints, not weights)</h4>
+    <p class="muted">Every set must satisfy these <em>before</em> any stat is maximized — pass/fail, not scored:</p>
+    <ul>
+      <li><strong>Uncrittable</strong> — a level-${BASE.raidBossLevel} raid boss has +${BASE.bossCritVsPlayer}% crit on you; defense (over ${BASE.baseDefenseSkill}, ×${defBenefitPct}%) + resilience must cover it (≈${CAPS.defenseSkillRaid} defense, or any defense+resilience mix reaching ${BASE.bossCritVsPlayer}%).</li>
+      <li><strong>Uncrushable</strong> — miss + dodge + parry + block must total <strong>≥ ${CAPS.uncrushableCombined}%</strong> with Holy Shield up (+${THREAT.holyShieldActive}% block, more with the block libram). AOE Trash drops this gate (level ≤72 mobs can't deal crushing blows).</li>
+      <li><strong>Min HP</strong> — a raid-buffed health floor you set per goal (10k = effectively off).</li>
+    </ul>
+
+    <h4>3 · Survival / EHP</h4>
+    <ul>
+      <li><strong>Physical EHP</strong> = health ÷ (1 − armor DR) ÷ (1 − Imp RF). Armor DR is the standard TBC formula (Armor / (Armor + ${ARMOR_CONST()}) vs a level-${BASE.raidBossLevel} boss, capped 75%); the ${impRfPct}% Improved Righteous Fury reduction folds in as a flat multiplier.</li>
+      <li><strong>Avoidance is NOT multiplied into EHP.</strong> Dodge/parry/miss have diminishing returns — they smooth the <em>average</em> but not the consecutive-hit spikes that kill a tank — so EHP is the raw pool behind armor, and avoidance is valued in the weight scales instead.</li>
+      <li><strong>Beyond the uncrush cap, full avoidance beats block (~${avoidVsBlock}× here).</strong> A dodge/parry/miss negates a whole ~5k hit; a block only shaves block-value (~275) off a hit that lands. (Reaching the cap is different — there block <em>chance</em> is prized because it fills the attack table toward ${CAPS.uncrushableCombined}%.)</li>
+    </ul>
+
+    <h4>4 · Threat</h4>
+    <ul>
+      <li>Threat is anchored to <strong>spell power</strong>. Per-ability threat (Consecration, Holy Shield, Avenger's Shield, Judgements, Seals, Retribution/Sanctuary) is modeled from the guide's formulas, all amplified by <strong>Righteous Fury ×${THREAT.righteousFury}</strong> and Improved Holy Shield ×${THREAT.improvedHolyShieldDmg.toFixed(2)}.</li>
+      <li>Below the spell-hit cap (${CAPS.spellHitCapPct}% vs a raid boss) and expertise soft-cap (${CAPS.expertiseSoftCap}), hit/expertise are valued for the missed threat they recover; at cap they're zeroed.</li>
+      <li><strong>Tier set bonuses are scored</strong> as spell-power-equivalents (Justicar 2pc +10% seal ≈ ${j2} SP, 4pc ≈ ${j4}, Crystalforge 2pc ≈ ${c2}), so the optimizer values completing a 2pc/4pc — weighed by the goal, so it matters on threat sets and barely registers on survival.</li>
+    </ul>
+
+    <h4>5 · The four sets &amp; the sliders</h4>
+    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Each goal blends an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with its own Min-HP floor. AOE Trash additionally uses AOE-threat weighting and drops the crush gate.</p>
+
+    <h4>6 · Gems, enchants &amp; metas</h4>
+    <ul>
+      <li><strong>Per-item socket-bonus worth-it:</strong> for each socketed piece the sim compares filling every socket with the globally best gem (forfeit the bonus) vs colour-matching to earn the socket bonus, and keeps whichever scores higher. Gems are tagged by the <em>socket colour</em> to place them in, since the export's socket order is unreliable.</li>
+      <li><strong>Gemming is a lever for the caps:</strong> each socketed item enters as a focus variant (goal gems) and a cap variant (avoidance/defense gems), so the optimizer can keep a higher-threat item and def-gem it when that beats a tankier swap. Once uncrushable it stops over-gemming capped avoidance.</li>
+      <li><strong>Meta activation</strong> is checked against the whole set's gem colours; a colour-gated meta is enabled by recolouring the cheapest focus sockets, and a final pass verifies every meta still activates after item swaps — an inactive kept meta is flagged and not credited its stats.</li>
+      <li><strong>Enchants</strong> are profession- and faction-aware (faction auto-detected from your shoulder inscription); <strong>scrolls</strong> add flat stats that help meet the gates with less gear.</li>
+    </ul>
+
+    <h4>7 · What you can override</h4>
+    <ul>
+      <li><strong>Pin</strong> any item (the pick or an "≈ also viable" alternate) to force it into a slot and re-optimize the rest around it.</li>
+      <li><strong>Keep gems/enchants</strong> to preserve committed pieces across sets; <strong>lock trinkets</strong> the model can't score (procs/on-use).</li>
+      <li>The stat-weight scales above are the same valuations, exported for Sixty Upgrades — but the sim enforces the caps as gates, which a flat weight list can't.</li>
+    </ul>
+
+    <p class="muted">All values are transcribed from the TBC Prot Paladin guide and live in <code>constants.js</code>, <code>weights.js</code>, <code>threat.js</code>, <code>sets.js</code>. Caveat: the model can't score proc/on-use trinket effects or unusual fight mechanics — those stay your call.</p>`;
 }
 
 // Talent string -> points per tree (split on "-", sum the rank digits in each segment).

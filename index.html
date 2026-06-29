@@ -132,60 +132,7 @@
 
       <details class="how logic">
         <summary>How the sim works — the full logic</summary>
-
-        <p class="muted">Everything runs in your browser as a <strong>first-principles forward model</strong>:
-          <code>final = race/class base + talents + gear + buffs</code>, using real TBC constants — no
-          back-fitting to a sheet. Below is what's under the hood, top to bottom.</p>
-
-        <h4>1 · The character model</h4>
-        <ul>
-          <li><strong>Stats:</strong> base (level-70 Blood Elf Paladin) + gear (summed item stats, gems &amp; enchants baked in) + flat buffs, then <strong>Blessing of Kings ×1.10</strong> on the four primaries (applied <em>after</em> flat buffs like Mark of the Wild's +14). Kings and MotW stack (percentage + flat).</li>
-          <li><strong>Talents</strong> are read from your export and applied as modifiers: Anticipation +4 defense/rank, Deflection +1% parry/rank, Toughness +2% item-armor/rank, Sacred Duty +3% / Combat Expertise +2% stamina, Precision +1% hit/rank, Improved Righteous Fury −2% damage taken/rank.</li>
-          <li><strong>Rating → %:</strong> defense 2.3654/skill, dodge 18.92/1%, parry 23.65/1%, block 7.88/1%, spell hit 12.62/1%, resilience 39.42 per 1% crit reduction. Defense skill above 350 gives <strong>+0.04%</strong> each to miss/dodge/parry/block and crit-avoidance.</li>
-          <li><strong>Health:</strong> first 20 stamina = 1 HP each, the rest ×10. Armor from items (×Toughness) + 2/agility.</li>
-        </ul>
-
-        <h4>2 · The hard gates (constraints, not weights)</h4>
-        <p class="muted">Every set must satisfy these <em>before</em> any stat is maximized — they're pass/fail, not scored:</p>
-        <ul>
-          <li><strong>Uncrittable</strong> — a level-73 raid boss has +5.6% crit on you; defense (over 350, ×0.04%) + resilience must cover it (≈490 defense, or any defense+resilience mix reaching 5.6%).</li>
-          <li><strong>Uncrushable</strong> — miss + dodge + parry + block must total <strong>≥ 102.4%</strong> with Holy Shield up (+30% block, or +35.32% with the block libram). AOE Trash drops this gate (level ≤72 mobs can't deal crushing blows).</li>
-          <li><strong>Min HP</strong> — a raid-buffed health floor you set per goal (10k = effectively off).</li>
-        </ul>
-
-        <h4>3 · Survival / EHP</h4>
-        <ul>
-          <li><strong>Physical EHP</strong> = health ÷ (1 − armor DR) ÷ (1 − Imp RF damage reduction). Armor DR uses the standard TBC formula (Armor / (Armor + 11960) vs a level-73 boss, capped 75%); the 3/3 Improved Righteous Fury −6% folds in as a flat multiplier.</li>
-          <li><strong>Avoidance is NOT multiplied into EHP.</strong> Dodge/parry/miss have diminishing returns — they smooth the <em>average</em> but not the consecutive-hit spikes that actually kill a tank — so EHP is the raw pool behind armor, and avoidance is valued in the weight scales instead.</li>
-          <li><strong>Beyond the uncrush cap, full avoidance beats block.</strong> A dodge/parry/miss negates a whole ~5k hit; a block only shaves block-value (~275) off a hit that lands — so once uncrushable the sim values dodge/parry well above block. (Reaching the cap is different: there block <em>chance</em> is prized, because it fills the attack table toward 102.4%.)</li>
-        </ul>
-
-        <h4>4 · Threat</h4>
-        <ul>
-          <li>Threat is anchored to <strong>spell power</strong>. Per-ability threat (Consecration, Holy Shield, Avenger's Shield, Judgements, Seals, Retribution/Sanctuary) is modeled from the guide's formulas, all amplified by <strong>Righteous Fury ×1.9</strong> and Improved Holy Shield ×1.20.</li>
-          <li>Below the spell-hit cap (17% vs a raid boss) and expertise soft-cap (26), hit/expertise are valued for the missed-threat they recover; at cap they're zeroed.</li>
-          <li><strong>Tier set bonuses are scored</strong> as spell-power-equivalents (e.g. Justicar 2pc +10% seal ≈ +19 TPS), so the optimizer values completing a 2pc/4pc — weighed by the goal, so it matters on threat sets and barely registers on survival.</li>
-        </ul>
-
-        <h4>5 · The four sets &amp; the sliders</h4>
-        <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Each goal blends an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with its own Min-HP floor. AOE Trash additionally uses AOE-threat weighting and drops the crush gate.</p>
-
-        <h4>6 · Gems, enchants &amp; metas</h4>
-        <ul>
-          <li><strong>Per-item socket-bonus worth-it:</strong> for each socketed piece the sim compares filling every socket with the globally best gem (forfeit the bonus) vs colour-matching to earn the socket bonus, and keeps whichever scores higher. Gems are tagged by the <em>socket colour</em> to place them in, since the export's socket order is unreliable.</li>
-          <li><strong>Gemming is a lever for the caps:</strong> each socketed item enters as a focus variant (goal gems) and a cap variant (avoidance/defense gems), so the optimizer can keep a higher-threat item and def-gem it when that beats a tankier swap. Once uncrushable it stops over-gemming capped avoidance.</li>
-          <li><strong>Meta activation</strong> is checked against the whole set's gem colours; a colour-gated meta is enabled by recolouring the cheapest focus sockets, and a final pass verifies every meta still activates after item swaps — an inactive kept meta is flagged and not credited its stats.</li>
-          <li><strong>Enchants</strong> are profession- and faction-aware (faction auto-detected from your shoulder inscription); <strong>scrolls</strong> add flat stats that help meet the gates with less gear.</li>
-        </ul>
-
-        <h4>7 · What you can override</h4>
-        <ul>
-          <li><strong>Pin</strong> any item (the pick or an "≈ also viable" alternate) to force it into a slot and re-optimize the rest around it.</li>
-          <li><strong>Keep gems/enchants</strong> to preserve committed pieces across sets; <strong>lock trinkets</strong> the model can't score (procs/on-use).</li>
-          <li>The stat-weight scales above are the same valuations, exported for Sixty Upgrades — but the sim enforces the caps as gates, which a flat weight list can't.</li>
-        </ul>
-
-        <p class="muted">All values are transcribed from the TBC Prot Paladin guide and are tunable in the source (<code>constants.js</code>, <code>weights.js</code>, <code>threat.js</code>). Caveat: the model can't score proc/on-use trinket effects or unusual fight mechanics — those stay your call.</p>
+        <div id="logicBody"></div>
       </details>
     </section>
   </main>
