@@ -289,7 +289,10 @@ function runGoal(goal, items, ctx) {
     const kept = pool[slot].filter((v) => v.itemId === Number(itemId));
     if (kept.length) pool[slot] = kept;
   }
-  const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, ...aggOpts };
+  // A goal may carry a custom objective FUNCTION (goal.objectiveFn) — used by the experimental
+  // midpoint Balanced set; otherwise the normal 'scale' (blended-ratio) objective. Gemming always
+  // uses objScale (blendScale of the goal's ratio) regardless.
+  const oGoal = { objective: goal.objectiveFn || 'scale', scaleWeights: objScale, gates: goal.gates, ...aggOpts };
   const res = optimizeHeuristic(pool, oGoal, { distinct, locked });
 
   // Gem a SELECTION (slot -> item) under a per-item scale (objScale = goal/threat gems, CAP_SCALE =
@@ -558,5 +561,22 @@ export function optimizeSets(items, options = {}) {
     ...(() => { const k = keepConfig(options.keepGemsEnchants); return { keep: k && k.pred, keepIgnoreCompleteness: k ? k.ignoreCompleteness : false }; })(),
   };
   const goals = options.goals || GOAL_PRESETS;
-  return goals.map((g) => runGoal(g, items, ctx));
+  const out = goals.map((g) => runGoal(g, items, ctx));
+
+  // EXPERIMENT (branch: balanced-midpoint) — make the Balanced set sit BETWEEN the Raid Threat and
+  // Survival sets on BOTH axes instead of blending a fixed EHP:threat ratio. Target the midpoint of
+  // the two sets' spell power and EHP, then MAXIMIZE THE WEAKER of (SP vs the SP midpoint) and (EHP
+  // vs the EHP midpoint) — a maximin that pulls up whichever axis is lagging, so the result splits the
+  // difference rather than leaning to one side. (Gemming still uses the balanced 1:1 scale.) The
+  // Balanced slider no longer drives this set's objective — it's derived from the other two.
+  const raid = out.find((r) => r.goal.id === 'raid');
+  const surv = out.find((r) => r.goal.id === 'survival');
+  const bi = goals.findIndex((g) => g.id === 'balanced');
+  if (raid && surv && bi >= 0) {
+    const spMid = Math.max((raid.agg.spellPower + surv.agg.spellPower) / 2, 1);
+    const ehpMid = Math.max((raid.evald.ehpPhysical + surv.evald.ehpPhysical) / 2, 1);
+    const objectiveFn = (e, a) => Math.min((a.spellPower || 0) / spMid, (e.ehpPhysical || 0) / ehpMid);
+    out[bi] = runGoal({ ...goals[bi], objectiveFn, focus: `midpoint of Threat & Survival (≈${Math.round(spMid)} SP / ${Math.round(ehpMid).toLocaleString()} EHP)` }, items, ctx);
+  }
+  return out;
 }
