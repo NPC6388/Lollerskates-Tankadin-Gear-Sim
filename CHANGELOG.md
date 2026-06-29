@@ -421,5 +421,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the objective so the search isn't pinned below the reachable max): if that reaches the floor it's
   returned as the legal set the ratio search missed; if not, the floor is genuinely unreachable and the
   tankiest achievable set is returned, flagged `hpBestEffort` with a UI note. (Effect: keep-equipped
-  survival now hits the 14k floor — 13.7k→15.0k.) The recovery pass leans stamina, so it can overshoot
-  the floor slightly in exchange for guaranteeing it.
+  survival now hits the 14k floor — 13.7k→15.0k.)
+- **Floor recovery respects the threat slider (meet the floor, then maximize threat).** Refines the
+  above: when the floor IS reachable, instead of leaving the overshot pure-stamina set, the optimizer
+  re-runs the goal's OWN ratio objective SEEDED from the max-HP set (`optimizeHeuristic` gained a
+  `seed` option) — the climb then trades the excess stamina back for threat per the slider while the
+  Min-HP gate holds the floor. So survival now emphasizes EHP, holds Min-HP as a hard gate, then spends
+  the rest on threat per the slider (the mirror of the threat set): keep-equipped survival at a 14k
+  floor went from an overshot 14,995/360 SP to 14,027/561 SP. Min-HP slider range widened to 10k–20k.

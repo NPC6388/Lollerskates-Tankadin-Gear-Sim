@@ -35,7 +35,7 @@ const GOAL_SIDES = {
 const AXIS_LABEL = { threat: 'Threat', aoeThreat: 'AOE Threat', ehp: 'EHP' };
 // Per-set minimum-HP gate (raid-buffed health floor), enforced as a hard constraint like
 // uncrit/uncrush. 10k = effectively off.
-const MINHP = { min: 10000, max: 14000, step: 500 };
+const MINHP = { min: 10000, max: 20000, step: 500 };
 // Per-goal UI defaults: starting slider value (v) and Min-HP floor (minHP: null = no Min-HP gate /
 // no slider for that goal). The Balanced slider is special — it slides between the SURVIVAL set
 // (left) and the RAID THREAT set (right), so it has no fixed ratio of its own and no Min-HP floor.

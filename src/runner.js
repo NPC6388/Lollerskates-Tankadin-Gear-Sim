@@ -275,7 +275,7 @@ function enableMeta(M, counts, recolorable, gemOpt, gemOptDual, objScale) {
   return { cost: recolors.reduce((a, r) => a + r.cost, 0), recolors };
 }
 
-function runGoal(goal, items, ctx) {
+function runGoal(goal, items, ctx, seed = {}) {
   const { perks, buff, maxPhase, faction, locks, talents } = ctx;
   const aggOpts = { hsBlockBonus: HS, ...buff, ...(talents ? { talents } : {}) };
   const objScale = blendScale(goal.ratio);
@@ -290,7 +290,7 @@ function runGoal(goal, items, ctx) {
     if (kept.length) pool[slot] = kept;
   }
   const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, ...aggOpts };
-  const res = optimizeHeuristic(pool, oGoal, { distinct, locked });
+  const res = optimizeHeuristic(pool, oGoal, { distinct, locked, seed });
 
   // Gem a SELECTION (slot -> item) under a per-item scale (objScale = goal/threat gems, CAP_SCALE =
   // def gems); returns the plans (with .gems/.enchant filled), the meta list, the summed added stats,
@@ -564,14 +564,25 @@ export function optimizeSets(items, options = {}) {
     const r = runGoal(g, items, ctx);
     const floor = (g.gates && g.gates.minHealth) || 0;
     if (!floor || r.agg.health + 1e-9 >= floor) return r; // no floor, or it's already met
-    // Min-HP is a HARD gate (like uncrit/uncrush). The ratio set came up short, so retry maximizing
-    // pure STAMINA — keep the uncrit/uncrush gates, but drop the floor from the objective so the
-    // search isn't pinned below the reachable max. If that reaches the floor we recovered a legal set
-    // the ratio search missed; if not, the floor is unreachable with this gear/keep-settings and this
-    // is the best-effort (tankiest) set, still flagged as not meeting Min HP.
-    const best = runGoal({ ...g, ratio: { sta: 1 }, gates: { ...g.gates, minHealth: 0 } }, items, ctx);
-    if (best.agg.health <= r.agg.health) return r; // couldn't do better — keep the ratio set
-    const meetsFloor = best.agg.health + 1e-9 >= floor;
-    return { ...best, goal: g, legal: best.legal && meetsFloor, hpBestEffort: !meetsFloor };
+    // Min-HP is a HARD gate (like uncrit/uncrush) — the ratio search came up short. First find the
+    // tankiest set: maximize pure STAMINA (keep uncrit/uncrush, drop the floor from the objective so
+    // the search isn't pinned below the reachable max).
+    const maxHp = runGoal({ ...g, ratio: { sta: 1 }, gates: { ...g.gates, minHealth: 0 } }, items, ctx);
+    if (maxHp.agg.health + 1e-9 < floor) {
+      // Floor is genuinely unreachable with this gear/keep-settings → best-effort tankiest set, flagged.
+      return maxHp.agg.health > r.agg.health ? { ...maxHp, goal: g, legal: false, hpBestEffort: true } : r;
+    }
+    // Floor IS reachable — the ratio search just got stuck below it. Re-run the goal's OWN ratio
+    // objective (so EHP-emphasis and the threat slider still govern the spend), but SEED it from the
+    // max-HP set so it starts above the floor; the climb then trades the excess stamina for threat per
+    // the ratio while the Min-HP gate keeps it from dropping back under. Result: floor met, then the
+    // slider maximizes threat on top — the mirror of the threat set.
+    const seed = {};
+    for (const [slot, it] of Object.entries(maxHp.selection)) if (it) seed[slot] = it.itemId;
+    const recovered = runGoal(g, items, ctx, seed);
+    // Keep whichever legal set best honors the goal (the recovered ratio set if it held the floor,
+    // else the max-HP set as a floor-meeting fallback).
+    if (recovered.agg.health + 1e-9 >= floor && recovered.legal) return recovered;
+    return { ...maxHp, goal: g, legal: maxHp.legal };
   });
 }

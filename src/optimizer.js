@@ -135,14 +135,18 @@ export function optimizeExhaustive(pool, goal, { distinct = [] } = {}) {
 // Heuristic: start from the best-objective item per slot, repair toward the gates with the
 // single swap that removes the most deficit per unit of objective sacrificed, until legal.
 // Honors paired-slot distinctness and locked slots throughout.
-export function optimizeHeuristic(pool, goal, { distinct = [], locked = {} } = {}) {
+// `seed` (slot -> itemId) overrides the starting pick for a slot — used to start the search from a
+// known-good configuration (e.g. a max-HP set that already clears the Min-HP floor) so the climb can
+// optimize the objective DOWN to the gate instead of the repair getting stuck below it.
+export function optimizeHeuristic(pool, goal, { distinct = [], locked = {}, seed = {} } = {}) {
   const slots = Object.keys(pool);
   const objFn = objectiveFn(goal);
   const singleObj = (it) => { const a = aggregate([it], goal); return objFn(evaluateSet(a), a, [it]); };
 
   const sel = {};
   for (const s of slots) {
-    sel[s] = locked[s] || pool[s].slice().sort((a, b) => singleObj(b) - singleObj(a))[0];
+    const seeded = seed[s] != null ? pool[s].find((v) => v.itemId === seed[s]) : null;
+    sel[s] = locked[s] || seeded || pool[s].slice().sort((a, b) => singleObj(b) - singleObj(a))[0];
   }
   // Resolve paired duplicates: keep the first, bump the rest to their next distinct candidate.
   const fixDistinct = () => {
