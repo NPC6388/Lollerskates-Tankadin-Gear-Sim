@@ -304,6 +304,8 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   avoidance-vs-block ratio, −6% Imp RF, all rating conversions, …) is **interpolated at render time from
   the same modules the optimizer uses** (`constants.js` / `weights.js` / `sets.js` / `model.js`), so it
   can't drift when a constant is tuned. `app.js` `renderLogic()`; `index.html` (`#logicBody`) + `style.css`.
+  The box's "TBC Prot Paladin guide" reference links to the companion guide
+  (https://npc6388.github.io/wow-tbc-prot-paladin-guide/) via a single `GUIDE_URL` constant.
 - **The optimizer now scores tier set bonuses (was blind to them).** Previously `setBonuses` was
   computed for display but no objective used it, so a leg/shoulder swap that completed or broke a 2pc/4pc
   was invisible to selection. Each bonus is now modeled as an equivalent flat-stat bundle (like the

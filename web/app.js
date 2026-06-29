@@ -13,6 +13,8 @@ import { CHARACTER, TALENTS, BUFFS } from '../src/model.js';
 import { CAPS, BASE, RATING, THREAT, ARMOR_CONST } from '../src/constants.js';
 
 const $ = (id) => document.getElementById(id);
+// The companion guide every constant/scale is transcribed from.
+const GUIDE_URL = 'https://npc6388.github.io/wow-tbc-prot-paladin-guide/';
 // Paper-doll columns, like the in-game character sheet.
 const LEFT_SLOTS = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'weapon', 'offhand'];
 const RIGHT_SLOTS = ['hands', 'waist', 'legs', 'feet', 'ring1', 'ring2', 'trinket1', 'trinket2', 'relic'];
@@ -217,7 +219,7 @@ function renderLogic() {
       <li>The stat-weight scales above are the same valuations, exported for Sixty Upgrades — but the sim enforces the caps as gates, which a flat weight list can't.</li>
     </ul>
 
-    <p class="muted">All values are transcribed from the TBC Prot Paladin guide and live in <code>constants.js</code>, <code>weights.js</code>, <code>threat.js</code>, <code>sets.js</code>. Caveat: the model can't score proc/on-use trinket effects or unusual fight mechanics — those stay your call.</p>`;
+    <p class="muted">All values are transcribed from the <a href="${GUIDE_URL}" target="_blank" rel="noopener">TBC Prot Paladin guide</a> and live in <code>constants.js</code>, <code>weights.js</code>, <code>threat.js</code>, <code>sets.js</code>. Caveat: the model can't score proc/on-use trinket effects or unusual fight mechanics — those stay your call.</p>`;
 }
 
 // Talent string -> points per tree (split on "-", sum the rank digits in each segment).
