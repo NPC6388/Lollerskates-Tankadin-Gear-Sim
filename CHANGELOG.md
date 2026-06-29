@@ -414,3 +414,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   demonstrate socket-aware gemming, talent/faction auto-detect, or named items. Replaced with a current
   TGS11 export of the same character (BOM stripped so the header parses). `keep-gems.test` was made
   sample-agnostic (it had hard-coded the old sample's stamina chest gems).
+- **Min-HP is now enforced as a true hard gate (with best-effort fallback).** The ratio search's greedy
+  gate-repair could get STUCK below a reachable Min-HP floor (e.g. keep-equipped survival returned
+  ~13.7k against a 14k floor even though ~15k was achievable). `optimizeSets` now detects a set that
+  misses its floor and retries maximizing pure stamina (keeping uncrit/uncrush, dropping the floor from
+  the objective so the search isn't pinned below the reachable max): if that reaches the floor it's
+  returned as the legal set the ratio search missed; if not, the floor is genuinely unreachable and the
+  tankiest achievable set is returned, flagged `hpBestEffort` with a UI note. (Effect: keep-equipped
+  survival now hits the 14k floor — 13.7k→15.0k.) The recovery pass leans stamina, so it can overshoot
+  the floor slightly in exchange for guaranteeing it.

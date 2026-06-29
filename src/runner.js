@@ -560,5 +560,18 @@ export function optimizeSets(items, options = {}) {
   const goals = options.goals || GOAL_PRESETS;
   // The web UI builds the Balanced goal's ratio by blending the Survival and Raid ratios (its slider
   // slides between the two sets), so the engine stays generic — every goal is just a ratio + gates.
-  return goals.map((g) => runGoal(g, items, ctx));
+  return goals.map((g) => {
+    const r = runGoal(g, items, ctx);
+    const floor = (g.gates && g.gates.minHealth) || 0;
+    if (!floor || r.agg.health + 1e-9 >= floor) return r; // no floor, or it's already met
+    // Min-HP is a HARD gate (like uncrit/uncrush). The ratio set came up short, so retry maximizing
+    // pure STAMINA — keep the uncrit/uncrush gates, but drop the floor from the objective so the
+    // search isn't pinned below the reachable max. If that reaches the floor we recovered a legal set
+    // the ratio search missed; if not, the floor is unreachable with this gear/keep-settings and this
+    // is the best-effort (tankiest) set, still flagged as not meeting Min HP.
+    const best = runGoal({ ...g, ratio: { sta: 1 }, gates: { ...g.gates, minHealth: 0 } }, items, ctx);
+    if (best.agg.health <= r.agg.health) return r; // couldn't do better — keep the ratio set
+    const meetsFloor = best.agg.health + 1e-9 >= floor;
+    return { ...best, goal: g, legal: best.legal && meetsFloor, hpBestEffort: !meetsFloor };
+  });
 }

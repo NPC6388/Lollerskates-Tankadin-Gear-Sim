@@ -603,6 +603,9 @@ function setCard(r) {
   const hpPass = !minHp || a.health + 1e-9 >= minHp;
   const metaWarn = r.metas.filter((m) => !m.active)
     .map((m) => `⚠ ${m.name} won't activate — needs ${m.requires}`).join('<br>');
+  const hpNote = r.hpBestEffort
+    ? `<div class="metawarn">⚠ Min HP ${fmt(minHp)} isn't reachable with this gear/settings (keep-mode keeps your worn gems) — showing the tankiest set achievable (best effort).</div>`
+    : '';
   const noId = [...new Set(Object.values(r.perSlot).filter((ps) => ps.enchant && !ps.enchant.effectId).map((ps) => ps.enchant.name))];
   const exportNote = noId.length ? `<div class="metawarn">Export: no Sixty Upgrades ID for ${noId.join(', ')} — omitted from the string.</div>` : '';
   // The export carries the gems, but their socket placement isn't always right on import.
@@ -647,6 +650,7 @@ function setCard(r) {
     ${buffNote(r.buffImpact, r.agg)}
     ${doll}
     ${socketNote}
+    ${hpNote}
     ${metaWarn ? `<div class="metawarn">${metaWarn}</div>` : ''}
     ${exportNote}
     ${panels}
