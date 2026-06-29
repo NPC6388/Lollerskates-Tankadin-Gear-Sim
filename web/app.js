@@ -91,7 +91,7 @@ function init() {
     const v = defaultVOf(g.id);
     const leftLbl = bal ? 'Survival' : AXIS_LABEL[left];
     const rightLbl = bal ? 'Threat' : AXIS_LABEL[right];
-    const step = bal ? 0.05 : 0.5; // Balanced is a fine blend dial; the ratio sliders snap to ratios
+    const step = bal ? 0.125 : 0.5; // Balanced blend dial: 48 increments over [-3,3] (was 120, −60%)
     const readout = bal ? balancedText(v) : ratioText(g.id, v);
     const minHP = UI_DEFAULTS[g.id] ? UI_DEFAULTS[g.id].minHP : 10000;
     // Balanced has no Min-HP knob — its floor is DERIVED (blended from your Survival & Raid floors),
