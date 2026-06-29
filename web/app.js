@@ -61,6 +61,14 @@ const balancedText = (v) => {
   return thr === 50 ? 'midpoint · 50% Survival / 50% Threat' : `${100 - thr}% Survival / ${thr}% Threat`;
 };
 const defaultVOf = (id) => (UI_DEFAULTS[id] ? UI_DEFAULTS[id].v : 0);
+// Balanced's derived Min-HP readout = its floor blended from the Survival & Raid Min-HP sliders.
+function updateBalMinHP() {
+  const row = $('goalConfig') && $('goalConfig').querySelector('.goal-row[data-goal="balanced"]');
+  const el = row && row.querySelector('.bal-minhp'); if (!el) return;
+  const t = balanceT(+row.querySelector('.ratio-slider').value);
+  const hp = (id) => { const s = $('goalConfig').querySelector(`.goal-row[data-goal="${id}"] .minhp-slider`); return s ? +s.value : 0; };
+  el.textContent = fmtHp(Math.round(hp('survival') + (hp('raid') - hp('survival')) * t));
+}
 
 let items = null;        // equippable items from the export
 let parsed = null;       // full parse (character + items)
@@ -85,9 +93,10 @@ function init() {
     const rightLbl = bal ? 'Threat' : AXIS_LABEL[right];
     const readout = bal ? balancedText(v) : ratioText(g.id, v);
     const minHP = UI_DEFAULTS[g.id] ? UI_DEFAULTS[g.id].minHP : 10000;
-    // Balanced has no Min-HP gate (it blends two sets that already carry their own floors).
+    // Balanced has no Min-HP knob — its floor is DERIVED (blended from your Survival & Raid floors),
+    // shown read-only so the survival end is as tanky as the survival set.
     const minhpCell = minHP == null
-      ? `<div class="minhp-cell"><span class="minhp-label muted">No Min HP gate</span></div>`
+      ? `<div class="minhp-cell"><span class="minhp-label muted">Min HP (derived)</span><span class="minhp-val bal-minhp">—</span></div>`
       : `<div class="minhp-cell">
         <span class="minhp-label">Min HP</span>
         <input type="range" class="minhp-slider" min="${MINHP.min}" max="${MINHP.max}" step="${MINHP.step}" value="${minHP}" />
@@ -112,11 +121,16 @@ function init() {
     r.addEventListener('input', (e) => {
       const txt = isBalanced(id) ? balancedText(+e.target.value) : ratioText(id, +e.target.value);
       e.target.closest('.slider-cell').querySelector('.ratio').textContent = txt;
+      if (isBalanced(id)) updateBalMinHP(); // Balanced's derived floor shifts as its blend moves
     });
   });
   $('goalConfig').querySelectorAll('.minhp-slider').forEach((r) => {
-    r.addEventListener('input', (e) => { e.target.closest('.minhp-cell').querySelector('.minhp-val').textContent = fmtHp(+e.target.value); });
+    r.addEventListener('input', (e) => {
+      e.target.closest('.minhp-cell').querySelector('.minhp-val').textContent = fmtHp(+e.target.value);
+      updateBalMinHP(); // Survival/Raid floors feed Balanced's derived floor
+    });
   });
+  updateBalMinHP();
 
   $('scrolls').innerHTML = Object.entries(SCROLLS).map(([key, s]) => {
     const amt = s.flat ? `+${s.value} armor` : `+${s.value} ${s.stat}`;
@@ -230,7 +244,7 @@ function renderLogic() {
     </ul>
 
     <h4>5 · The four sets &amp; the sliders</h4>
-    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Raid Threat, Survival and AOE Trash each blend an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with their own Min-HP floor (AOE also uses AOE-threat weighting and drops the crush gate). <strong>Balanced is a blend dial:</strong> its slider slides between your Survival set (left) and your Raid Threat set (right) — interpolating their ratios — so the ends reproduce those two sets and the middle splits the difference. Balanced has no Min-HP floor of its own.</p>
+    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Raid Threat, Survival and AOE Trash each blend an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with their own Min-HP floor (AOE also uses AOE-threat weighting and drops the crush gate). <strong>Balanced is a blend dial:</strong> its slider slides between your Survival set (left) and your Raid Threat set (right), interpolating their ratios AND their Min-HP floors (and taking the nearer side's Eye-of-Magtheridon lock) — so the ends reproduce those two sets and the middle splits the difference. It has no Min-HP knob of its own; the floor shown is derived from your two sets.</p>
 
     <h4>6 · Gems, enchants &amp; metas</h4>
     <ul>
@@ -310,24 +324,28 @@ function populateTrinketLocks() {
 // ---- run --------------------------------------------------------------------
 function currentGoals() {
   const vOf = (id) => +$('goalConfig').querySelector(`.goal-row[data-goal="${id}"] .ratio-slider`).value;
+  const minhpOf = (id) => { const el = $('goalConfig').querySelector(`.goal-row[data-goal="${id}"] .minhp-slider`); return el ? +el.value : 0; };
   const ratioOf = (id) => ratioFor(id, vOf(id)).ratio; // {ehp, threat} for raid/survival
-  const raidRatio = ratioOf('raid');
-  const survRatio = ratioOf('survival');
+  const raidRatio = ratioOf('raid'), survRatio = ratioOf('survival');
+  const raidHP = minhpOf('raid'), survHP = minhpOf('survival');
+  const preset = (id) => GOAL_PRESETS.find((g) => g.id === id);
   return GOAL_PRESETS.map((g) => {
-    const row = $('goalConfig').querySelector(`.goal-row[data-goal="${g.id}"]`);
-    const v = +row.querySelector('.ratio-slider').value;
+    const v = vOf(g.id);
     if (isBalanced(g.id)) {
-      // Balanced slides between the Survival set (t=0) and the Raid Threat set (t=1): blend their
-      // ratios, so the endpoints reproduce those sets and the middle splits the difference. No Min-HP.
+      // Balanced slides between the Survival set (t=0) and the Raid Threat set (t=1). To make the
+      // ENDS actually reproduce those sets it inherits the whole config that differs between them —
+      // ratio AND Min-HP floor (both blended) AND the Eye-of-Magtheridon trinket lock (Survival
+      // leaves it free, Raid forces it; take the nearer side). Balanced has no Min-HP knob of its
+      // own — the floor is derived from your two sets, so it's why the survival end is now as tanky.
       const t = balanceT(v);
       const lerp = (a, b) => (a || 0) + ((b || 0) - (a || 0)) * t;
       const ratio = { ehp: lerp(survRatio.ehp, raidRatio.ehp), threat: lerp(survRatio.threat, raidRatio.threat) };
-      return { ...g, focus: `Survival ↔ Threat · ${balancedText(v)}`, ratio, gates: { ...g.gates } };
+      const minHealth = Math.round(lerp(survHP, raidHP));
+      const lockEye = t >= 0.5 ? preset('raid').lockEye : preset('survival').lockEye;
+      return { ...g, lockEye, focus: `Survival ↔ Threat · ${balancedText(v)}`, ratio, gates: { ...g.gates, minHealth } };
     }
-    const minhpEl = row.querySelector('.minhp-slider');
-    const minHealth = minhpEl ? +minhpEl.value : 0;
     const r = ratioFor(g.id, v);
-    return { ...g, focus: ratioText(g.id, v), ratio: r.ratio, gates: { ...g.gates, minHealth } };
+    return { ...g, focus: ratioText(g.id, v), ratio: r.ratio, gates: { ...g.gates, minHealth: minhpOf(g.id) } };
   });
 }
 
