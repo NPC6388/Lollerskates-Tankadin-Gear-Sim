@@ -18,6 +18,13 @@ so `src/runner.js` is unchanged vs pre-experiment except the optimizeSets commen
 
 Note: the player liked the slider feel after coarsening from 0.05→0.125 and adding live updates.
 
+**Then:** research agent (general-purpose) reviewed the guide + model on "avoidance above 102.4% vs
+stamina" → local note `research/avoidance-above-cap-vs-stamina.md` (gitignored, `research/` ignored,
+not public). Verdict: survival is a FLOOR objective, stamina should lead beyond the cap. Applied the
+tuning to `PARTS.ehp` AND the SU `survivalEHP` scale (dodge 1.1→0.85, parry 0.9→0.7, agility
+1.15→0.95, defense 1.1→1.0; survivalEHP block 1.02→0.25; `survivalUncrushable` unchanged). Survival
+1.5:1/14k went EHP 34.6k→37.0k, +~75 stamina, still uncrushable. 135 tests pass.
+
 ---
 
 ## 2026-06-28 (night) — Optimizer scores tier set bonuses
