@@ -447,3 +447,5 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Download button (`addon/TankadinGearSim.zip`, the folder zipped so it extracts as
   `AddOns/TankadinGearSim/`) plus short install steps (unzip into `Interface\AddOns`, enable, `/tgs`).
   Rebuild the zip when the addon changes (see `addon/README.md`).
+- **Refresh opens at the top.** Set `history.scrollRestoration = 'manual'` so a reload lands at the top
+  of the page instead of restoring the prior scroll position.
