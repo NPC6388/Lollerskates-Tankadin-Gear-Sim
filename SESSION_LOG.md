@@ -4,6 +4,22 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-29 — Balanced = blend dial between Survival & Raid (merged to main)
+
+Built on branch `experiment/balanced-midpoint`, iterated with the player live (local `npm run serve`),
+then merged to main (fast-forward). The Balanced set's slider now slides between the Survival set
+(t=0) and the Raid Threat set (t=1): `currentGoals` (web layer) interpolates their ratios + Min-HP
+floors and takes the nearer side's Eye lock, so the ENDS reproduce both sets exactly (verified: t=0 =
+survival SP502/EHP33.4k/Moroes', t=1 = raid SP793/EHP28.7k/Eye). Balanced has no Min-HP knob (derived,
+read-only). Slider step 0.125 (48 increments); EHP/Threat end labels are nudge buttons; live
+re-optimize on slider drag (debounced 150ms, `optimizeNow(live)` skips the button toggle), gated on a
+prior Optimize. Engine stayed ratio-generic — an earlier runner-side maximin experiment was reverted,
+so `src/runner.js` is unchanged vs pre-experiment except the optimizeSets comment. 135 tests pass.
+
+Note: the player liked the slider feel after coarsening from 0.05→0.125 and adding live updates.
+
+---
+
 ## 2026-06-28 (night) — Optimizer scores tier set bonuses
 
 Was blind to set bonuses (setBonuses computed for display only; no objective used it) — so a leg/

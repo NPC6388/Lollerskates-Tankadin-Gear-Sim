@@ -390,3 +390,13 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   resilience re-gemmed back to stay uncrittable. `runner.js` `nearAlternatives` (+ `ALT_EPS`/`ALT_MAX`),
   exposed as `perSlot[slot].alternatives`; `optimizer.js` exports `distinctOk`; rendered by
   `app.js` `altsHTML`. Tests: `test/alternatives.test.js`.
+- **Balanced set is now a blend dial between your Survival and Raid Threat sets, with live updates.**
+  Its slider slides between the Survival set (left) and the Raid Threat set (right): it interpolates
+  their ratios AND their Min-HP floors, and takes the nearer side's Eye-of-Magtheridon lock — so the
+  ends reproduce those two sets exactly and the middle splits the difference. Balanced has no Min-HP
+  knob of its own (the floor is derived and shown read-only). UI defaults set to Raid 1:4 / 11.5k,
+  Survival 1.5:1 / 14k, AOE 1:4 / 10.5k, Balanced midpoint. The Balanced slider is a fine 0.125-step
+  dial; the EHP/Threat end labels are buttons that nudge the slider one step; and after the first
+  Optimize, dragging any goal slider re-optimizes live (debounced) so the numbers track the slider.
+  Web-layer only (`app.js` `currentGoals`/`optimizeNow`/`scheduleLiveUpdate`); the engine stays
+  ratio-generic.
