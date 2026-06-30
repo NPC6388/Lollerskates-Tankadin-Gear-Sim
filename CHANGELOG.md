@@ -586,3 +586,13 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   equippable, hard-to-model exceptions flagged).
 - **Mobile layout for the new elements.** The ≤760px single-column view now un-mirrors the worn/swap
   badges, BiS rows, and the swapped-slot edge accent (they no longer inherit the right-column reversal).
+- **Equip BiS items you don't own (planning aid).** A BiS pick that isn't in your bags now has a
+  **"+ add to sim"** button: it folds the item into the optimizer pool as a *planning* item ("pretend I
+  own this"), pinned to the slot, and re-optimizes — so you can see how a not-yet-acquired upgrade
+  reshapes a set (gemmed/enchanted like real gear). Planning items show a **★ planned** badge and are
+  listed in an **"Added for planning"** banner with a one-click remove (also captured in share links).
+  New generated `web/bis-items.js` carries the stat block + sockets for every BiS item (from the same
+  Wowhead `jsonequip`); librams get their modeled threat effect via `libramStats`. Socket bonuses aren't
+  modeled for planning items (Wowhead encodes them as an unresolved id), so a planned item just isn't
+  credited its socket bonus. `test/bis-equip.test.js` runs a synthetic item through the real optimizer
+  (placed when pinned; every DB entry optimizer-ready; DB covers every display id). (143/143 suite.)

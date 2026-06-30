@@ -7,12 +7,14 @@ import { PROFESSION_NAMES } from '../src/professions.js';
 import { GEMS, META_GEMS } from '../src/gems.js';
 import { detectFaction } from '../src/enchants.js';
 import { missChance } from '../src/combat.js';
+import { libramStats } from '../src/librams.js';
 import { SCROLLS } from '../src/scrolls.js';
 import { SCALES, PARTS } from '../src/weights.js';
 import { SET_BONUS_STATS } from '../src/sets.js';
 import { CHARACTER, TALENTS, BUFFS } from '../src/model.js';
 import { CAPS, BASE, RATING, THREAT, ARMOR_CONST } from '../src/constants.js';
 import { BIS, BIS_PHASES } from './bis.js';
+import { BIS_ITEM_DB } from './bis-items.js';
 
 const $ = (id) => document.getElementById(id);
 // The companion guide every constant/scale is transcribed from.
@@ -82,6 +84,33 @@ let faction = null;      // Aldor/Scryer, auto-detected from the equipped should
 const lockedItemIds = new Set(); // item-ids whose gems/enchants are kept across every set
 const pinnedSlots = {};  // goalId -> { slotKey: itemId } — items forced into a slot for that set
 const excludedItemIds = new Set(); // item-ids dropped from EVERY set (inverse of pin)
+// BiS items the player DOESN'T own but added to the sim for planning ("pretend I own this"). Built
+// from BIS_ITEM_DB and folded into the optimizer pool exactly like owned gear; removable via banner.
+const virtualItems = new Map(); // itemId -> synthetic item
+
+// Build a synthetic owned-style item from the BiS stat DB so a not-owned BiS pick can be optimized.
+function buildSyntheticItem(id) {
+  const d = BIS_ITEM_DB[id];
+  if (!d || !d.slot) return null;
+  const item = {
+    itemId: id, name: d.name, slot: d.slot,
+    stats: { ...d.stats }, baseStats: { ...d.stats },
+    sockets: d.sockets ? { ...d.sockets } : {},
+    socketBonus: null, equipped: false, _virtual: true,
+  };
+  const lib = libramStats(item); // model a libram's threat effect, like import.js does for owned gear
+  if (lib) { item.stats = lib; item.baseStats = { ...lib }; }
+  return item;
+}
+// The optimizer pool = owned gear + any planning items. Owned `items` stays owned-only (drives the
+// "you own this" tags); virtual items only join at optimize time.
+const optimizerPool = () => (items || []).concat([...virtualItems.values()]);
+const isPlanned = (id) => virtualItems.has(id);
+// Remove a planning item and drop any pin pointing at it.
+function removeVirtual(id) {
+  virtualItems.delete(id);
+  for (const g of Object.values(pinnedSlots)) for (const s of Object.keys(g)) if (g[s] === id) delete g[s];
+}
 
 // ---- setup ------------------------------------------------------------------
 function init() {
@@ -239,6 +268,7 @@ function captureState() {
     sc: [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value),
     li: $('lockIcon').value, le: $('lockEye').value, t: $('talents').value,
     g: goalState, pin: pinnedSlots, ex: [...excludedItemIds], lk: [...lockedItemIds], tab: activeTab,
+    vi: [...virtualItems.keys()], // BiS planning items (rebuilt from BIS_ITEM_DB by id)
   };
 }
 
@@ -268,6 +298,7 @@ function applyState(s) {
   Object.assign(pinnedSlots, s.pin || {});
   excludedItemIds.clear(); (s.ex || []).forEach((id) => excludedItemIds.add(id));
   lockedItemIds.clear(); (s.lk || []).forEach((id) => lockedItemIds.add(id));
+  virtualItems.clear(); (s.vi || []).forEach((id) => { const it = buildSyntheticItem(id); if (it) virtualItems.set(id, it); });
   activeTab = s.tab || 0;
   runOptimize(true); // optimize + scroll to results
 }
@@ -510,7 +541,7 @@ function optimizeNow(live) {
     // the adjacent set (smooth, monotonic) rather than re-optimizing cold. Fresh runs seed from scratch.
     const seeds = (live && lastResults) ? Object.fromEntries(lastResults.map((r) =>
       [r.goal.id, Object.fromEntries(Object.entries(r.selection).filter(([, it]) => it).map(([s, it]) => [s, it.itemId]))])) : undefined;
-    const results = optimizeSets(items, {
+    const results = optimizeSets(optimizerPool(), {
       professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
       faction, useImbuedMeta: $('imbuedMeta').checked,
       keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots, exclude: [...excludedItemIds], seeds,
@@ -665,7 +696,7 @@ function render(results) {
   $('tabs').querySelectorAll('button').forEach((b) =>
     b.addEventListener('click', () => { activeTab = +b.dataset.i; render(results); }));
 
-  $('sets').innerHTML = lockedBanner() + excludedBanner() + setCard(results[activeTab]);
+  $('sets').innerHTML = lockedBanner() + excludedBanner() + plannedBanner() + setCard(results[activeTab]);
   const eb = $('sets').querySelector('.export-btn');
   if (eb) eb.addEventListener('click', () => exportSet(results[activeTab], eb));
   // Lock this set's items: add every selected item-id to the kept list, then re-optimize so the
@@ -683,6 +714,17 @@ function render(results) {
     (pinnedSlots[b.dataset.goal] ||= {})[b.dataset.slot] = +b.dataset.id;
     runOptimize();
   }));
+  // "+ add to sim": a BiS item you don't own — fold it into the pool as a planning item, then pin it
+  // to the slot so it shows there. (Removed again from the "Added for planning" banner.)
+  $('sets').querySelectorAll('.plan-btn').forEach((b) => b.addEventListener('click', () => {
+    const id = +b.dataset.bisid;
+    if (!virtualItems.has(id)) { const it = buildSyntheticItem(id); if (!it) return; virtualItems.set(id, it); }
+    (pinnedSlots[b.dataset.goal] ||= {})[b.dataset.slot] = id;
+    runOptimize();
+  }));
+  $('sets').querySelectorAll('.planx-btn').forEach((x) => x.addEventListener('click', () => { removeVirtual(+x.dataset.id); runOptimize(); }));
+  const cpl = $('sets').querySelector('.clearplan');
+  if (cpl) cpl.addEventListener('click', () => { for (const id of [...virtualItems.keys()]) removeVirtual(id); runOptimize(); });
   $('sets').querySelectorAll('.unpin-btn').forEach((b) => b.addEventListener('click', () => {
     const g = pinnedSlots[b.dataset.goal];
     if (g) { delete g[b.dataset.slot]; if (!Object.keys(g).length) delete pinnedSlots[b.dataset.goal]; }
@@ -721,6 +763,16 @@ function excludedBanner() {
     <button class="ghost clearexcl" type="button">Clear all</button></div>`;
 }
 
+// Banner listing BiS items added for planning (not owned). Each chip removes the planning item (and
+// any pin pointing at it). These are folded into the optimizer pool like owned gear while present.
+function plannedBanner() {
+  if (!virtualItems.size) return '';
+  const chips = [...virtualItems.values()].map((it) =>
+    `<span class="lockchip">${it.name || it.itemId}<button class="planx-btn" data-id="${it.itemId}" title="remove from plan">×</button></span>`).join('');
+  return `<div class="lockedbar planned">🧪 <b>Added for planning</b> (not in your bags — treated as owned): ${chips}
+    <button class="ghost clearplan" type="button">Clear all</button></div>`;
+}
+
 // Banner listing the items whose gems/enchants are locked across all sets (chips with an unlock ×).
 function lockedBanner() {
   if (!lockedItemIds.size) return '';
@@ -746,9 +798,11 @@ function slotHTML(r, slotKey, side) {
   // Show at a glance whether this pick is gear you're ALREADY wearing in-game (no change) or a SWAP
   // the optimizer pulled from your bags/bank. it.equipped comes from the export's E: (equipped) vs
   // I: (inventory) line and survives share links, so this is accurate for any loaded character.
-  const wornTag = it.equipped
-    ? `<span class="worn-badge" title="You're already wearing this in-game — no change needed for this slot.">● worn</span>`
-    : `<span class="swap-badge" title="Swapped in from your bags/bank — you don't have this equipped in-game right now.">swap in</span>`;
+  const wornTag = it._virtual
+    ? `<span class="swap-badge planned" title="A planning item you added (not in your bags) — treated as owned in the sim. Remove it from the 'Added for planning' banner above.">★ planned</span>`
+    : it.equipped
+      ? `<span class="worn-badge" title="You're already wearing this in-game — no change needed for this slot.">● worn</span>`
+      : `<span class="swap-badge" title="Swapped in from your bags/bank — you don't have this equipped in-game right now.">swap in</span>`;
   // Equip control: when the slot is equipped (forced), the picked item IS the forced one — offer to
   // unequip; otherwise offer to force ("equip") the current pick so re-optimizing other slots won't
   // swap it out for this set.
@@ -803,13 +857,24 @@ function bisHTML(goalId, slotKey, chosenId) {
     let tag, ctl = '';
     if (b.id === chosenId) {
       tag = `<span class="bis-have in-set" title="This is the item picked for this slot.">✓ in this set</span>`;
+      // Already the pick; if it's a planning item, still offer to drop it from the plan.
+      if (isPlanned(b.id)) ctl = `<button class="planx-btn" data-id="${b.id}" title="Remove this planning item from the sim">remove</button>`;
+    } else if (isPlanned(b.id)) {
+      // Added for planning (not owned) — in the pool now; equip forces it into this slot.
+      tag = `<span class="bis-have planned" title="Added for planning — treated as owned in the sim.">★ planned</span>`;
+      ctl = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${b.id}" title="Force this item into the slot and re-optimize the rest around it">equip</button>`
+        + `<button class="planx-btn" data-id="${b.id}" title="Remove this planning item from the sim">remove</button>`;
     } else if (ownsItem(b.id)) {
       // Owned BiS items can be forced into the slot just like an owned alternate.
       tag = `<span class="bis-have" title="You already own this item.">✓ you own this</span>`;
       ctl = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${b.id}" title="Force this item into the slot and re-optimize the rest around it">equip</button>`;
+    } else if (BIS_ITEM_DB[b.id] && BIS_ITEM_DB[b.id].slot) {
+      // Not in your bags — add it to the sim as a planning item ("pretend I own this"), pinned here.
+      tag = `<span class="bis-miss" title="Not in your loaded gear.">not in your bags</span>`;
+      ctl = `<button class="plan-btn" data-goal="${goalId}" data-slot="${slotKey}" data-bisid="${b.id}" title="Add this item to the sim as a planning piece (pretend you own it) and force it into the slot">+ add to sim</button>`;
     } else {
-      // Not in your export — the optimizer can't model an item you don't own, so no equip button.
-      tag = `<span class="bis-miss" title="Not in your loaded gear — can't be equipped/optimized until you own it.">not in your bags</span>`;
+      // No stat data for this id (shouldn't happen for real gear) — link only.
+      tag = `<span class="bis-miss" title="Not in your loaded gear.">not in your bags</span>`;
     }
     return `<div class="bis-row"><span class="bis-rank">${i + 1}</span>${wh(b.id, b.name, 'bis-item')}${note}${tag}${ctl}</div>`;
   }).join('');

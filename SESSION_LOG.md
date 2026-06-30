@@ -51,8 +51,17 @@ quote-safe for `title=`, `chosenId===null` (empty slot) falls through correctly,
 refresh don't conflict. Stopped here deliberately — remaining ideas would be speculative features better
 done with owner direction. All on `feature/results-ui-improvements`; **`main` untouched / not merged.**
 
+**Batch 7 — equip not-owned BiS items (planning aid):** owner asked to make BiS items not in the
+bag/bank equippable. New generated `web/bis-items.js` (stat block + sockets for all 133 BiS items, from
+the same Wowhead `jsonequip`; socket enum 1=Meta/2=Red/3=Yellow/4=Blue; `blockamount`=block value,
+`mlehitrtng`=hit). app.js builds a synthetic owned-style item (`buildSyntheticItem`, librams via
+`libramStats`), folds `virtualItems` into the optimizer pool (`optimizerPool()`), pins it, and shows a
+"+ add to sim" button on not-owned BiS rows, a ★ planned badge, and an "Added for planning" banner
+(captured in share links as `vi`). `test/bis-equip.test.js` runs a synthetic item through the real
+optimizer. Socket bonus not modeled for planning items (unresolved Wowhead id). Suite 143/143.
+
 ### Pick up here
-- **Owner review** the branch (6 commits: `bde06f1`→`85374a8`), then merge to `main` when happy (merge =
+- **Owner review** the branch (7 commits: `bde06f1`→HEAD), then merge to `main` when happy (merge =
   deploy). Pre-commit asset hook re-stamps `index.html` cache-bust hash on commits touching `web/`.
 - **Browser eyeball still owed**: BiS Wowhead links iconize, dropdown summary reads
   "≈ N also viable · BiS list", accordion closes siblings, swap/worn badges + Miss row + spell-hit/armor

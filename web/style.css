@@ -231,8 +231,17 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .bis-have { font-size: 10px; color: var(--good); border: 1px solid rgba(111,207,111,.4); border-radius: 8px; padding: 0 6px; }
 .bis-have.in-set { color: var(--gold); border-color: rgba(240,198,116,.5); }
 .bis-miss { font-size: 10px; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; padding: 0 6px; }
+.bis-have.planned { color: var(--gold); border-color: rgba(240,198,116,.5); }
 .bis-note { font-size: 10px; color: var(--accent); cursor: help; text-decoration: none; }
-.bis-row .pin-btn { margin-left: 2px; }
+.bis-row .pin-btn, .bis-row .plan-btn, .bis-row .planx-btn { margin-left: 2px; }
+/* "+ add to sim" — promote a not-owned BiS item into the optimizer pool as a planning piece. */
+.plan-btn { font-size: 10px; padding: 0 6px; border-radius: 8px; border: 1px solid rgba(240,198,116,.5); background: transparent; color: var(--gold); cursor: pointer; white-space: nowrap; }
+.plan-btn:hover { background: rgba(240,198,116,.12); }
+.planx-btn { font-size: 10px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.planx-btn:hover { color: var(--bad); border-color: var(--bad); }
+/* "Added for planning" banner + the ★ planned slot badge (a virtual, not-owned item). */
+.lockedbar.planned { background: rgba(240,198,116,.10); border-color: rgba(240,198,116,.4); }
+.swap-badge.planned { color: var(--gold); border-color: rgba(240,198,116,.5); background: rgba(240,198,116,.10); }
 /* Pin-to-slot controls. */
 .pin-ctl { margin-left: 6px; }
 .ds-slot.right .pin-ctl { margin-left: 0; margin-right: 6px; }
