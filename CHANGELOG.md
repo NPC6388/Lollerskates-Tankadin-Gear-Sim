@@ -541,3 +541,26 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   does, and only for the file that changed. A tracked pre-commit hook (`scripts/githooks/pre-commit`, via
   `git config core.hooksPath scripts/githooks`) re-stamps and re-stages `index.html` automatically whenever
   a commit touches those assets. (On a fresh clone, run the `core.hooksPath` config line once to enable it.)
+- **Curated community BiS in each slot dropdown.** New `web/bis.js` carries a per-phase (1–5), per-slot
+  best-in-slot reference list (top ~3 picks/slot) extracted from Wowhead's "Protection Paladin Tank BiS"
+  guides — filtered to items whose real equip slot matches, so gems/tokens/currencies that the guides
+  mention in prose are excluded. It's appended to the end of each slot's dropdown as a "Phase N BiS"
+  block; items you already own (or have in the current set) are tagged. It's **reference only** — fully
+  independent of your collection and never selected by the optimizer. The "Gem phase" control was renamed
+  **Content phase** (now Phase 1–5; gems are unchanged past p2, so 4/5 just pick the later BiS list) and
+  re-optimizes live on change. The per-slot `<details>` now opens whenever there are owned near-ties OR a
+  BiS list (so a slot always exposes "what to chase").
+- **Equipped vs swapped-in pieces are marked.** Each paper-doll slot shows a **● worn** badge when the
+  pick is gear you already wear in-game, or a **swap in** badge (plus a faint blue left-edge accent) when
+  the optimizer pulled it from your bags/bank — read from the export's `E:`/`I:` line (survives share
+  links).
+- **"Pin" is now "Equip."** The pin/unpin slot controls read **equip** / **📌 equipped · unequip**, and
+  "Unpin all" → "Unequip all" — same force-into-slot behavior, clearer verb. (The currently-worn marker
+  above deliberately uses "worn", not "equipped", to avoid colliding with this.)
+- **Open Sixty Upgrades link by the export button.** A "Open Sixty Upgrades ↗" link sits next to
+  "⬇ Export to Sixty Upgrades" so you can copy the string and jump straight to the import page.
+- **"Needs re-gem" is now an obvious tooltip.** The alternates flag is a dotted-underline `<abbr>` with a
+  help cursor and a fuller explanation (which gate it would miss, and that you'd re-gem another slot for
+  the avoidance/defense/resilience it gives up).
+- **Armor shows what it mitigates.** Hovering the Armor stat in the Defense panel reports the % physical
+  damage reduction vs a raid boss (the same `Armor ÷ (Armor + K)`, capped 75%, folded into EHP).

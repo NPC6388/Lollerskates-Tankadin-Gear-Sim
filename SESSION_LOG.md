@@ -4,6 +4,40 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-30 (later) — Results-page UI batch on a review branch
+
+New workflow (owner instruction): **build ideas on a branch, never directly on `main`** (main deploys
+to the live site); commit each idea so work is saved, but leave merging to the owner after review. This
+session's work lives on branch **`feature/results-ui-improvements`** (NOT merged). See memory
+`workflow-build-on-fork`.
+
+Six results-page features (suite 136/136 green; both web JS files `node --check` clean):
+
+1. **Curated community BiS per slot** — new `web/bis.js` (per-phase 1–5, per-slot top-3), extracted from
+   Wowhead's Prot-Pala-Tank BiS sub-guides via a scratchpad scraper (`extract_bis.py`): map item IDs →
+   names from the embedded `g_items` JSON, walk `[h3 toc="Slot"]` sections, keep `[item=ID]` whose
+   `slotbak` (invtype) matches the section. **Two scraper bugs fixed**: missing slotbak 16 (cloak left
+   `back` empty), and a window bleed where items with no `jsonequip` (gems/scrolls/currencies) inherited
+   the next item's slotbak — bounded each window to the item's own entry. Wired into the slot `<details>`
+   as a "Phase N BiS" block (owned/in-set tagged). Phase select renamed **Content phase**, extended to
+   1–5, re-optimizes live on change.
+2. **Worn vs swap badges** — `● worn` / `swap in` (+ faint blue edge) from `it.equipped`.
+3. **Pin → Equip** rename (button, pinned state, "Unequip all"). Worn badge intentionally says "worn"
+   not "equipped" to avoid colliding.
+4. **`needs re-gem`** is now a dotted `<abbr>` tooltip (help cursor, fuller text).
+5. **Open Sixty Upgrades ↗** link beside the export button.
+6. **Armor** stat hover shows % physical mitigation (`.tip` class — no logic-panel jump).
+
+### Pick up here
+- **Owner review** the branch, then merge to `main` when happy (that's the deploy). Pre-commit asset hook
+  re-stamps `index.html` cache-bust hash on commits touching `web/`.
+- **Browser eyeball still owed**: confirm BiS Wowhead links iconize, dropdown summary reads
+  "≈ N also viable · BiS list", and the swap/worn badges + edge accent align on both columns.
+- Wowhead lists are "the best found" but the owner considers them mediocre — revisit BiS source later if
+  a better one appears.
+
+---
+
 ## 2026-06-30 — Item-link iconization + collapsible alternates (web polish)
 
 Two web/UI features finished and verified against the suite (136/136 green). Sitting **uncommitted** in

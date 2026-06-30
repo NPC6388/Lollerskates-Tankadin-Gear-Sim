@@ -11,6 +11,7 @@ import { SCALES, PARTS } from '../src/weights.js';
 import { SET_BONUS_STATS } from '../src/sets.js';
 import { CHARACTER, TALENTS, BUFFS } from '../src/model.js';
 import { CAPS, BASE, RATING, THREAT, ARMOR_CONST } from '../src/constants.js';
+import { BIS, BIS_PHASES } from './bis.js';
 
 const $ = (id) => document.getElementById(id);
 // The companion guide every constant/scale is transcribed from.
@@ -170,6 +171,9 @@ function init() {
     $('input-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   $('talents').addEventListener('input', updateTalentSummary);
+  // Phase drives gem availability AND the per-slot BiS reference list, so re-optimize on change
+  // (re-renders with the new phase's gems + BiS list) rather than waiting for the next Optimize.
+  $('phase').addEventListener('change', scheduleLiveUpdate);
   $('optimizeBtn').addEventListener('click', runOptimize);
   $('shareBtn').addEventListener('click', copyShareLink);
   document.querySelectorAll('.guide-link').forEach((a) => { a.href = GUIDE_URL; }); // header/footer guide links
@@ -727,11 +731,18 @@ function slotHTML(r, slotKey, side) {
   if (!it) return `<div class="ds-slot ${side} empty"><span class="ds-label">${SLOT_LABEL[slotKey]}</span></div>`;
   const ps = r.perSlot[slotKey] || {};
   const tag = ps.defGemmed ? `<span class="defgem">${term('def-gemmed', 'defgem')}</span>` : (ps.locked ? `<span class="defgem">${term('kept', 'kept')}</span>` : '');
-  // Pin control: when the slot is pinned, the picked item IS the pin — offer to unpin; otherwise
-  // offer to pin the current pick (locks it so re-optimizing other slots won't swap it for this set).
+  // Show at a glance whether this pick is gear you're ALREADY wearing in-game (no change) or a SWAP
+  // the optimizer pulled from your bags/bank. it.equipped comes from the export's E: (equipped) vs
+  // I: (inventory) line and survives share links, so this is accurate for any loaded character.
+  const wornTag = it.equipped
+    ? `<span class="worn-badge" title="You're already wearing this in-game — no change needed for this slot.">● worn</span>`
+    : `<span class="swap-badge" title="Swapped in from your bags/bank — you don't have this equipped in-game right now.">swap in</span>`;
+  // Equip control: when the slot is equipped (forced), the picked item IS the forced one — offer to
+  // unequip; otherwise offer to force ("equip") the current pick so re-optimizing other slots won't
+  // swap it out for this set.
   const pinCtl = pinnedId
-    ? `<button class="unpin-btn" data-goal="${goalId}" data-slot="${slotKey}" title="Stop forcing this item; re-optimize the slot">📌 pinned · unpin</button>`
-    : `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${it.itemId}" title="Force this item into the slot and re-optimize the rest around it">pin</button>`
+    ? `<button class="unpin-btn" data-goal="${goalId}" data-slot="${slotKey}" title="Stop forcing this item into the slot; let the optimizer choose it again">📌 equipped · unequip</button>`
+    : `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${it.itemId}" title="Force this item into the slot and re-optimize the rest around it">equip</button>`
       + `<button class="excl-btn" data-id="${it.itemId}" title="Exclude this item from all sets">exclude</button>`;
   const ench = ps.enchant ? `<div class="ds-ench-row">${enchLink(ps.enchant)}</div>` : '';
   let gems = '';
@@ -748,33 +759,69 @@ function slotHTML(r, slotKey, side) {
     }
     gems = cells + bonusLine;
   }
-  // Don't offer alternatives for a pinned slot (you've fixed the choice); show them otherwise.
-  const alts = pinnedId ? '' : altsHTML(ps.alternatives, goalId, slotKey);
-  return `<div class="ds-slot ${side}${pinnedId ? ' pinned' : ''}">
-    ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${tag}<span class="pin-ctl">${pinCtl}</span>
+  // Don't offer owned ALTERNATIVES for a pinned slot (you've fixed the choice), but still show the
+  // BiS reference list — it's a "what to chase" pointer, not a swap suggestion. So the dropdown
+  // renders whenever there are alternatives OR a BiS list for the slot.
+  const alts = slotDropdown(pinnedId ? [] : ps.alternatives, goalId, slotKey, it.itemId);
+  return `<div class="ds-slot ${side}${pinnedId ? ' pinned' : ''}${it.equipped ? '' : ' swapped'}">
+    ${wh(it.itemId, it.name || it.itemId, 'ds-item')}${wornTag}${tag}<span class="pin-ctl">${pinCtl}</span>
     ${ench}${gems}${alts}
   </div>`;
 }
 
 // Near-identical alternatives for a slot: other owned items that score within ~1% of the picked one
-// on this goal's objective. Each shows its own gems/sockets, the set delta, and a "pin" button to
+// on this goal's objective. Each shows its own gems/sockets, the set delta, and an "equip" button to
 // force it into the slot; "needs re-gem" marks an option that, dropped in as-is, would miss a gate.
 const altDelta = (d) => Math.abs(d) < 5e-4 ? '≈ same' : (d > 0 ? '+' : '−') + (Math.abs(d) * 100).toFixed(2) + '%';
-function altsHTML(alts, goalId, slotKey) {
-  if (!alts || !alts.length) return '';
+// The content phase selected drives both gem availability and which BiS reference list shows; clamp
+// to the phases we actually carry BiS for.
+const currentPhase = () => { const p = +($('phase') ? $('phase').value : 0) || 1; return BIS_PHASES.includes(p) ? p : Math.max(...BIS_PHASES.filter((x) => x <= p), BIS_PHASES[0]); };
+// ring1/ring2 -> 'ring', trinket1/trinket2 -> 'trinket'; everything else is its own key.
+const bisSlotKey = (slotKey) => slotKey.replace(/[12]$/, '');
+const ownsItem = (id) => (items || []).some((it) => it.itemId === id);
+
+// Curated community BiS for the slot at the selected phase — a "what to chase" list, independent of
+// what you own. Appended to the end of the slot dropdown. Items you already own (or have selected in
+// this set) are tagged so you can see how close your collection is to the list.
+function bisHTML(slotKey, chosenId) {
+  const list = (BIS[currentPhase()] || {})[bisSlotKey(slotKey)];
+  if (!list || !list.length) return '';
+  const rows = list.map((b, i) => {
+    const tag = b.id === chosenId
+      ? `<span class="bis-have in-set" title="This is the item picked for this slot.">✓ in this set</span>`
+      : ownsItem(b.id) ? `<span class="bis-have" title="You already own this item.">✓ you own this</span>` : '';
+    return `<div class="bis-row"><span class="bis-rank">${i + 1}</span>${wh(b.id, b.name, 'bis-item')}${tag}</div>`;
+  }).join('');
+  return `<div class="bis-block">
+    <div class="bis-h">Phase ${currentPhase()} BiS <span class="bis-src">· community list</span></div>
+    ${rows}
+  </div>`;
+}
+
+// Per-slot dropdown: owned near-ties first (each with its gems, set delta, equip/exclude), then the
+// curated BiS reference list. Collapsed by default; renders whenever there are alternatives OR a BiS
+// list, so a slot always exposes "what to chase" even when nothing you own is a near-tie.
+function slotDropdown(alts, goalId, slotKey, chosenId) {
+  alts = alts || [];
+  const bis = bisHTML(slotKey, chosenId);
+  if (!alts.length && !bis) return '';
   const rows = alts.map((a) => {
     const gc = (a.gems && a.gems.length) ? `<div class="ds-gems alt">${a.gems.map((g) => gemCell(g, true)).join('')}</div>` : '';
-    const regem = a.dropInLegal === false ? `<span class="alt-regem" title="Dropping this in as-is would miss a gate — re-gem another slot for the avoidance/resilience it gives up.">needs re-gem</span>` : '';
-    const pin = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${a.itemId}" title="Force this item into the slot and re-optimize the rest around it">pin</button>`
+    const regem = a.dropInLegal === false ? `<abbr class="alt-regem" title="Dropping this in as-is would miss a gate (uncrittable / uncrushable / Min HP) — to use it you'd re-gem another slot for the avoidance, defense or resilience this item gives up.">needs re-gem</abbr>` : '';
+    const equip = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${a.itemId}" title="Force this item into the slot and re-optimize the rest around it">equip</button>`
       + `<button class="excl-btn" data-id="${a.itemId}" title="Exclude this item from all sets">exclude</button>`;
     return `<div class="ds-alt">
-      <span class="alt-line">${wh(a.itemId, a.name || a.itemId, 'ds-alt-item')}<span class="alt-delta" title="Change to this goal's overall set score">${altDelta(a.objDelta)}</span>${regem}${pin}</span>
+      <span class="alt-line">${wh(a.itemId, a.name || a.itemId, 'ds-alt-item')}<span class="alt-delta" title="Change to this goal's overall set score">${altDelta(a.objDelta)}</span>${regem}${equip}</span>
       ${gc}
     </div>`;
   }).join('');
-  // Collapsed by default — a per-slot dropdown so a slot with several near-ties doesn't clutter the
-  // paper doll. The summary shows the count; expanding reveals each alternate with its gems + pin/exclude.
-  return `<details class="ds-alts"><summary class="ds-alts-h">≈ ${alts.length} also viable</summary><div class="ds-alts-body">${rows}</div></details>`;
+  // Summary reflects both halves: "≈ N also viable" for owned near-ties, "· BiS" when the reference
+  // list is present (so the dropdown reads usefully even with zero owned alternates).
+  const parts = [];
+  if (alts.length) parts.push(`≈ ${alts.length} also viable`);
+  if (bis) parts.push('BiS list');
+  const summary = parts.join(' · ');
+  return `<details class="ds-alts"><summary class="ds-alts-h">${summary}</summary><div class="ds-alts-body">${rows}${bis}</div></details>`;
 }
 
 const panel = (title, rows) =>
@@ -785,6 +832,12 @@ const panel = (title, rows) =>
 // holds the per-set deltas; we convert intellect→spell crit and armor→damage reduction here.
 const INT_PER_SPELLCRIT = 80;             // ≈ TBC level-70 caster: ~1% spell crit per 80 intellect
 const armorDR = (armor) => armor / (armor + ARMOR_CONST()); // vs a raid boss (standard TBC formula)
+// Armor stat label with a hover showing what that armor actually mitigates: the % physical damage
+// reduction vs a raid boss (the same Armor ÷ (Armor + K) the EHP model uses, capped at 75%).
+function armorLabel(armor) {
+  const dr = Math.min(armorDR(armor) * 100, 75);
+  return `<abbr class="tip" title="Reduces physical damage from a level-${BASE.raidBossLevel} boss by ${dr.toFixed(1)}% — Armor ÷ (Armor + ${fmt(ARMOR_CONST())}), capped at 75%. This is the mitigation folded into EHP.">Armor</abbr>`;
+}
 function buffNote(b, agg) {
   if (!b || !b.name) return '';
   const drDelta = agg && b.armor ? (armorDR(agg.armor) - armorDR(agg.armor - b.armor)) * 100 : 0;
@@ -835,7 +888,7 @@ function setCard(r) {
     ${panel('Spell', [['Spell Damage', fmt(litSP(a))],
       ...(a.spellPowerEquiv ? [[`<abbr class="term" title="The libram's +Consecration damage, converted to its threat-equivalent spell power so the threat scales value it. Not literal +spell-power on the tooltip — Sixty Upgrades won't show it, so it's listed separately here.">Relic effect (≈SP)</abbr>`, '+' + fmt(a.spellPowerEquiv)]] : []),
       ['Spell Hit', spellHitPct(a).toFixed(2) + '%'], ['Block Value', fmt(a.blockValue)]])}
-    ${panel('Defense', [['Armor', fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)], ['Resilience', fmt(a.resilienceRating)], ['Block', a.blockPct.toFixed(2) + '%'], ['Dodge', a.dodgePct.toFixed(2) + '%'], ['Parry', a.parryPct.toFixed(2) + '%'], ['Total Avoidance', e.totalAvoidanceNoHS.toFixed(2) + '%']])}
+    ${panel('Defense', [[armorLabel(a.armor), fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)], ['Resilience', fmt(a.resilienceRating)], ['Block', a.blockPct.toFixed(2) + '%'], ['Dodge', a.dodgePct.toFixed(2) + '%'], ['Parry', a.parryPct.toFixed(2) + '%'], ['Total Avoidance', e.totalAvoidanceNoHS.toFixed(2) + '%']])}
     ${panel('Survival', [[term('EHP', 'ehp') + ' (health pool)', fmt(e.ehpPhysical)], [term('Uncrushable', 'uncrush') + ' (w/ HS)', e.totalAvoidanceWithHS.toFixed(1) + '%'], ['Crit reduction', e.critReduction.toFixed(2) + '%']])}
   </div>`;
 
@@ -854,9 +907,10 @@ function setCard(r) {
           ${minHp ? `<span class="gate ${hpPass ? 'pass' : 'fail'}">${term('Min HP', 'minhp')} ${fmt(a.health)} / ${fmt(minHp)}</span>` : ''}
         </div>
         <div class="set-actions">
-          ${Object.keys(pinnedSlots[r.goal.id] || {}).length ? `<button class="unpin-all-btn ghost" type="button" data-goal="${r.goal.id}">📌 Unpin all (${Object.keys(pinnedSlots[r.goal.id]).length})</button>` : ''}
+          ${Object.keys(pinnedSlots[r.goal.id] || {}).length ? `<button class="unpin-all-btn ghost" type="button" data-goal="${r.goal.id}">📌 Unequip all (${Object.keys(pinnedSlots[r.goal.id]).length})</button>` : ''}
           <button class="lock-set-btn ghost" type="button">🔒 Lock this set's gems/enchants</button>
           <button class="export-btn" type="button">⬇ Export to Sixty Upgrades</button>
+          <a class="su-link ghost" href="https://sixtyupgrades.com/tbc" target="_blank" rel="noopener" title="Open Sixty Upgrades in a new tab — copy the export above, then paste it into Set → Import.">Open Sixty&nbsp;Upgrades ↗</a>
         </div>
       </div>
     </div>
