@@ -590,9 +590,14 @@ export function optimizeSets(items, options = {}) {
     // picks the most threat among the holders — so SP rises as the slider moves toward threat.
     const seed = {};
     for (const [slot, it] of Object.entries(maxHp.selection)) if (it) seed[slot] = it.itemId;
+    // On live slider drags the previous (floor-holding) set is passed as gseed — climb the recovery
+    // leans from THAT adjacent set so consecutive nudges move continuously (no cold-restart SP dip on
+    // the survival set as the slider leans threat). Cold runs (no gseed) keep seeding from max-HP, so
+    // behavior outside live dragging is unchanged. maxHp stays in the pool as the guaranteed floor-holder.
+    const recSeed = Object.keys(gseed).length ? gseed : seed;
     const objScale = blendScale(g.ratio);
     const leans = [g.ratio, { ehp: 1, threat: 1 }, { ehp: 1.5, threat: 1 }, { ehp: 2, threat: 1 }, { ehp: 3, threat: 1 }];
-    const cands = [maxHp, ...leans.map((r) => runGoal({ ...g, ratio: r }, items, ctx, seed))]
+    const cands = [maxHp, ...leans.map((r) => runGoal({ ...g, ratio: r }, items, ctx, recSeed))]
       .filter((c) => c.agg.health + 1e-9 >= floor && c.legal);
     const best = cands.reduce((a, b) => (score(b.agg._raw, objScale) > score(a.agg._raw, objScale) ? b : a), maxHp);
     return { ...best, goal: g, legal: best.agg.health + 1e-9 >= floor && best.legal };

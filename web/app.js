@@ -74,6 +74,7 @@ let items = null;        // equippable items from the export
 let parsed = null;       // full parse (character + items)
 let activeTab = 0;
 let lastResults = null;  // last optimize results (for the per-set lock button)
+let loadedSample = false; // true while the displayed results are the demo character (drives the "use your own gear" CTA)
 let faction = null;      // Aldor/Scryer, auto-detected from the equipped shoulder inscription
 const lockedItemIds = new Set(); // item-ids whose gems/enchants are kept across every set
 const pinnedSlots = {};  // goalId -> { slotKey: itemId } — items forced into a slot for that set
@@ -108,9 +109,9 @@ function init() {
       <span class="name">${g.name}</span>
       <div class="slider-cell">
         <div class="slider-wrap">
-          <button class="end left" type="button" title="Nudge toward ${leftLbl}">${leftLbl}</button>
+          <button class="end left" type="button" title="Nudge toward ${leftLbl}">◂ ${leftLbl}</button>
           <input type="range" class="ratio-slider" min="-3" max="3" step="${step}" value="${v}" />
-          <button class="end right" type="button" title="Nudge toward ${rightLbl}">${rightLbl}</button>
+          <button class="end right" type="button" title="Nudge toward ${rightLbl}">${rightLbl} ▸</button>
         </div>
         <div class="ratio">${readout}</div>
       </div>
@@ -155,9 +156,14 @@ function init() {
     return `<label class="check"><input type="checkbox" class="scroll-cb" value="${key}" /> ${s.name} <span class="muted">(${amt})</span></label>`;
   }).join('');
 
-  $('exportText').addEventListener('input', () => tryParse($('exportText').value));
+  $('exportText').addEventListener('input', () => { loadedSample = false; tryParse($('exportText').value); });
   $('exportFile').addEventListener('change', handleFile);
   $('loadSample').addEventListener('click', loadSample);
+  // CTA under the results: open the "use your own gear" section and jump to it.
+  $('useOwnBtn').addEventListener('click', () => {
+    $('ownGear').open = true;
+    $('input-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   $('talents').addEventListener('input', updateTalentSummary);
   $('optimizeBtn').addEventListener('click', runOptimize);
   document.querySelectorAll('.guide-link').forEach((a) => { a.href = GUIDE_URL; }); // header/footer guide links
@@ -298,6 +304,7 @@ function tryParse(text) {
     parsed = parseExport(toExportText(raw));
     items = equippableItems(parsed);
     faction = detectFaction(items);
+    $('factionReadout').classList.remove('muted');
     $('factionReadout').textContent = faction ? `${faction} (from shoulder inscription)` : 'Unknown — considering both';
     populateTrinketLocks();
     if (parsed.talents) $('talents').value = parsed.talents; // v10 export carries the talent string
@@ -314,7 +321,10 @@ async function handleFile(e) {
   const file = e.target.files[0]; if (!file) return;
   const text = await file.text();
   $('exportText').value = text;
+  $('ownGear').open = true; // keep the export box visible so the paste/upload is in view
+  loadedSample = false; // user's own gear — hide the sample CTA
   tryParse(text);
+  if (items && items.length) runOptimize(true); // a discrete upload is intent to run — show results
 }
 
 async function loadSample() {
@@ -324,6 +334,8 @@ async function loadSample() {
     const text = await res.text();
     $('exportText').value = text;
     tryParse(text);
+    loadedSample = true; // showing the demo character — surface the "use your own gear" CTA under the results
+    if (items && items.length) runOptimize(true); // land on results immediately — the whole point of the demo
   } catch { setStatus('Could not load the example file.', 'err'); }
 }
 
@@ -332,7 +344,7 @@ function populateTrinketLocks() {
   const opts = '<option value="">— none —</option>' +
     trinkets.map((t) => `<option value="${t.itemId}">${t.name || t.itemId}</option>`).join('');
   const set = (sel, defId) => {
-    const el = $(sel); el.innerHTML = opts;
+    const el = $(sel); el.innerHTML = opts; el.disabled = false; // enable now that real trinkets exist
     if (trinkets.some((t) => t.itemId === defId)) el.value = String(defId);
   };
   set('lockIcon', DEFAULT_TRINKET_LOCKS.icon);
@@ -386,6 +398,10 @@ function optimizeNow(live) {
     });
     lastResults = results;
     render(results);
+    if (scrollAfterOptimize) { // sample/upload path: bring the results into view (the "aha" moment)
+      scrollAfterOptimize = false;
+      $('results-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   } catch (err) {
     $('summary').innerHTML = `<p class="status err">${err.message || err}</p>`;
     $('results-panel').hidden = false;
@@ -394,18 +410,21 @@ function optimizeNow(live) {
   }
 }
 
-function runOptimize() {
+let scrollAfterOptimize = false; // one-shot: scroll to results after the next non-live render
+function runOptimize(scroll = false) {
   if (!items) return;
+  scrollAfterOptimize = scroll;
   $('optimizeBtn').disabled = true; $('optimizeBtn').textContent = 'Optimizing…';
   setTimeout(() => optimizeNow(false), 20);
 }
 
 // Live re-optimize as the goal sliders move — debounced so dragging stays smooth (only fires after a
-// short pause), and only once gear is loaded AND a set has been shown (so the first run is the user's
-// explicit Optimize click, then the sliders become live).
+// short pause). Runs as soon as gear is loaded: dragging a slider before any explicit Optimize used to
+// do nothing (felt broken), so now the first drag optimizes too (seeding only kicks in once there's a
+// prior result to climb from).
 let liveTimer = null;
 function scheduleLiveUpdate() {
-  if (!items || !lastResults) return;
+  if (!items) return;
   clearTimeout(liveTimer);
   liveTimer = setTimeout(() => optimizeNow(true), 150);
 }
@@ -480,6 +499,7 @@ function exportSet(r, btn) {
 
 function render(results) {
   $('results-panel').hidden = false;
+  $('useOwnCta').hidden = !loadedSample; // only nudge the addon when they're looking at the demo
   const sh = (r) => spellHitPct(r.agg);
 
   $('summary').innerHTML = `<table><thead><tr>

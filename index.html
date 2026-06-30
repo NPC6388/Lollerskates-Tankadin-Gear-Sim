@@ -22,8 +22,12 @@
   <main>
     <section class="panel" id="input-panel">
       <h2>1 · Your gear</h2>
-      <details class="how">
-        <summary>Get the addon &amp; your export</summary>
+      <div class="try-row">
+        <button id="loadSample" class="primary try-sample" type="button">▶ Try it with a sample character</button>
+        <span class="try-hint">No addon needed — see the four optimized sets in seconds.</span>
+      </div>
+      <details class="how" id="ownGear">
+        <summary>Use your own gear — install the addon &amp; export</summary>
         <p><a class="dl-addon" href="addon/TankadinGearSim.zip" download>⬇ Download the TankadinGearSim addon (ZIP)</a></p>
         <ol>
           <li><strong>Install:</strong> unzip it into your WoW <code>Interface\AddOns</code> folder — e.g.
@@ -35,15 +39,14 @@
             <code>WTF\Account\&lt;acct&gt;\SavedVariables\TankadinGearSim.lua</code>.</li>
           <li>Paste the text below, or upload the <code>.lua</code> file. Both work.</li>
         </ol>
+        <textarea id="exportText" spellcheck="false" placeholder="Paste your TGS export here (starts with TGS9 …) — or upload the SavedVariables .lua file below"></textarea>
+        <div class="row">
+          <label class="file">Upload SavedVariables .lua
+            <input type="file" id="exportFile" accept=".lua,.txt" />
+          </label>
+        </div>
       </details>
-      <textarea id="exportText" spellcheck="false" placeholder="Paste your TGS export here (starts with TGS9 …) — or upload the SavedVariables .lua file below"></textarea>
-      <div class="row">
-        <label class="file">Upload SavedVariables .lua
-          <input type="file" id="exportFile" accept=".lua,.txt" />
-        </label>
-        <button id="loadSample" class="ghost" type="button">Load example</button>
-        <span id="inputStatus" class="status"></span>
-      </div>
+      <span id="inputStatus" class="status"></span>
     </section>
 
     <section class="panel" id="config-panel">
@@ -87,16 +90,16 @@
         </div>
         <div class="field">
           <label>Faction</label>
-          <div id="factionReadout" class="readout">— load gear —</div>
+          <div id="factionReadout" class="readout muted">Available after you load gear</div>
           <small>Auto-detected from your equipped shoulder inscription (sets which inscriptions are available).</small>
         </div>
         <div class="field">
           <label>Locked trinkets</label>
           <div class="inline">
-            <select id="lockIcon" title="Locked in every set"></select>
-            <select id="lockEye" title="Locked in all but the survival set"></select>
+            <select id="lockIcon" title="Always-on trinket — locked in every set" disabled><option>Available after you load gear</option></select>
+            <select id="lockEye" title="Threat trinket — locked in every set except Survival" disabled><option>Available after you load gear</option></select>
           </div>
-          <small>Proc/on-use trinkets the model can't score — forced in. Edit after loading gear.</small>
+          <small>Proc/on-use trinkets the model can't score — forced in. Auto-filled once you load gear.</small>
         </div>
         <div class="field">
           <label>Scrolls</label>
@@ -121,6 +124,13 @@
       <div id="summary"></div>
       <div id="tabs" class="tabs"></div>
       <div id="sets"></div>
+      <div id="useOwnCta" class="use-own-cta" hidden>
+        <div class="cta-copy">
+          <strong>Like what you see?</strong> These four sets are for the sample character. Run the
+          optimizer on <em>your own</em> gear — it's free, no signup, and your data never leaves your browser.
+        </div>
+        <button id="useOwnBtn" class="primary" type="button">Use my own gear →</button>
+      </div>
     </section>
 
     <section class="panel" id="weights-panel">

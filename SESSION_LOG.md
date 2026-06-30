@@ -4,6 +4,33 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-29 — UI/UX + marketing pass (branch `feature/ux-marketing-improvements`)
+
+Ran a UI/UX review agent + a marketing review agent over the web app; distilled a prioritized
+improvement list (sample-first onboarding, fix "feels-broken" first impression, tame the Setup panel,
+jargon tooltips, separate Balanced, shareable links, credibility/math page, searchable name). Building
+on a branch in that order; the name change is held for the owner's decision.
+
+Shipped so far (commit on branch):
+- **Sample-first onboarding (#1).** "Your gear" leads with "▶ Try it with a sample character"; loading
+  the sample or uploading a file auto-optimizes and scrolls to results. Addon how-to + paste/upload moved
+  into a collapsed "Use your own gear" disclosure. A "Use my own gear →" CTA shows under the demo results
+  (sample-only, toggled by `loadedSample`) and opens that disclosure.
+- **First-visit polish (#2).** Slider end labels are ◂/▸ pill buttons; goal sliders re-optimize as soon
+  as gear loads (`scheduleLiveUpdate` guard relaxed to require only `items`); Faction + trinket selects
+  disabled with "Available after you load gear" until `tryParse`/`populateTrinketLocks` enable them.
+- **Survival floor-recovery dip (engine).** `optimizeSets` recovery branch now seeds candidates from the
+  live `gseed` (previous set) when present, else the max-HP seed — removing spurious SP dips on live
+  survival drags (verified with a sweep sim: floors 12k/13k went 2–3 dips → 0). Default 14k floor is
+  near-inert for the sample (max HP ~14.7k, little slack). One residual decline at ~12.5k floor is a real
+  tradeoff (threat gems sink HP), not an artifact — a continuation guard was tried and removed as useless.
+
+135 tests pass throughout. Dev server: `npm run serve` (port 8000). Next: #4 (collapse Setup into an
+"Advanced/optional" details, keep Professions + Stat buff visible) + #8 (split "Keep gems & enchants"
+out of the Stat-buff field).
+
+---
+
 ## 2026-06-29 — Seed live slider drags for smooth, monotonic SP (merged to main)
 
 Live slider re-optimizes (the debounced `optimizeNow(live)` on Balanced-slider drags) were re-running

@@ -462,3 +462,19 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   while sliding toward threat, when it should only rise). Fresh (non-live) Optimize runs still seed from
   scratch. Reuses the existing `seed` plumbing in `optimizeHeuristic`/`runGoal`; the web layer builds
   `options.seeds` per goal from `lastResults` only on live drags.
+- **Sample-first onboarding.** The "Your gear" panel now leads with a prominent "▶ Try it with a sample
+  character — no addon needed" button; loading the sample (or uploading a file) auto-runs the optimizer
+  and smooth-scrolls to the results, so the value is visible before any addon install. The addon how-to,
+  paste box and file upload moved into a collapsed "Use your own gear" disclosure. A "Use my own gear →"
+  CTA appears under the demo results (only while viewing the sample) and opens that disclosure.
+- **First-visit polish.** Slider end labels are now pill buttons with ◂ / ▸ arrows (clearly clickable
+  nudges); dragging a goal slider re-optimizes as soon as gear is loaded (previously dead until the first
+  explicit Optimize, which felt broken); Faction and locked-trinket controls show an italic "Available
+  after you load gear" placeholder and stay disabled until gear loads.
+- **Survival slider no longer dips at a binding floor (live drags).** The Min-HP floor-recovery branch
+  seeded every candidate from the cold pure-stamina set, so the live per-drag seed never reached the
+  survival set — each nudge re-derived candidates cold and the arg-max flipped, dipping spell power.
+  Recovery now climbs from the previous live set (`gseed`) when present (falling back to the max-HP seed
+  when cold, so non-live runs and tests are unchanged), removing the spurious dips. A residual decline at
+  a hard-binding floor is genuine (more threat-gemming sinks HP, so holding the floor forces lower-SP
+  pieces), not a heuristic artifact.
