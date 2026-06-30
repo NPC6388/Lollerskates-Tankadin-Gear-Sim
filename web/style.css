@@ -176,7 +176,9 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .doll { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
 .ds-slot { padding: 9px 0; border-bottom: 1px solid var(--line); min-height: 44px; }
 .ds-slot.right { text-align: right; }
-.ds-slot.empty { opacity: .5; }
+/* Empty slot: dim only the label (the muted .ds-label color does that) — NOT the whole slot, so an
+   attached BiS "what to chase" dropdown stays readable. */
+.ds-slot.empty .ds-label { opacity: .6; }
 .ds-slot.empty .ds-label { color: #5a606b; font-size: 13px; }
 .ds-item { font-weight: 600; font-size: 15px; text-decoration: none; }
 .ds-ench-row { margin-top: 2px; font-size: 12px; }

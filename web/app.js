@@ -813,7 +813,7 @@ function bisHTML(goalId, slotKey, chosenId) {
     return `<div class="bis-row"><span class="bis-rank">${i + 1}</span>${wh(b.id, b.name, 'bis-item')}${note}${tag}${ctl}</div>`;
   }).join('');
   return `<div class="bis-block">
-    <div class="bis-h">Phase ${currentPhase()} BiS <span class="bis-src">· community list</span></div>
+    <div class="bis-h"><abbr class="tip" title="Best-in-slot reference for this slot at Phase ${currentPhase()}, from the community (Wowhead) tank BiS lists. It's a 'what to chase' pointer — independent of your gear, and the optimizer never picks from it. Items you own can be equipped; the rest just link to Wowhead.">Phase ${currentPhase()} BiS</abbr> <span class="bis-src">· community list</span></div>
     ${rows}
   </div>`;
 }
