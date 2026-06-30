@@ -478,3 +478,8 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   when cold, so non-live runs and tests are unchanged), removing the spurious dips. A residual decline at
   a hard-binding floor is genuine (more threat-gemming sinks HP, so holding the floor forces lower-SP
   pieces), not a heuristic artifact.
+- **Setup panel decluttered.** "2 · Setup" now shows only Professions + Stat buff plus a "defaults are
+  fine — just hit Optimize" hint; Gem phase, Faction, Locked trinkets, Scrolls and Talents moved under a
+  collapsed "Advanced settings (optional)" disclosure. "Keep gems &amp; enchants" was split out of the
+  Stat-buff field into its own "Gems &amp; enchants" field (with the Imbued-meta checkbox grouped beside
+  it, since it's a gem, not a buff). No engine change — controls keep their ids/behavior.

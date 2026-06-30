@@ -68,6 +68,14 @@ select, input[type=number], input[type=text] {
 select { flex: 1; min-width: 120px; }
 input[type=text] { width: 100%; font-family: ui-monospace, monospace; font-size: 13px; }
 .field.span2 { grid-column: 1 / -1; }
+/* "Defaults are fine" hint + the Advanced (optional) settings disclosure. */
+.setup-hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+.setup-hint strong { color: var(--text); }
+details.advanced { margin: 2px 0 14px; }
+details.advanced > summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; }
+details.advanced > summary .opt { color: var(--muted); font-weight: 400; font-size: 12px; }
+details.advanced[open] > summary { margin-bottom: 14px; }
+details.advanced .config-grid { margin-bottom: 0; }
 .t-summary { color: var(--gold); font-weight: 400; font-size: 13px; margin-left: 6px; }
 
 .goal-config { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 24px; }

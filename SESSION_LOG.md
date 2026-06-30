@@ -25,9 +25,15 @@ Shipped so far (commit on branch):
   near-inert for the sample (max HP ~14.7k, little slack). One residual decline at ~12.5k floor is a real
   tradeoff (threat gems sink HP), not an artifact — a continuation guard was tried and removed as useless.
 
-135 tests pass throughout. Dev server: `npm run serve` (port 8000). Next: #4 (collapse Setup into an
-"Advanced/optional" details, keep Professions + Stat buff visible) + #8 (split "Keep gems & enchants"
-out of the Stat-buff field).
+- **Setup decluttered (#4 + #8).** Setup shows only Professions + Stat buff + a "defaults are fine" hint;
+  Gem phase / Faction / Locked trinkets / Scrolls / Talents moved under a collapsed "Advanced settings
+  (optional)" `<details>`. "Keep gems & enchants" split out of the Stat-buff field into its own "Gems &
+  enchants" field, imbued-meta checkbox grouped with it. IDs unchanged → no app.js change.
+
+135 tests pass throughout. Dev server: `npm run serve` (port 8000). Next: #3 (jargon tooltips — EHP /
+Uncrittable / Uncrushable / gates / def-gemmed / kept, defined on hover, linking to the logic panel),
+then #9 (separate Balanced + show Min-HP "off"), #5 (shareable links), #6 (credibility/math surfacing),
+#7 (name — held for owner).
 
 ---
 

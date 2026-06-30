@@ -51,6 +51,7 @@
 
     <section class="panel" id="config-panel">
       <h2>2 · Setup</h2>
+      <p class="setup-hint">Defaults are fine for most characters — set your professions, then hit <strong>Optimize</strong>. Everything else is optional fine-tuning under <em>Advanced</em>.</p>
       <div class="config-grid">
         <div class="field">
           <label>Professions</label>
@@ -68,50 +69,57 @@
             <option value="motw">Mark of the Wild (+14 stats)</option>
             <option value="none">None (unbuffed)</option>
           </select>
-          <label class="check"><input type="checkbox" id="imbuedMeta" /> Use Imbued Unstable Diamond (spell-damage meta)</label>
-          <label for="keepScope">Keep gems &amp; enchants</label>
-          <select id="keepScope">
-            <option value="off" selected>Re-gem everything</option>
-            <option value="all">Keep all completed</option>
-            <option value="equipped">Keep equipped completed</option>
-            <option value="current">Keep current set as-is</option>
-          </select>
-          <small>Locked items keep their current gems/enchants (budget / items shared across sets). &ldquo;Completed&rdquo; skips pieces with empty sockets or no enchant so the solver finishes them; &ldquo;as-is&rdquo; freezes worn items even when unfinished.</small>
           <small>Kings &amp; MotW DO stack (flat + percentage) — &ldquo;raid&rdquo; applies both. ⚠ Buffs aren't carried by the export; set them in Sixty Upgrades after importing.</small>
         </div>
-        <div class="field">
-          <label for="phase">Gem phase</label>
-          <select id="phase">
-            <option value="1">Phase 1</option>
-            <option value="2" selected>Phase 2</option>
-            <option value="3">Phase 3</option>
-          </select>
-          <small>Caps gem choices to that content phase.</small>
-        </div>
-        <div class="field">
-          <label>Faction</label>
-          <div id="factionReadout" class="readout muted">Available after you load gear</div>
-          <small>Auto-detected from your equipped shoulder inscription (sets which inscriptions are available).</small>
-        </div>
-        <div class="field">
-          <label>Locked trinkets</label>
-          <div class="inline">
-            <select id="lockIcon" title="Always-on trinket — locked in every set" disabled><option>Available after you load gear</option></select>
-            <select id="lockEye" title="Threat trinket — locked in every set except Survival" disabled><option>Available after you load gear</option></select>
-          </div>
-          <small>Proc/on-use trinkets the model can't score — forced in. Auto-filled once you load gear.</small>
-        </div>
-        <div class="field">
-          <label>Scrolls</label>
-          <div id="scrolls" class="scrolls"></div>
-          <small>Consumable scrolls add flat stats (stack with Kings/MotW), so the gates can be met with less gear — freeing gems/enchants for threat. Set them in Sixty Upgrades after import.</small>
-        </div>
-        <div class="field span2">
-          <label for="talents">Talent build <span id="talentSummary" class="t-summary"></span></label>
-          <input type="text" id="talents" spellcheck="false" placeholder="Auto-filled from a TGS v10 export, or paste a sim talent string (e.g. 0500…-0503…-0500…)" />
-          <small>Included in the Sixty Upgrades export. The stat model assumes the guide's Prot build.</small>
-        </div>
       </div>
+      <details class="advanced">
+        <summary>Advanced settings <span class="opt">(optional — defaults work)</span></summary>
+        <div class="config-grid">
+          <div class="field">
+            <label for="keepScope">Gems &amp; enchants</label>
+            <select id="keepScope">
+              <option value="off" selected>Re-gem everything</option>
+              <option value="all">Keep all completed</option>
+              <option value="equipped">Keep equipped completed</option>
+              <option value="current">Keep current set as-is</option>
+            </select>
+            <small>Locked items keep their current gems/enchants (budget / items shared across sets). &ldquo;Completed&rdquo; skips pieces with empty sockets or no enchant so the solver finishes them; &ldquo;as-is&rdquo; freezes worn items even when unfinished.</small>
+            <label class="check"><input type="checkbox" id="imbuedMeta" /> Use Imbued Unstable Diamond (spell-damage meta)</label>
+          </div>
+          <div class="field">
+            <label for="phase">Gem phase</label>
+            <select id="phase">
+              <option value="1">Phase 1</option>
+              <option value="2" selected>Phase 2</option>
+              <option value="3">Phase 3</option>
+            </select>
+            <small>Caps gem choices to that content phase.</small>
+          </div>
+          <div class="field">
+            <label>Faction</label>
+            <div id="factionReadout" class="readout muted">Available after you load gear</div>
+            <small>Auto-detected from your equipped shoulder inscription (sets which inscriptions are available).</small>
+          </div>
+          <div class="field">
+            <label>Locked trinkets</label>
+            <div class="inline">
+              <select id="lockIcon" title="Always-on trinket — locked in every set" disabled><option>Available after you load gear</option></select>
+              <select id="lockEye" title="Threat trinket — locked in every set except Survival" disabled><option>Available after you load gear</option></select>
+            </div>
+            <small>Proc/on-use trinkets the model can't score — forced in. Auto-filled once you load gear.</small>
+          </div>
+          <div class="field">
+            <label>Scrolls</label>
+            <div id="scrolls" class="scrolls"></div>
+            <small>Consumable scrolls add flat stats (stack with Kings/MotW), so the gates can be met with less gear — freeing gems/enchants for threat. Set them in Sixty Upgrades after import.</small>
+          </div>
+          <div class="field span2">
+            <label for="talents">Talent build <span id="talentSummary" class="t-summary"></span></label>
+            <input type="text" id="talents" spellcheck="false" placeholder="Auto-filled from a TGS v10 export, or paste a sim talent string (e.g. 0500…-0503…-0500…)" />
+            <small>Included in the Sixty Upgrades export. The stat model assumes the guide's Prot build.</small>
+          </div>
+        </div>
+      </details>
       <div class="field">
         <label>Goal tuning <small>— ratio of the focus beyond the uncrit/uncrush caps</small></label>
         <div id="goalConfig" class="goal-config"></div>
