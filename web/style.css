@@ -191,8 +191,16 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .bonus-on { margin-top: 3px; font-size: 11px; color: #86e0a0; }
 .bonus-off { margin-top: 3px; font-size: 11px; color: var(--muted); }
 .ds-slot.right .bonus-on, .ds-slot.right .bonus-off { text-align: right; }
-/* Near-identical alternatives: other owned items that score within ~1% of the pick. */
+/* Near-identical alternatives: other owned items that score within ~1% of the pick. Collapsed into a
+   per-slot dropdown so a slot with several near-ties stays tidy. */
 .ds-alts { margin-top: 7px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.ds-alts > summary { font-size: 10px; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; }
+.ds-alts > summary::-webkit-details-marker { display: none; }
+.ds-alts > summary::after { content: '▾'; font-size: 9px; }
+.ds-alts[open] > summary::after { content: '▴'; }
+.ds-alts > summary:hover { color: var(--accent); }
+.ds-alts-body { margin-top: 4px; }
+.ds-slot.right .ds-alts > summary { flex-direction: row-reverse; }
 .ds-alts-h { font-size: 10px; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
 .ds-alt { margin-top: 4px; }
 .ds-alt .alt-line { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }

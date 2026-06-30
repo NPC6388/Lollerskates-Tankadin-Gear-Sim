@@ -628,6 +628,19 @@ function exportSet(r, btn) {
   else window.prompt('Copy, then import at sixtyupgrades.com:', json);
 }
 
+// Wowhead's power.js iconizes + quality-colors item links (iconizeLinks/colorLinks in the config), but
+// it only scans the page on load — our results render dynamically afterward, so we ask it to re-scan
+// after each render. Retries briefly in case the deferred script hasn't loaded yet (then it self-scans).
+let whTimer = null;
+function whRefresh() {
+  clearTimeout(whTimer);
+  const tryRefresh = (n) => {
+    try { if (window.$WowheadPower && $WowheadPower.refreshLinks) { $WowheadPower.refreshLinks(); return; } } catch { /* ignore */ }
+    if (n > 0) whTimer = setTimeout(() => tryRefresh(n - 1), 400);
+  };
+  tryRefresh(8);
+}
+
 function render(results) {
   $('results-panel').hidden = false;
   $('useOwnCta').hidden = !loadedSample; // only nudge the addon when they're looking at the demo
@@ -681,6 +694,7 @@ function render(results) {
   $('sets').querySelectorAll('.exclx').forEach((x) => x.addEventListener('click', () => { excludedItemIds.delete(+x.dataset.id); runOptimize(); }));
   const ce = $('sets').querySelector('.clearexcl');
   if (ce) ce.addEventListener('click', () => { excludedItemIds.clear(); runOptimize(); });
+  whRefresh(); // iconize + quality-color the freshly-rendered item links via Wowhead
 }
 
 // Banner listing items excluded from every set (chips with a re-include ×). Names come from the
@@ -758,7 +772,9 @@ function altsHTML(alts, goalId, slotKey) {
       ${gc}
     </div>`;
   }).join('');
-  return `<div class="ds-alts"><div class="ds-alts-h">≈ also viable</div>${rows}</div>`;
+  // Collapsed by default — a per-slot dropdown so a slot with several near-ties doesn't clutter the
+  // paper doll. The summary shows the count; expanding reveals each alternate with its gems + pin/exclude.
+  return `<details class="ds-alts"><summary class="ds-alts-h">≈ ${alts.length} also viable</summary><div class="ds-alts-body">${rows}</div></details>`;
 }
 
 const panel = (title, rows) =>

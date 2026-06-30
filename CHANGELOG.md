@@ -523,3 +523,14 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   actual equipment (consumables/ore/coins/bags dropped — the optimizer ignores them, and it cut the
   worst-case link ~28% with byte-identical results). Falls back to uncompressed encoding on browsers
   without CompressionStream.
+- **Item links now iconize + quality-color via Wowhead.** `index.html` loads Wowhead's `power.js`
+  (`whTooltips = { colorLinks, iconizeLinks, renameLinks }`), but that script only scans the page on
+  load while our results render dynamically afterward. `render()` now calls `whRefresh()`, which invokes
+  `$WowheadPower.refreshLinks()` after each render to iconize, quality-color, and hover-tooltip the
+  freshly-rendered `wowhead.com/tbc/item=<id>` links. It retries briefly (8×, 400ms) in case the deferred
+  script hasn't loaded yet, then power.js self-scans.
+- **"Also viable" alternates collapsed into a per-slot dropdown.** Each paper-doll slot's near-tie
+  alternatives are now a `<details>`/`<summary>` ("≈ N also viable") that's collapsed by default, so a
+  slot with several near-ties no longer clutters the set card. Expanding reveals each alternate with its
+  gems + pin/exclude controls as before. Summary marker flips ▾/▴ and mirrors (row-reverse) on
+  right-hand slots to match the paper-doll layout.

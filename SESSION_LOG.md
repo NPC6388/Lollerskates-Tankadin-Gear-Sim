@@ -4,6 +4,27 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-30 — Item-link iconization + collapsible alternates (web polish)
+
+Two web/UI features finished and verified against the suite (136/136 green). Sitting **uncommitted** in
+`web/app.js` + `web/style.css` (the Wowhead `<script>` config already landed in `index.html` with the
+share-link commit `6d66793`).
+
+- **Wowhead link iconization.** `render()` now calls `whRefresh()` → `$WowheadPower.refreshLinks()` after
+  each dynamic render so item links (`/tbc/item=<id>`) get icons, quality colors, names, and hover
+  tooltips. power.js only scans on load; our results render later, hence the post-render re-scan. Retries
+  8× / 400ms until the deferred script is ready, then it self-scans.
+- **Collapsible "also viable" alternates.** Per-slot near-ties moved from an always-open `<div>` to a
+  collapsed `<details>`/`<summary>` ("≈ N also viable"); expanding shows each alt + gems + pin/exclude.
+  Marker flips ▾/▴; row-reverse on right-hand paper-doll slots.
+
+### Pick up here
+- **Commit** the two files when ready (not yet committed — awaiting owner go-ahead). CHANGELOG updated.
+- Worth an in-browser eyeball: confirm icons actually appear (needs network to `wow.zamimg.com`) and the
+  dropdown summary aligns on both left/right slot columns.
+
+---
+
 ## 2026-06-29 — UI/UX + marketing pass (branch `feature/ux-marketing-improvements`)
 
 Ran a UI/UX review agent + a marketing review agent over the web app; distilled a prioritized
