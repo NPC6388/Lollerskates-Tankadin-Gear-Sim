@@ -57,9 +57,16 @@ Shipped so far (commit on branch):
   669, and my optimizer picks the block libram not the threat libram) — likely a version/determinism
   difference worth chasing. The libram split itself is verified on the tester's actual relic.
 
-OPEN — two more discrepancies vs the BulkAggro in-game scan (NEXT): stamina sim 887 vs scan 922 (−35,
-health −346); block chance sim 32% vs scan 26.2% (+5.8, inflates the uncrushable gate). All other stats
-match the scan exactly. baseStamina=122 and baseBlockPct=5.0 in model.js are calibration suspects.
+RESOLVED — the stamina/block "discrepancies" vs the in-game scan are NOT summation bugs; do not change
+baseStamina/baseBlockPct (it would break sheet-parity). The addon header scans the LIVE BUFFED character
+sheet; the sim models unbuffed gear. Proof across two characters: spell power matches the scan EXACTLY
+(no buff adds SP) — tester 637=637, sample 811=811. Tester scan: STR/AGI/INT match exactly, only STA +35
+(a lone stamina buff active during scan). Sample scan: STR/AGI/INT/STA all inflated (full Kings+MotW+
+Fortitude → STA −162). Block +5.3%: the Libram of Repentance's +42 block rating (Holy-Shield-conditional)
+— 26.19 computed without it vs 26.17 scanned, exact. The sim assumes HS up (correct for tanking, and the
+uncrushable gate consistently assumes HS up); the idle paper-doll scan omits it. hsBlockBonus is always
+30 (the "35.32 w/ block libram" is a stale comment, nothing sets it — no double-count). Net: summation
+verified accurate; the only real bug was the libram SP display (fixed, option B above).
 
 135 tests pass throughout. Dev server: `npm run serve` (port 8000). After stamina/block: #5 (shareable
 links), #6 (credibility/math), #7 (name — held for owner).
