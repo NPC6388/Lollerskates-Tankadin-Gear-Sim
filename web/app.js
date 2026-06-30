@@ -735,7 +735,11 @@ function slotHTML(r, slotKey, side) {
   const it = r.selection[slotKey];
   const goalId = r.goal.id;
   const pinnedId = (pinnedSlots[goalId] || {})[slotKey];
-  if (!it) return `<div class="ds-slot ${side} empty"><span class="ds-label">${SLOT_LABEL[slotKey]}</span></div>`;
+  // Empty slot (nothing in your gear fills it): still show the BiS "what to chase" list for the slot.
+  if (!it) {
+    const bisOnly = slotDropdown([], goalId, slotKey, null);
+    return `<div class="ds-slot ${side} empty"><span class="ds-label">${SLOT_LABEL[slotKey]}</span>${bisOnly}</div>`;
+  }
   const ps = r.perSlot[slotKey] || {};
   const tag = ps.defGemmed ? `<span class="defgem">${term('def-gemmed', 'defgem')}</span>` : (ps.locked ? `<span class="defgem">${term('kept', 'kept')}</span>` : '');
   // Show at a glance whether this pick is gear you're ALREADY wearing in-game (no change) or a SWAP

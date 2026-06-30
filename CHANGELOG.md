@@ -576,3 +576,8 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   17% raid-boss cap and how far below it the set is (below the cap, spell hit recovers missed threat).
 - **Miss added to the Defense panel.** A "Miss" row (boss-misses-you chance: base + defense-skill bonus)
   sits between Block and Dodge, with a tooltip; it's part of the avoidance/uncrushable total.
+- **BiS shown on empty slots.** A slot nothing in your gear fills now still shows the "what to chase"
+  BiS dropdown (previously empty slots rendered nothing).
+- **BiS data integrity test.** `test/bis-data.test.js` guards `web/bis.js` — phases present, only valid
+  slot keys, every entry a positive-int id + non-empty name, no dup ids per slot, and the manual Tome of
+  Fiery Redemption addition stays put. (140/140 suite.)
