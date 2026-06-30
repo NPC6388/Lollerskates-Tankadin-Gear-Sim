@@ -216,6 +216,9 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .readout.muted { color: var(--muted); font-style: italic; } /* pre-load placeholder, before gear is loaded */
 /* Manual-socketing reminder (gems can't be auto-applied; place by color). */
 .socketnote { margin: 8px 0; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(120,150,255,.10); border: 1px solid rgba(120,150,255,.35); color: var(--text); }
+/* Actionable tip (e.g. surplus avoidance locked by kept gems — re-gem to convert to threat). */
+.tipnote { margin: 8px 0; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(240,198,116,.10); border: 1px solid rgba(240,198,116,.35); color: var(--text); }
+.tipnote b { color: var(--gold); }
 
 /* Sixty Upgrades / Pawn stat-weight reference cards. */
 #weights { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }

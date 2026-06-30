@@ -80,6 +80,13 @@ verified accurate; the only real bug was the libram SP display (fixed, option B 
   so a threat goal maximizes threat AMONG legal sets. Verified: raid now Repentance/104.42%/legal; AOE
   unchanged (95.62%, crush-allowed, Eternal Rest). Regression test added. 136 tests pass.
 
+- **Surplus-avoidance hint.** Player asked whether a 104.42% uncrushable kept set could trade surplus for
+  threat. Found: with keep-current the gems are frozen so it can't (104.42%/647 is provably the max — grid
+  searched); with re-gem the optimizer already trims to 102.83% and converts surplus → 698 SP (+51). So no
+  engine change needed; added a `tipnote` in `setCard` that fires when crush gate required + uncrushable +
+  any locked piece + surplus ≥ 1.5%, nudging the player to re-gem to convert the locked surplus to threat.
+  Verified it shows for keep-current (surplus 2.02%) and hides for re-gem (0.43%).
+
 136 tests pass throughout. Dev server: `npm run serve` (port 8000). Remaining roadmap: #5 (shareable
 links), #6 (credibility/math), #7 (name — held for owner).
 

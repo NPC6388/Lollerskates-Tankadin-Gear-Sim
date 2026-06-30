@@ -511,3 +511,8 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   FULLY-legal sets, and picks the one the goal's own ratio scores highest — so a threat goal still
   maximizes threat AMONG the sets that actually clear the gates. AOE Trash (crush gate dropped) is
   unchanged. Added a regression test (`librams.test.js`).
+- **Hint: surplus avoidance locked by kept gems.** When an uncrushable set sits ≥1.5% over the crush cap
+  AND has kept (frozen) gems, the set card now shows a tip: the surplus avoidance is locked in and can't
+  be re-gemmed into threat — switch "Gems &amp; enchants" to "Re-gem everything" (or unlock pieces) to
+  convert it to spell damage. (With re-gem mode the optimizer already trims to the cap, so the hint stays
+  hidden.)

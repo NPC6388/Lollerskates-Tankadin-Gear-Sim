@@ -697,6 +697,14 @@ function setCard(r) {
   const socketNote = anyRecGems
     ? '<div class="socketnote">💎 Verify gems are in the correct sockets on Sixty Upgrades — the export sometimes puts them in the wrong holes.</div>'
     : '';
+  // Surplus avoidance hint: when an uncrushable set sits well OVER the crush cap AND it has kept (frozen)
+  // gems, that surplus is locked in — re-gemming would trim it to the cap and convert it to threat. Only
+  // show it when there's something locked to unfreeze (re-gem mode already trims to the cap on its own).
+  const crushSurplus = e.totalAvoidanceWithHS - need;
+  const anyLocked = Object.values(r.perSlot).some((ps) => ps.locked);
+  const surplusNote = (crushReq && crushPass && anyLocked && crushSurplus >= 1.5)
+    ? `<div class="tipnote">💡 This set is <b>${crushSurplus.toFixed(1)}%</b> over the ${need}% uncrushable cap, but your <b>kept gems</b> are frozen, so that surplus avoidance can't be re-gemmed into threat. Switch <b>Gems &amp; enchants</b> to <b>“Re-gem everything”</b> (or unlock pieces) to convert it to more spell damage.</div>`
+    : '';
 
   const doll = `<div class="doll">
     <div class="col left">${LEFT_SLOTS.map((k) => slotHTML(r, k, 'left')).join('')}</div>
@@ -736,6 +744,7 @@ function setCard(r) {
     ${buffNote(r.buffImpact, r.agg)}
     ${doll}
     ${socketNote}
+    ${surplusNote}
     ${hpNote}
     ${metaWarn ? `<div class="metawarn">${metaWarn}</div>` : ''}
     ${exportNote}
