@@ -581,3 +581,6 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **BiS data integrity test.** `test/bis-data.test.js` guards `web/bis.js` — phases present, only valid
   slot keys, every entry a positive-int id + non-empty name, no dup ids per slot, and the manual Tome of
   Fiery Redemption addition stays put. (140/140 suite.)
+- **"How the sim works" updated for the new controls.** Section 7 now says **Equip** (matching the
+  renamed control) and documents the per-slot community-BiS reference list (reference-only, owned items
+  equippable, hard-to-model exceptions flagged).

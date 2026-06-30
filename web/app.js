@@ -399,8 +399,9 @@ function renderLogic() {
 
     <h4>7 · What you can override</h4>
     <ul>
-      <li><strong>Pin</strong> any item (the pick or an "≈ also viable" alternate) to force it into a slot and re-optimize the rest around it.</li>
+      <li><strong>Equip</strong> any item (the pick, an "≈ also viable" alternate, or an owned item from the BiS list) to force it into a slot and re-optimize the rest around it.</li>
       <li><strong>Keep gems/enchants</strong> to preserve committed pieces across sets; <strong>lock trinkets</strong> the model can't score (procs/on-use).</li>
+      <li>Each slot's dropdown also lists a <strong>community BiS</strong> reference (Wowhead's per-phase tank lists) for the selected Content phase — a "what to chase" pointer, independent of your gear and never auto-selected. Owned BiS items can be equipped; the rest just link out. (Hand-curated exceptions the model can't score, like Tome of Fiery Redemption's threat proc, are flagged with a note.)</li>
       <li>The stat-weight scales above are the same valuations, exported for Sixty Upgrades — but the sim enforces the caps as gates, which a flat weight list can't.</li>
     </ul>
 
