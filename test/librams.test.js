@@ -40,3 +40,29 @@ test('AOE goal picks the Consecration libram over the block libram', () => {
   assert.equal(byGoal.aoe, 'Libram of the Eternal Rest');           // Consecration libram for AOE
   assert.equal(byGoal.survival, 'Libram of Repentance');            // block libram for survival
 });
+
+// A uncrushable-REQUIRED goal must never surface a crushable set when a legal uncrushable one is
+// reachable. The threat libram (Eternal Rest) scores higher than the block libram (Repentance), so the
+// greedy+repair heuristic can keep it and land just short of the crush cap; the recovery in optimizeSets
+// must instead return the legal block-libram set. AOE keeps its crush-gate-dropped freedom.
+test('uncrushable-required goals stay legal & uncrushable; AOE may be crushable', () => {
+  let raw = fs.readFileSync(fileURLToPath(new URL('../web/sample-export.txt', import.meta.url)), 'utf8');
+  raw += '\nI:item:32368::::::::70::::::::::|INVTYPE_RELIC|ilvl=110|||Libram of the Eternal Rest';
+  const parsed = parseExport(raw);
+  const items = equippableItems(parsed);
+  const res = optimizeSets(items, {
+    professions: ['Enchanting'], buff: 'raid', maxPhase: 2, faction: 'Aldor', useImbuedMeta: true,
+    talentRanks: parsed.talentRanks,
+  });
+  for (const r of res) {
+    const requiresUncrush = (r.goal.gates || {}).requireUncrushable !== false;
+    if (requiresUncrush) {
+      assert.ok(r.evald.uncrushable, `${r.goal.id}: must be uncrushable (got ${r.evald.totalAvoidanceWithHS.toFixed(2)}%)`);
+      assert.ok(r.legal, `${r.goal.id}: must be a legal set`);
+    }
+  }
+  // AOE drops the crush gate, so it's allowed to be crushable (and still legal) — sanity that the
+  // invariant above isn't trivially passing because every set happens to be uncrushable.
+  const aoe = res.find((r) => r.goal.id === 'aoe');
+  assert.equal((aoe.goal.gates || {}).requireUncrushable, false);
+});

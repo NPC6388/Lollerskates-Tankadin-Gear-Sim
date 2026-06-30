@@ -583,35 +583,38 @@ export function optimizeSets(items, options = {}) {
     // non-monotonic wiggles (an SP dip when the slider should only rise) as you sweep the dial.
     const r = runGoal(g, items, ctx, gseed);
     const floor = (g.gates && g.gates.minHealth) || 0;
-    if (!floor || r.agg.health + 1e-9 >= floor) return r; // no floor, or it's already met
-    // Min-HP is a HARD gate (like uncrit/uncrush) — the ratio search came up short. First find the
-    // tankiest set: maximize pure STAMINA (keep uncrit/uncrush, drop the floor from the objective so
-    // the search isn't pinned below the reachable max).
+    const crushReq = !g.gates || g.gates.requireUncrushable !== false;
+    const floorMet = !floor || r.agg.health + 1e-9 >= floor;
+    const crushMet = !crushReq || r.evald.uncrushable;
+    if (floorMet && crushMet) return r; // the gates this recovery repairs (Min-HP floor + uncrushable) are met
+    // Uncrushable and Min-HP are HARD gates, but the greedy+repair heuristic can return an ILLEGAL set
+    // even when a legal one exists — e.g. it keeps a higher-threat libram and lands ~0.1% short of the
+    // crush cap instead of swapping to the block libram. So when either repairable gate is unmet, run a
+    // defensive recovery: sweep a range of EHP-leans (seeded from the tankiest set), keep only FULLY-LEGAL
+    // sets, and pick the one the goal's OWN ratio scores highest — so a threat goal still maximizes threat
+    // AMONG the sets that clear the gates, never surfacing a higher-threat crushable (or sub-floor) set.
+    // Tankiest reference: maximize pure STAMINA (keep uncrit/uncrush, drop the floor so the search isn't
+    // pinned below the reachable max); it anchors the floor and seeds the leans from a defensive start.
     const maxHp = runGoal({ ...g, ratio: { sta: 1 }, gates: { ...g.gates, minHealth: 0 } }, items, ctx);
-    if (maxHp.agg.health + 1e-9 < floor) {
-      // Floor is genuinely unreachable with this gear/keep-settings → best-effort tankiest set, flagged.
+    if (floor && maxHp.agg.health + 1e-9 < floor) {
+      // The Min-HP floor itself is unreachable with this gear/keep-settings → best-effort tankiest set, flagged.
       return maxHp.agg.health > r.agg.health ? { ...maxHp, goal: g, legal: false, hpBestEffort: true } : r;
     }
-    // Floor IS reachable — the ratio search just got stuck below it. Beyond the floor the slider still
-    // governs EHP-vs-threat, so: sweep a range of EHP-leans (all seeded from the max-HP set so each
-    // starts above the floor and trades the excess stamina for threat down to the gate), keep only the
-    // ones whose FINAL gemmed set still holds the floor, and pick the floor-holder the GOAL'S OWN ratio
-    // scores highest. A threat-leaning goal can't gem itself to the floor (its threat gems sink HP
-    // under it), but a slightly more stamina-heavy lean holds the floor while the goal's ratio still
-    // picks the most threat among the holders — so SP rises as the slider moves toward threat.
     const seed = {};
     for (const [slot, it] of Object.entries(maxHp.selection)) if (it) seed[slot] = it.itemId;
-    // On live slider drags the previous (floor-holding) set is passed as gseed — climb the recovery
-    // leans from THAT adjacent set so consecutive nudges move continuously (no cold-restart SP dip on
-    // the survival set as the slider leans threat). Cold runs (no gseed) keep seeding from max-HP, so
-    // behavior outside live dragging is unchanged. maxHp stays in the pool as the guaranteed floor-holder.
+    // On live slider drags the previous (legal) set is passed as gseed — climb the recovery leans from THAT
+    // adjacent set so consecutive nudges move continuously (no cold-restart SP dip). Cold runs (no gseed)
+    // seed from max-HP, so behavior outside live dragging is unchanged.
     const recSeed = Object.keys(gseed).length ? gseed : seed;
     const objScale = blendScale(g.ratio);
     const leans = [g.ratio, { ehp: 1, threat: 1 }, { ehp: 1.5, threat: 1 }, { ehp: 2, threat: 1 }, { ehp: 3, threat: 1 }];
-    const cands = [maxHp, ...leans.map((r) => runGoal({ ...g, ratio: r }, items, ctx, recSeed))]
-      .filter((c) => c.agg.health + 1e-9 >= floor && c.legal);
-    const best = cands.reduce((a, b) => (score(b.agg._raw, objScale) > score(a.agg._raw, objScale) ? b : a), maxHp);
-    return { ...best, goal: g, legal: best.agg.health + 1e-9 >= floor && best.legal };
+    // Keep only candidates that pass EVERY gate — c.legal covers uncrit + uncrush + Min-HP; the explicit
+    // floor check also catches maxHp (run with the floor dropped).
+    const cands = [maxHp, ...leans.map((rt) => runGoal({ ...g, ratio: rt }, items, ctx, recSeed))]
+      .filter((c) => c.legal && (!floor || c.agg.health + 1e-9 >= floor));
+    if (!cands.length) return r; // no legal set reachable with this gear/keep-settings — keep the best-effort (flagged illegal)
+    const best = cands.reduce((a, b) => (score(b.agg._raw, objScale) > score(a.agg._raw, objScale) ? b : a));
+    return { ...best, goal: g, legal: best.legal && (!floor || best.agg.health + 1e-9 >= floor) };
   };
   // The web UI builds the Balanced goal's ratio by blending the Survival and Raid ratios (its slider
   // slides between the two sets), so the engine stays generic — every goal is just a ratio + gates.

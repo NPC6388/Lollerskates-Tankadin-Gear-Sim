@@ -68,7 +68,19 @@ uncrushable gate consistently assumes HS up); the idle paper-doll scan omits it.
 30 (the "35.32 w/ block libram" is a stale comment, nothing sets it — no double-count). Net: summation
 verified accurate; the only real bug was the libram SP display (fixed, option B above).
 
-135 tests pass throughout. Dev server: `npm run serve` (port 8000). After stamina/block: #5 (shareable
+- **Tester: crushable raid threat set (hard-gate violation) — FIXED.** Reproduced from a screenshot with
+  the tester's exact settings: prof Blacksmithing (not Enchanting), keep-current, Icon of the Silver
+  Crescent locked, AND the UI's slider defaults (raid ratio {ehp:1,threat:4} + Min-HP 11500). My earlier
+  repros missed it because they used GOAL_PRESETS (raid threat:2, no floor). With threat:4 the greedy+
+  repair heuristic kept the higher-threat Eternal Rest libram and landed 102.26% < 102.4% (crushable,
+  legal=false) — even though forcing the block libram (Repentance) gives 104.42% legal. Root cause: the
+  Min-HP floor-recovery in optimizeSets (`solveGoal`) only triggered on floor-unmet, not crush-unmet. Fix:
+  trigger the recovery when EITHER the Min-HP floor OR the uncrushable gate is unmet (and required); the
+  recovery already keeps only `c.legal` (= uncrit+uncrush+floor) candidates and picks the goal-scored best,
+  so a threat goal maximizes threat AMONG legal sets. Verified: raid now Repentance/104.42%/legal; AOE
+  unchanged (95.62%, crush-allowed, Eternal Rest). Regression test added. 136 tests pass.
+
+136 tests pass throughout. Dev server: `npm run serve` (port 8000). Remaining roadmap: #5 (shareable
 links), #6 (credibility/math), #7 (name — held for owner).
 
 ---

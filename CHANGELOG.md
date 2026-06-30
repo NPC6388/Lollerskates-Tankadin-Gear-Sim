@@ -503,3 +503,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   threat-equivalent separately ("Relic effect (≈SP) +N", with a tooltip). The optimizer still uses the
   full value (`agg._raw`), so set selection is unchanged — the threat libram still wins the threat sets.
   Engine exposes `agg.spellPowerLiteral` / `spellPowerEquiv` / `spellPowerEquivSource`.
+- **Fixed: a uncrushable-required set could come back CRUSHABLE when a legal set existed.** With a
+  threat-leaning ratio (e.g. raid EHP 1:4) the greedy+repair heuristic could keep the higher-threat libram
+  (Eternal Rest) and land ~0.1% short of the 102.4% crush cap — returning a crushable, illegal set even
+  though swapping to the block libram (Repentance) cleared the gate comfortably. The Min-HP floor-recovery
+  in `optimizeSets` now also triggers when the uncrushable gate is unmet: it sweeps EHP-leans, keeps only
+  FULLY-legal sets, and picks the one the goal's own ratio scores highest — so a threat goal still
+  maximizes threat AMONG the sets that actually clear the gates. AOE Trash (crush gate dropped) is
+  unchanged. Added a regression test (`librams.test.js`).
