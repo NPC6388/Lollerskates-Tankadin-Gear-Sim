@@ -119,6 +119,8 @@ button.ghost { padding: 6px 12px; font-size: 13px; }
 
 /* summary table */
 table { width: 100%; border-collapse: collapse; margin: 4px 0 18px; }
+/* Threat-equivalent spell damage from a modeled relic (not literal SP — shown beside the literal value). */
+.equiv { color: var(--muted); font-size: 11px; margin-left: 4px; cursor: help; border-bottom: 1px dotted currentColor; text-decoration: none; }
 th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 th:first-child, td:first-child { text-align: left; }
 thead th { color: var(--muted); font-weight: 600; font-size: 13px; }

@@ -495,3 +495,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Min-HP floor-recovery heuristic is seed/path-dependent, so a fresh solve could land on a tankier,
   lower-threat floor-holder); between the ends it also climbs from the nearer end's set and keeps the
   higher-scoring of that vs the self-seeded solve, so the middle stays smooth.
+- **Displayed Spell Damage now reconciles with Sixty Upgrades.** A modeled libram (e.g. Libram of the
+  Eternal Rest) is valued as EQUIVALENT spell damage so the threat scales score its Consecration effect —
+  but that isn't literal +spell-power on the tooltip, so Sixty Upgrades (scoring off real item stats)
+  never showed it, making the sim's number read higher than SU by exactly the libram's value. The set
+  card and summary now show LITERAL spell power (what SU reconciles against) and surface the libram's
+  threat-equivalent separately ("Relic effect (≈SP) +N", with a tooltip). The optimizer still uses the
+  full value (`agg._raw`), so set selection is unchanged — the threat libram still wins the threat sets.
+  Engine exposes `agg.spellPowerLiteral` / `spellPowerEquiv` / `spellPowerEquivSource`.

@@ -43,9 +43,26 @@ Shipped so far (commit on branch):
   (self + nearer-end) and keeps the higher-scoring. `optimizeSets` map refactored: per-goal solve pulled
   into `solveGoal(g, gseed)`, results accumulated in `byId` so Balanced can reference Raid/Survival.
 
-135 tests pass throughout. Dev server: `npm run serve` (port 8000). Next: investigating a tester report
-(BulkAggro export) where the threat set's spell damage reads lower in Sixty Upgrades — auditing stat
-summation. Then #5 (shareable links), #6 (credibility/math), #7 (name — held for owner).
+- **Tester SU spell-damage gap → libram display fix (option B).** BulkAggro export: sim threat set read
+  669 SP, SU import showed 634 (gap 35). Audited summation against the export header's in-game scan: SP
+  sums EXACTLY (637=637), so not a sum bug. Root cause: Libram of the Eternal Rest is modeled as +35
+  EQUIVALENT spellDamage (its Consecration effect) for threat scoring, and that leaked into the displayed
+  Spell Damage; SU sees the raw libram (no tooltip SP) → 35 lower. Fix: engine exposes
+  `agg.spellPowerLiteral`/`spellPowerEquiv`/`spellPowerEquivSource` (runGoal computes equiv via
+  `libramStats` over the selection); web shows literal SP in summary + Spell panel and surfaces the
+  equiv separately ("Relic effect (≈SP) +N" + a "+N" chip in the summary). Objective uses full agg._raw,
+  so selection unchanged. Verified: full = literal + equiv (637 = 602 + 35 with the libram forced).
+
+  NOTE: my local runs of the tester's settings produce a DIFFERENT set than the tester (649/637 vs their
+  669, and my optimizer picks the block libram not the threat libram) — likely a version/determinism
+  difference worth chasing. The libram split itself is verified on the tester's actual relic.
+
+OPEN — two more discrepancies vs the BulkAggro in-game scan (NEXT): stamina sim 887 vs scan 922 (−35,
+health −346); block chance sim 32% vs scan 26.2% (+5.8, inflates the uncrushable gate). All other stats
+match the scan exactly. baseStamina=122 and baseBlockPct=5.0 in model.js are calibration suspects.
+
+135 tests pass throughout. Dev server: `npm run serve` (port 8000). After stamina/block: #5 (shareable
+links), #6 (credibility/math), #7 (name — held for owner).
 
 ---
 

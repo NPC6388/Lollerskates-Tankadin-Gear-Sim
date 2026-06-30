@@ -16,6 +16,7 @@ import { planItemGems } from './gemsolver.js';
 import { buildPool, optimizeHeuristic, distinctOk } from './optimizer.js';
 import { professionPerks } from './professions.js';
 import { scrollStats } from './scrolls.js';
+import { libramStats } from './librams.js';
 import { CAPS, RATING } from './constants.js';
 
 const HS = 30;                               // Holy Shield +30% block in the uncrushable check
@@ -461,6 +462,17 @@ function runGoal(goal, items, ctx, seed = {}) {
     perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap', locked: it._gem === 'locked', socketBonus: p.socketBonus || null, bonusKept: p.bonusKept } : { gems: [], enchant: null, metas: [], defGemmed: false, locked: false, socketBonus: null, bonusKept: null };
     perSlot[slotKey].alternatives = nearAlternatives(slotKey, it);
   }
+  // A modeled libram (e.g. Libram of the Eternal Rest) is valued as EQUIVALENT spell damage so the
+  // threat scales score its Consecration effect — but that equivalent isn't literal +spell-power on the
+  // tooltip, so it shouldn't show in the displayed Spell Damage (Sixty Upgrades, scoring off real item
+  // stats, won't see it). Split it out: spellPowerLiteral is what SU reconciles against; the equivalent
+  // is surfaced separately. The OBJECTIVE keeps using the full agg (agg._raw), so set selection is
+  // unchanged — the libram still wins the threat sets.
+  let spellPowerEquiv = 0, equivSource = null;
+  for (const v of res.items) { const lib = libramStats(v); if (lib && lib.spellDamage) { spellPowerEquiv += lib.spellDamage; equivSource = v.name || 'relic effect'; } }
+  agg.spellPowerEquiv = spellPowerEquiv;
+  agg.spellPowerEquivSource = equivSource;
+  agg.spellPowerLiteral = Math.max(0, (agg.spellPower || 0) - spellPowerEquiv);
   return { goal, selection: res.selection, items: res.items, legal: finalLegal(evald), evald, agg, gemChoices, metas, perSlot, buffImpact };
 
   // Near-identical alternatives for a slot: OTHER owned items whose objective contribution is within
