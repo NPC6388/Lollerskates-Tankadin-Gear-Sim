@@ -563,13 +563,12 @@ export function optimizeSets(items, options = {}) {
     items = items.filter((it) => !ex.has(it.itemId));
   }
   const goals = options.goals || GOAL_PRESETS;
-  // The web UI builds the Balanced goal's ratio by blending the Survival and Raid ratios (its slider
-  // slides between the two sets), so the engine stays generic — every goal is just a ratio + gates.
-  return goals.map((g) => {
+  // Solve one goal at a given seed (incl. the Min-HP floor-recovery fallback). Factored out so the
+  // Balanced goal can be solved from more than one seed and keep the best (see below).
+  const solveGoal = (g, gseed) => {
     // Live slider drags pass the PREVIOUS result's per-slot selection as a seed, so each nudge climbs
     // from the adjacent (good) set instead of restarting cold — this kills the heuristic's small
     // non-monotonic wiggles (an SP dip when the slider should only rise) as you sweep the dial.
-    const gseed = (options.seeds && options.seeds[g.id]) || {};
     const r = runGoal(g, items, ctx, gseed);
     const floor = (g.gates && g.gates.minHealth) || 0;
     if (!floor || r.agg.health + 1e-9 >= floor) return r; // no floor, or it's already met
@@ -601,5 +600,48 @@ export function optimizeSets(items, options = {}) {
       .filter((c) => c.agg.health + 1e-9 >= floor && c.legal);
     const best = cands.reduce((a, b) => (score(b.agg._raw, objScale) > score(a.agg._raw, objScale) ? b : a), maxHp);
     return { ...best, goal: g, legal: best.agg.health + 1e-9 >= floor && best.legal };
+  };
+  // The web UI builds the Balanced goal's ratio by blending the Survival and Raid ratios (its slider
+  // slides between the two sets), so the engine stays generic — every goal is just a ratio + gates.
+  const selSeed = (res) => { const s = {}; for (const [slot, it] of Object.entries(res.selection)) if (it) s[slot] = it.itemId; return s; };
+  // Balanced is a blend DIAL between the Survival set (t=0) and the Raid set (t=1). Its ratio + Min-HP
+  // floor are interpolated from those two goals, so AT EITHER END it is mathematically identical to that
+  // end goal — does its ratio and floor exactly equal Raid's or Survival's? (Raid & Survival are solved
+  // earlier in the goals order, so their results are ready by the time Balanced is reached.)
+  const sameGoal = (g, id) => {
+    const e = goals.find((x) => x.id === id); if (!e || !byId[id]) return false;
+    const a = g.ratio || {}, b = e.ratio || {};
+    const eq = (x, y) => Math.abs((x || 0) - (y || 0)) < 1e-9;
+    return eq(a.ehp, b.ehp) && eq(a.threat, b.threat) && eq(a.aoeThreat, b.aoeThreat)
+      && ((g.gates && g.gates.minHealth) || 0) === ((e.gates && e.gates.minHealth) || 0);
+  };
+  const byId = {};
+  return goals.map((g) => {
+    const gseed = (options.seeds && options.seeds[g.id]) || {};
+    let res;
+    // At an end, COPY the end goal's result (re-tagged as Balanced) instead of re-optimizing — the
+    // Min-HP floor-recovery heuristic is seed/path-dependent, so a fresh solve from a different seed can
+    // land on a different floor-holder (e.g. tankier / lower-threat than the Survival set). Copying makes
+    // 100%/0% reproduce Survival/Raid bit-for-bit, path-independently.
+    const endId = g.id === 'balanced' ? (sameGoal(g, 'raid') ? 'raid' : sameGoal(g, 'survival') ? 'survival' : null) : null;
+    if (endId) {
+      res = { ...byId[endId], goal: g };
+    } else {
+      res = solveGoal(g, gseed);
+      // Between the ends, live seeding can leave Balanced stuck near its own previous blend. Also solve it
+      // climbing from the nearer end's set (Raid past the threat midpoint, else Survival) and keep whichever
+      // the goal's ratio scores higher — so the middle of the dial stays smooth and high-quality.
+      if (g.id === 'balanced' && Object.keys(gseed).length) {
+        const endThr = (id) => { const e = goals.find((x) => x.id === id); return (e && e.ratio && e.ratio.threat) || 0; };
+        const nearer = byId[(g.ratio.threat || 0) >= (endThr('raid') + endThr('survival')) / 2 ? 'raid' : 'survival'];
+        if (nearer) {
+          const alt = solveGoal(g, selSeed(nearer));
+          const sc = blendScale(g.ratio);
+          if (score(alt.agg._raw, sc) > score(res.agg._raw, sc)) res = alt;
+        }
+      }
+    }
+    byId[g.id] = res;
+    return res;
   });
 }

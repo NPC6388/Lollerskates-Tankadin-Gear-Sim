@@ -35,9 +35,17 @@ Shipped so far (commit on branch):
   cursor) across the summary table, gate badges, Survival panel and slot tags. A delegated click handler
   opens `#logic-panel` details and scrolls to it.
 
-135 tests pass throughout. Dev server: `npm run serve` (port 8000). Next: #9 (separate Balanced visually
-+ show Min-HP "off" at the 10k floor), #5 (shareable links), #6 (credibility/math surfacing), #7 (name —
-held for owner).
+- **Balanced dial polish (#9 + tester fixes).** Balanced row separated (full-width, divider, gold name,
+  caption); slider halved to 24 increments (`step` 0.125→0.25); `fmtMinHp` shows "off" at the 10k floor.
+  Engine fixes for tester reports: Balanced live-seeding broke end reproduction (climbed from its own
+  blend, stuck in a local optimum) → at an exact end (ratio+floor == Raid/Survival) it now COPIES that
+  end's already-solved result (`{ ...byId[endId], goal: g }`), path-independent; between ends it dual-seeds
+  (self + nearer-end) and keeps the higher-scoring. `optimizeSets` map refactored: per-goal solve pulled
+  into `solveGoal(g, gseed)`, results accumulated in `byId` so Balanced can reference Raid/Survival.
+
+135 tests pass throughout. Dev server: `npm run serve` (port 8000). Next: investigating a tester report
+(BulkAggro export) where the threat set's spell damage reads lower in Sixty Upgrades — auditing stat
+summation. Then #5 (shareable links), #6 (credibility/math), #7 (name — held for owner).
 
 ---
 

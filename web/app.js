@@ -47,6 +47,7 @@ const UI_DEFAULTS = {
 };
 const isBalanced = (id) => id === 'balanced';
 const fmtHp = (h) => (h / 1000).toFixed(1) + 'k';
+const fmtMinHp = (h) => (h <= MINHP.min ? 'off' : fmtHp(h)); // the 10k floor means "no Min-HP gate" — say so
 const fmtW = (w) => (Number.isInteger(w) ? String(w) : w.toFixed(1));
 function ratioFor(id, v) {
   const { left, right } = GOAL_SIDES[id];
@@ -67,7 +68,7 @@ function updateBalMinHP() {
   const el = row && row.querySelector('.bal-minhp'); if (!el) return;
   const t = balanceT(+row.querySelector('.ratio-slider').value);
   const hp = (id) => { const s = $('goalConfig').querySelector(`.goal-row[data-goal="${id}"] .minhp-slider`); return s ? +s.value : 0; };
-  el.textContent = fmtHp(Math.round(hp('survival') + (hp('raid') - hp('survival')) * t));
+  el.textContent = fmtMinHp(Math.round(hp('survival') + (hp('raid') - hp('survival')) * t));
 }
 
 let items = null;        // equippable items from the export
@@ -93,7 +94,7 @@ function init() {
     const v = defaultVOf(g.id);
     const leftLbl = bal ? 'Survival' : AXIS_LABEL[left];
     const rightLbl = bal ? 'Threat' : AXIS_LABEL[right];
-    const step = bal ? 0.125 : 0.5; // Balanced blend dial: 48 increments over [-3,3] (was 120, −60%)
+    const step = bal ? 0.25 : 0.5; // Balanced blend dial: 24 increments over [-3,3] (halved from 48)
     const readout = bal ? balancedText(v) : ratioText(g.id, v);
     const minHP = UI_DEFAULTS[g.id] ? UI_DEFAULTS[g.id].minHP : 10000;
     // Balanced has no Min-HP knob — its floor is DERIVED (blended from your Survival & Raid floors),
@@ -103,9 +104,12 @@ function init() {
       : `<div class="minhp-cell">
         <button class="minhp-label mh-btn" type="button" data-dir="-1" title="Lower Min HP">Min HP</button>
         <input type="range" class="minhp-slider" min="${MINHP.min}" max="${MINHP.max}" step="${MINHP.step}" value="${minHP}" />
-        <button class="minhp-val mh-btn" type="button" data-dir="1" title="Raise Min HP">${fmtHp(minHP)}</button>
+        <button class="minhp-val mh-btn" type="button" data-dir="1" title="Raise Min HP">${fmtMinHp(minHP)}</button>
       </div>`;
-    return `<div class="goal-row" data-goal="${g.id}">
+    // Balanced isn't a fourth independent goal — it's a meta-dial OVER the Survival and Raid sets. Set
+    // it apart (full-width row, divider, caption) so the different mental model reads clearly.
+    const caption = bal ? `<div class="bal-caption">A blend dial over your Survival &amp; Raid sets — the ends reproduce them, the middle splits the difference.</div>` : '';
+    return `<div class="goal-row${bal ? ' bal' : ''}" data-goal="${g.id}">
       <span class="name">${g.name}</span>
       <div class="slider-cell">
         <div class="slider-wrap">
@@ -114,6 +118,7 @@ function init() {
           <button class="end right" type="button" title="Nudge toward ${rightLbl}">${rightLbl} ▸</button>
         </div>
         <div class="ratio">${readout}</div>
+        ${caption}
       </div>
       ${minhpCell}
     </div>`;
@@ -130,7 +135,7 @@ function init() {
   });
   $('goalConfig').querySelectorAll('.minhp-slider').forEach((r) => {
     r.addEventListener('input', (e) => {
-      e.target.closest('.minhp-cell').querySelector('.minhp-val').textContent = fmtHp(+e.target.value);
+      e.target.closest('.minhp-cell').querySelector('.minhp-val').textContent = fmtMinHp(+e.target.value);
       updateBalMinHP(); // Survival/Raid floors feed Balanced's derived floor
       scheduleLiveUpdate();
     });

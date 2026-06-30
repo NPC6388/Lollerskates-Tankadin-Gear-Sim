@@ -487,3 +487,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   render with a dotted underline + help cursor in the summary table, gate badges, Survival panel and
   slot tags; hovering shows a plain-English definition and clicking opens the "How the sim works" panel.
   The jargon stays visible/precise (a credibility signal) but is decodable in place.
+- **Balanced dial polish.** The Balanced goal is now visually separated (full-width row, divider, gold
+  name, a "blend dial over your Survival &amp; Raid sets" caption) so its different mental model reads
+  clearly; the slider was halved to 24 increments (less fiddly). Min-HP now shows "off" instead of "10.0k"
+  whenever a goal's floor is at the 10k floor. Engine: the Balanced ends now reproduce the Survival/Raid
+  sets exactly — at an end it COPIES that end goal's already-solved result instead of re-optimizing (the
+  Min-HP floor-recovery heuristic is seed/path-dependent, so a fresh solve could land on a tankier,
+  lower-threat floor-holder); between the ends it also climbs from the nearer end's set and keeps the
+  higher-scoring of that vs the self-seeded solve, so the middle stays smooth.
