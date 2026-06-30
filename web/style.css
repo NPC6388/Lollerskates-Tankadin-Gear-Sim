@@ -228,6 +228,9 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 .bis-item { font-weight: 500; text-decoration: none; opacity: .92; }
 .bis-have { font-size: 10px; color: var(--good); border: 1px solid rgba(111,207,111,.4); border-radius: 8px; padding: 0 6px; }
 .bis-have.in-set { color: var(--gold); border-color: rgba(240,198,116,.5); }
+.bis-miss { font-size: 10px; color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; padding: 0 6px; }
+.bis-note { font-size: 10px; color: var(--accent); cursor: help; text-decoration: none; }
+.bis-row .pin-btn { margin-left: 2px; }
 /* Pin-to-slot controls. */
 .pin-ctl { margin-left: 6px; }
 .ds-slot.right .pin-ctl { margin-left: 0; margin-right: 6px; }

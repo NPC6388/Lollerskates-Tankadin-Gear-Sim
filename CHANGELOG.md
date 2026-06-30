@@ -564,3 +564,15 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the avoidance/defense/resilience it gives up).
 - **Armor shows what it mitigates.** Hovering the Armor stat in the Defense panel reports the % physical
   damage reduction vs a raid boss (the same `Armor ÷ (Armor + K)`, capped 75%, folded into EHP).
+- **Slot dropdowns are an accordion.** Opening one slot's dropdown (owned alternates + BiS) now closes
+  any other that's open, so the paper doll never stacks several expanded lists at once.
+- **BiS items you own are equippable.** A BiS row for an item in your loaded gear gets an **equip**
+  button (same force-into-slot as an owned alternate); items you don't own show "not in your bags" (the
+  optimizer can't model gear you don't have). BiS entries can carry a curator **ⓘ note**.
+- **Tome of Fiery Redemption added to early-phase trinket BiS.** Its on-use +spell-damage proc can't be
+  scored by the model (so it never surfaces in the auto-generated list), but it's stronger single-target
+  threat than Eye of Magtheridon — added by hand to the Phase 1–2 trinket lists with an ⓘ note.
+- **Spell-hit cap tooltip.** The summary "Spell hit" header and each set's Spell-panel row explain the
+  17% raid-boss cap and how far below it the set is (below the cap, spell hit recovers missed threat).
+- **Miss added to the Defense panel.** A "Miss" row (boss-misses-you chance: base + defense-skill bonus)
+  sits between Block and Dodge, with a tooltip; it's part of the avoidance/uncrushable total.

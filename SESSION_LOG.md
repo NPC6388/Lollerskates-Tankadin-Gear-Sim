@@ -28,13 +28,25 @@ Six results-page features (suite 136/136 green; both web JS files `node --check`
 5. **Open Sixty Upgrades ↗** link beside the export button.
 6. **Armor** stat hover shows % physical mitigation (`.tip` class — no logic-panel jump).
 
+**Second batch on the same branch** (owner review notes; suite 136/136 green):
+- Slot dropdowns now behave as an **accordion** (opening one closes others) — wired in `render()`.
+- **Owned BiS items are equippable** (equip button → pin); unowned show "not in your bags". `bisHTML`
+  now takes `goalId` and supports a per-entry `note` (ⓘ tooltip).
+- **Tome of Fiery Redemption (30447)** hand-added to P1–P2 trinket BiS with a note (on-use proc the model
+  can't score, but beats Eye of Magtheridon on threat). Manual additions are documented at the top of
+  `web/bis.js`.
+- **Spell-hit cap tooltip** (summary header + per-set Spell panel) and a **Miss row** in the Defense
+  panel (between Block and Dodge), using `missChance()` from `combat.js`.
+
 ### Pick up here
 - **Owner review** the branch, then merge to `main` when happy (that's the deploy). Pre-commit asset hook
   re-stamps `index.html` cache-bust hash on commits touching `web/`.
 - **Browser eyeball still owed**: confirm BiS Wowhead links iconize, dropdown summary reads
-  "≈ N also viable · BiS list", and the swap/worn badges + edge accent align on both columns.
+  "≈ N also viable · BiS list", accordion closes siblings, swap/worn badges align, the Miss row and
+  spell-hit/armor tooltips read right.
 - Wowhead lists are "the best found" but the owner considers them mediocre — revisit BiS source later if
   a better one appears.
+- Local review server: `python -m http.server 8000` from repo root → http://localhost:8000/.
 
 ---
 

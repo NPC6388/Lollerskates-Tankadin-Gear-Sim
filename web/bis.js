@@ -6,6 +6,10 @@
 // it - a "what to chase" list shown at the end of each slot's dropdown. Wowhead links and icons
 // render from the id. Slot keys match the paper doll; ring1/ring2 share 'ring' and trinket1/
 // trinket2 share 'trinket'.
+// Manual curator additions (not from the Wowhead scrape) carry a `note` shown as an ⓘ tooltip:
+//   - Tome of Fiery Redemption (30447): an on-use +spell-damage proc the model can't score, so it
+//     never appears in the auto lists — but it's stronger single-target threat than Eye of
+//     Magtheridon, so it's added to the early-phase trinket lists by hand.
 export const BIS_PHASES = [1, 2, 3, 4, 5];
 export const BIS = {
   1: {
@@ -20,7 +24,7 @@ export const BIS = {
     legs: [{ id: 28621, name: 'Wrynn Dynasty Greaves' }, { id: 29069, name: 'Justicar Legguards' }, { id: 27705, name: 'Gladiator\'s Lamellar Legguards' }],
     feet: [{ id: 29254, name: 'Boots of the Righteous Path' }, { id: 30641, name: 'Boots of Elusion' }, { id: 28642, name: 'General\'s Lamellar Greaves' }],
     ring: [{ id: 28407, name: 'Elementium Band of the Sentry' }, { id: 29172, name: 'Ashyen\'s Gift' }, { id: 29279, name: 'Violet Signet of the Great Protector' }],
-    trinket: [{ id: 27529, name: 'Figurine of the Colossus' }, { id: 28528, name: 'Moroes\' Lucky Pocket Watch' }, { id: 23836, name: 'Goblin Rocket Launcher' }],
+    trinket: [{ id: 27529, name: 'Figurine of the Colossus' }, { id: 28528, name: 'Moroes\' Lucky Pocket Watch' }, { id: 23836, name: 'Goblin Rocket Launcher' }, { id: 30447, name: 'Tome of Fiery Redemption', note: 'Hard to model (on-use +spell-damage proc), so it\'s left out of the auto-generated list — but it\'s stronger single-target threat than Eye of Magtheridon.' }],
     weapon: [{ id: 32450, name: 'Gladiator\'s Gavel' }, { id: 28802, name: 'Bloodmaw Magus-Blade' }, { id: 30832, name: 'Gavel of Unearthed Secrets' }],
     offhand: [{ id: 28825, name: 'Aldori Legacy Defender' }, { id: 28358, name: 'Gladiator\'s Shield Wall' }, { id: 28606, name: 'Shield of Impenetrable Darkness' }],
     relic: [{ id: 29388, name: 'Libram of Repentance' }, { id: 27917, name: 'Libram of the Eternal Rest' }],
@@ -37,7 +41,7 @@ export const BIS = {
     legs: [{ id: 30126, name: 'Crystalforge Legguards' }, { id: 28621, name: 'Wrynn Dynasty Greaves' }, { id: 29069, name: 'Justicar Legguards' }],
     feet: [{ id: 30033, name: 'Boots of the Protector' }, { id: 32267, name: 'Boots of the Resilient' }, { id: 29254, name: 'Boots of the Righteous Path' }],
     ring: [{ id: 33054, name: 'The Seal of Danzalar' }, { id: 30083, name: 'Ring of Sundered Souls' }, { id: 30028, name: 'Seventh Ring of the Tirisfalen' }],
-    trinket: [{ id: 27529, name: 'Figurine of the Colossus' }, { id: 28528, name: 'Moroes\' Lucky Pocket Watch' }, { id: 27891, name: 'Adamantine Figurine' }],
+    trinket: [{ id: 27529, name: 'Figurine of the Colossus' }, { id: 28528, name: 'Moroes\' Lucky Pocket Watch' }, { id: 27891, name: 'Adamantine Figurine' }, { id: 30447, name: 'Tome of Fiery Redemption', note: 'Hard to model (on-use +spell-damage proc), so it\'s left out of the auto-generated list — but it\'s stronger single-target threat than Eye of Magtheridon.' }],
     weapon: [{ id: 32963, name: 'Merciless Gladiator\'s Gavel' }, { id: 30095, name: 'Fang of the Leviathan' }, { id: 28802, name: 'Bloodmaw Magus-Blade' }],
     offhand: [{ id: 28825, name: 'Aldori Legacy Defender' }, { id: 32045, name: 'Merciless Gladiator\'s Shield Wall' }, { id: 33313, name: 'Merciless Gladiator\'s Barrier' }],
     relic: [{ id: 29388, name: 'Libram of Repentance' }, { id: 27917, name: 'Libram of the Eternal Rest' }],

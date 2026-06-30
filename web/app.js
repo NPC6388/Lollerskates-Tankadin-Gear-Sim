@@ -6,6 +6,7 @@ import { optimizeSets, spellHitPct, GOAL_PRESETS, DEFAULT_TRINKET_LOCKS } from '
 import { PROFESSION_NAMES } from '../src/professions.js';
 import { GEMS, META_GEMS } from '../src/gems.js';
 import { detectFaction } from '../src/enchants.js';
+import { missChance } from '../src/combat.js';
 import { SCROLLS } from '../src/scrolls.js';
 import { SCALES, PARTS } from '../src/weights.js';
 import { SET_BONUS_STATS } from '../src/sets.js';
@@ -651,7 +652,7 @@ function render(results) {
   const sh = (r) => spellHitPct(r.agg);
 
   $('summary').innerHTML = `<table><thead><tr>
-      <th>Set</th><th>${term('EHP', 'ehp')}</th><th>Spell&nbsp;dmg</th><th>Spell&nbsp;hit</th><th>Stam</th><th>${term('Uncrush', 'uncrush')}</th><th>${term('Uncrit', 'uncrit')}</th>
+      <th>Set</th><th>${term('EHP', 'ehp')}</th><th>Spell&nbsp;dmg</th><th><abbr class="tip" title="Spell-hit cap vs a level-${BASE.raidBossLevel} raid boss is ${CAPS.spellHitCapPct}%. Below it, spell hit recovers missed spell threat; at it, more gives nothing. Hover a set's Spell panel for how far that set is below.">Spell&nbsp;hit</abbr></th><th>Stam</th><th>${term('Uncrush', 'uncrush')}</th><th>${term('Uncrit', 'uncrit')}</th>
     </tr></thead><tbody>${results.map((r, i) => `<tr class="${i === activeTab ? 'sel' : ''}">
       <td>${r.goal.name}</td><td>${fmt(r.evald.ehpPhysical)}</td><td>${fmt(litSP(r.agg))}${r.agg.spellPowerEquiv ? `<abbr class="equiv" title="+${fmt(r.agg.spellPowerEquiv)} threat-equivalent spell damage from ${r.agg.spellPowerEquivSource || 'a relic effect'} (e.g. +Consecration damage). Not literal spell power — Sixty Upgrades won't show it.">+${fmt(r.agg.spellPowerEquiv)}</abbr>` : ''}</td>
       <td>${sh(r).toFixed(2)}%</td><td>${fmt(r.agg.stamina)}</td>
@@ -698,6 +699,12 @@ function render(results) {
   $('sets').querySelectorAll('.exclx').forEach((x) => x.addEventListener('click', () => { excludedItemIds.delete(+x.dataset.id); runOptimize(); }));
   const ce = $('sets').querySelector('.clearexcl');
   if (ce) ce.addEventListener('click', () => { excludedItemIds.clear(); runOptimize(); });
+  // Accordion: opening one slot's dropdown (owned alternates + BiS) closes any other that's open, so
+  // the paper doll never stacks several expanded lists at once.
+  const slotDetails = [...$('sets').querySelectorAll('details.ds-alts')];
+  slotDetails.forEach((d) => d.addEventListener('toggle', () => {
+    if (d.open) slotDetails.forEach((o) => { if (o !== d && o.open) o.open = false; });
+  }));
   whRefresh(); // iconize + quality-color the freshly-rendered item links via Wowhead
 }
 
@@ -783,14 +790,23 @@ const ownsItem = (id) => (items || []).some((it) => it.itemId === id);
 // Curated community BiS for the slot at the selected phase — a "what to chase" list, independent of
 // what you own. Appended to the end of the slot dropdown. Items you already own (or have selected in
 // this set) are tagged so you can see how close your collection is to the list.
-function bisHTML(slotKey, chosenId) {
+function bisHTML(goalId, slotKey, chosenId) {
   const list = (BIS[currentPhase()] || {})[bisSlotKey(slotKey)];
   if (!list || !list.length) return '';
   const rows = list.map((b, i) => {
-    const tag = b.id === chosenId
-      ? `<span class="bis-have in-set" title="This is the item picked for this slot.">✓ in this set</span>`
-      : ownsItem(b.id) ? `<span class="bis-have" title="You already own this item.">✓ you own this</span>` : '';
-    return `<div class="bis-row"><span class="bis-rank">${i + 1}</span>${wh(b.id, b.name, 'bis-item')}${tag}</div>`;
+    const note = b.note ? ` <abbr class="bis-note" title="${b.note}">ⓘ</abbr>` : '';
+    let tag, ctl = '';
+    if (b.id === chosenId) {
+      tag = `<span class="bis-have in-set" title="This is the item picked for this slot.">✓ in this set</span>`;
+    } else if (ownsItem(b.id)) {
+      // Owned BiS items can be forced into the slot just like an owned alternate.
+      tag = `<span class="bis-have" title="You already own this item.">✓ you own this</span>`;
+      ctl = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${b.id}" title="Force this item into the slot and re-optimize the rest around it">equip</button>`;
+    } else {
+      // Not in your export — the optimizer can't model an item you don't own, so no equip button.
+      tag = `<span class="bis-miss" title="Not in your loaded gear — can't be equipped/optimized until you own it.">not in your bags</span>`;
+    }
+    return `<div class="bis-row"><span class="bis-rank">${i + 1}</span>${wh(b.id, b.name, 'bis-item')}${note}${tag}${ctl}</div>`;
   }).join('');
   return `<div class="bis-block">
     <div class="bis-h">Phase ${currentPhase()} BiS <span class="bis-src">· community list</span></div>
@@ -803,7 +819,7 @@ function bisHTML(slotKey, chosenId) {
 // list, so a slot always exposes "what to chase" even when nothing you own is a near-tie.
 function slotDropdown(alts, goalId, slotKey, chosenId) {
   alts = alts || [];
-  const bis = bisHTML(slotKey, chosenId);
+  const bis = bisHTML(goalId, slotKey, chosenId);
   if (!alts.length && !bis) return '';
   const rows = alts.map((a) => {
     const gc = (a.gems && a.gems.length) ? `<div class="ds-gems alt">${a.gems.map((g) => gemCell(g, true)).join('')}</div>` : '';
@@ -837,6 +853,17 @@ const armorDR = (armor) => armor / (armor + ARMOR_CONST()); // vs a raid boss (s
 function armorLabel(armor) {
   const dr = Math.min(armorDR(armor) * 100, 75);
   return `<abbr class="tip" title="Reduces physical damage from a level-${BASE.raidBossLevel} boss by ${dr.toFixed(1)}% — Armor ÷ (Armor + ${fmt(ARMOR_CONST())}), capped at 75%. This is the mitigation folded into EHP.">Armor</abbr>`;
+}
+// Boss-misses-you chance: base + the defense-skill bonus. Part of avoidance (miss + dodge + parry),
+// so it sits between Block and Dodge in the panel.
+const missLabel = () => `<abbr class="tip" title="Chance a level-${BASE.raidBossLevel} boss melee swing simply misses you: ${BASE.baseMissChance}% base + ${BASE.defenseBenefitPerSkill}% per defense skill above ${BASE.baseDefenseSkill}. Counts toward avoidance and the uncrushable total.">Miss</abbr>`;
+// Spell hit with its cap and how far this set is below it (uncapped spell hit recovers missed threat).
+function spellHitLabel(a) {
+  const cur = spellHitPct(a), cap = CAPS.spellHitCapPct, below = cap - cur;
+  const note = below > 0.005
+    ? `This set is ${below.toFixed(2)}% below it — each point of spell hit still recovers missed spell threat.`
+    : `This set is at/above the cap — extra spell hit adds no more threat.`;
+  return `<abbr class="tip" title="Spell-hit cap vs a level-${BASE.raidBossLevel} raid boss is ${cap}%. ${note}">Spell Hit</abbr>`;
 }
 function buffNote(b, agg) {
   if (!b || !b.name) return '';
@@ -887,8 +914,8 @@ function setCard(r) {
     ${panel('Primary', [['Health', fmt(a.health)], ['Stamina', fmt(a.stamina)], ['Strength', fmt(a.strength)], ['Agility', fmt(a.agility)], ['Intellect', fmt(a.intellect)]])}
     ${panel('Spell', [['Spell Damage', fmt(litSP(a))],
       ...(a.spellPowerEquiv ? [[`<abbr class="term" title="The libram's +Consecration damage, converted to its threat-equivalent spell power so the threat scales value it. Not literal +spell-power on the tooltip — Sixty Upgrades won't show it, so it's listed separately here.">Relic effect (≈SP)</abbr>`, '+' + fmt(a.spellPowerEquiv)]] : []),
-      ['Spell Hit', spellHitPct(a).toFixed(2) + '%'], ['Block Value', fmt(a.blockValue)]])}
-    ${panel('Defense', [[armorLabel(a.armor), fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)], ['Resilience', fmt(a.resilienceRating)], ['Block', a.blockPct.toFixed(2) + '%'], ['Dodge', a.dodgePct.toFixed(2) + '%'], ['Parry', a.parryPct.toFixed(2) + '%'], ['Total Avoidance', e.totalAvoidanceNoHS.toFixed(2) + '%']])}
+      [spellHitLabel(a), spellHitPct(a).toFixed(2) + '%'], ['Block Value', fmt(a.blockValue)]])}
+    ${panel('Defense', [[armorLabel(a.armor), fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)], ['Resilience', fmt(a.resilienceRating)], ['Block', a.blockPct.toFixed(2) + '%'], [missLabel(), missChance(a.defenseSkill).toFixed(2) + '%'], ['Dodge', a.dodgePct.toFixed(2) + '%'], ['Parry', a.parryPct.toFixed(2) + '%'], ['Total Avoidance', e.totalAvoidanceNoHS.toFixed(2) + '%']])}
     ${panel('Survival', [[term('EHP', 'ehp') + ' (health pool)', fmt(e.ehpPhysical)], [term('Uncrushable', 'uncrush') + ' (w/ HS)', e.totalAvoidanceWithHS.toFixed(1) + '%'], ['Crit reduction', e.critReduction.toFixed(2) + '%']])}
   </div>`;
 
