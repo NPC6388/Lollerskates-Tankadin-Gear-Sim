@@ -534,3 +534,10 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   slot with several near-ties no longer clutters the set card. Expanding reveals each alternate with its
   gems + pin/exclude controls as before. Summary marker flips ▾/▴ and mirrors (row-reverse) on
   right-hand slots to match the paper-doll layout.
+- **Asset cache-busting.** `index.html` referenced `web/app.js` / `web/style.css` with no version query,
+  so after a GitHub Pages deploy a normal browser reload kept serving the cached old files (a change had
+  to be hard-refreshed to show up). `bin/stamp.mjs` (`npm run stamp`) now rewrites a `?v=<hash>` on each
+  asset URL to an 8-char SHA-256 of that file's bytes — the URL changes exactly when the file content
+  does, and only for the file that changed. A tracked pre-commit hook (`scripts/githooks/pre-commit`, via
+  `git config core.hooksPath scripts/githooks`) re-stamps and re-stages `index.html` automatically whenever
+  a commit touches those assets. (On a fresh clone, run the `core.hooksPath` config line once to enable it.)

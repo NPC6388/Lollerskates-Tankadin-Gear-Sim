@@ -1,0 +1,8 @@
+#!/bin/sh
+# Re-stamp asset cache-busting hashes before each commit so a deploy is never masked by a stale
+# browser cache. Only re-stages index.html when one of the stamped assets is part of this commit,
+# so commits that don't touch web/ assets are untouched.
+if git diff --cached --name-only | grep -qE '^web/(app\.js|style\.css)$'; then
+  node bin/stamp.mjs || exit 1
+  git add index.html
+fi
