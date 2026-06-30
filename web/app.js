@@ -167,6 +167,12 @@ function init() {
   $('talents').addEventListener('input', updateTalentSummary);
   $('optimizeBtn').addEventListener('click', runOptimize);
   document.querySelectorAll('.guide-link').forEach((a) => { a.href = GUIDE_URL; }); // header/footer guide links
+  // Clicking any glossary term opens the full "How the sim works" panel and jumps to it.
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.term')) return;
+    const d = document.querySelector('#logic-panel details'); if (d) d.open = true;
+    $('logic-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   renderWeights();
   renderLogic();
 }
@@ -443,6 +449,19 @@ function buildKeepSpec() {
 }
 
 // ---- render -----------------------------------------------------------------
+// Point-of-use glossary: the sim's vocabulary (EHP, the gates, def-gemmed…) is second nature to a
+// theorycrafter but opaque to most raiders. term() wraps a label in a hover definition (dotted
+// underline) that also jumps to the full "How the sim works" panel on click — so the jargon stays
+// precise (a credibility signal) while newcomers can decode it in place.
+const GLOSSARY = {
+  ehp: 'EHP (Effective HP) — your health divided by physical damage reduction (armor + Improved Righteous Fury). The raw pool behind your mitigation; bigger means more burst survived. Avoidance is NOT folded in — it smooths averages, not the spike damage that kills tanks.',
+  uncrit: 'Uncrittable — a raid boss can’t land a critical hit on you. Needs ~490 defense skill, or any defense+resilience mix covering the boss’s +5.6% crit. A hard gate every set must pass.',
+  uncrush: 'Uncrushable — crushing blows (an extra ~50% hit) can’t land. Needs miss + dodge + parry + block ≥ 102.4% with Holy Shield up. A hard gate, dropped on AOE Trash (≤72 mobs can’t crush).',
+  minhp: 'Min HP — a raid-buffed health floor you set per goal; the optimizer won’t go below it. 10k = effectively off.',
+  defgem: 'Def-gemmed — gemmed for avoidance/defense (not threat) to help reach the uncrittable/uncrushable caps.',
+  kept: 'Kept — this item’s existing gems/enchants were preserved (locked), not re-optimized.',
+};
+const term = (label, key, cls = '') => `<abbr class="term ${cls}" title="${GLOSSARY[key]}">${label}</abbr>`;
 const fmt = (n) => Math.round(n).toLocaleString();
 const yesno = (b) => `<span class="badge ${b ? 'yes' : 'no'}">${b ? 'yes' : 'no'}</span>`;
 const wh = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/tbc/item=${id}" target="_blank" rel="noopener">${text}</a>`;
@@ -503,7 +522,7 @@ function render(results) {
   const sh = (r) => spellHitPct(r.agg);
 
   $('summary').innerHTML = `<table><thead><tr>
-      <th>Set</th><th>EHP</th><th>Spell&nbsp;dmg</th><th>Spell&nbsp;hit</th><th>Stam</th><th>Uncrush</th><th>Uncrit</th>
+      <th>Set</th><th>${term('EHP', 'ehp')}</th><th>Spell&nbsp;dmg</th><th>Spell&nbsp;hit</th><th>Stam</th><th>${term('Uncrush', 'uncrush')}</th><th>${term('Uncrit', 'uncrit')}</th>
     </tr></thead><tbody>${results.map((r, i) => `<tr class="${i === activeTab ? 'sel' : ''}">
       <td>${r.goal.name}</td><td>${fmt(r.evald.ehpPhysical)}</td><td>${fmt(r.agg.spellPower)}</td>
       <td>${sh(r).toFixed(2)}%</td><td>${fmt(r.agg.stamina)}</td>
@@ -581,7 +600,7 @@ function slotHTML(r, slotKey, side) {
   const pinnedId = (pinnedSlots[goalId] || {})[slotKey];
   if (!it) return `<div class="ds-slot ${side} empty"><span class="ds-label">${SLOT_LABEL[slotKey]}</span></div>`;
   const ps = r.perSlot[slotKey] || {};
-  const tag = ps.defGemmed ? '<span class="defgem">def-gemmed</span>' : (ps.locked ? '<span class="defgem">kept</span>' : '');
+  const tag = ps.defGemmed ? `<span class="defgem">${term('def-gemmed', 'defgem')}</span>` : (ps.locked ? `<span class="defgem">${term('kept', 'kept')}</span>` : '');
   // Pin control: when the slot is pinned, the picked item IS the pin — offer to unpin; otherwise
   // offer to pin the current pick (locks it so re-optimizing other slots won't swap it for this set).
   const pinCtl = pinnedId
@@ -679,7 +698,7 @@ function setCard(r) {
     ${panel('Primary', [['Health', fmt(a.health)], ['Stamina', fmt(a.stamina)], ['Strength', fmt(a.strength)], ['Agility', fmt(a.agility)], ['Intellect', fmt(a.intellect)]])}
     ${panel('Spell', [['Spell Damage', fmt(a.spellPower)], ['Spell Hit', spellHitPct(a).toFixed(2) + '%'], ['Block Value', fmt(a.blockValue)]])}
     ${panel('Defense', [['Armor', fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)], ['Resilience', fmt(a.resilienceRating)], ['Block', a.blockPct.toFixed(2) + '%'], ['Dodge', a.dodgePct.toFixed(2) + '%'], ['Parry', a.parryPct.toFixed(2) + '%'], ['Total Avoidance', e.totalAvoidanceNoHS.toFixed(2) + '%']])}
-    ${panel('Survival', [['EHP (health pool)', fmt(e.ehpPhysical)], ['Uncrushable (w/ HS)', e.totalAvoidanceWithHS.toFixed(1) + '%'], ['Crit reduction', e.critReduction.toFixed(2) + '%']])}
+    ${panel('Survival', [[term('EHP', 'ehp') + ' (health pool)', fmt(e.ehpPhysical)], [term('Uncrushable', 'uncrush') + ' (w/ HS)', e.totalAvoidanceWithHS.toFixed(1) + '%'], ['Crit reduction', e.critReduction.toFixed(2) + '%']])}
   </div>`;
 
   return `<div class="set">
@@ -690,11 +709,11 @@ function setCard(r) {
       </div>
       <div class="head-right">
         <div class="gates">
-          <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">Uncrittable ${e.critReduction.toFixed(2)}%</span>
+          <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">${term('Uncrittable', 'uncrit')} ${e.critReduction.toFixed(2)}%</span>
           ${crushReq
-            ? `<span class="gate ${crushPass ? 'pass' : 'fail'}">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>`
-            : `<span class="gate na">Uncrushable ${e.totalAvoidanceWithHS.toFixed(1)}% — not required (trash)</span>`}
-          ${minHp ? `<span class="gate ${hpPass ? 'pass' : 'fail'}">Min HP ${fmt(a.health)} / ${fmt(minHp)}</span>` : ''}
+            ? `<span class="gate ${crushPass ? 'pass' : 'fail'}">${term('Uncrushable', 'uncrush')} ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>`
+            : `<span class="gate na">${term('Uncrushable', 'uncrush')} ${e.totalAvoidanceWithHS.toFixed(1)}% — not required (trash)</span>`}
+          ${minHp ? `<span class="gate ${hpPass ? 'pass' : 'fail'}">${term('Min HP', 'minhp')} ${fmt(a.health)} / ${fmt(minHp)}</span>` : ''}
         </div>
         <div class="set-actions">
           ${Object.keys(pinnedSlots[r.goal.id] || {}).length ? `<button class="unpin-all-btn ghost" type="button" data-goal="${r.goal.id}">📌 Unpin all (${Object.keys(pinnedSlots[r.goal.id]).length})</button>` : ''}

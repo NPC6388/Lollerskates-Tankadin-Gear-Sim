@@ -483,3 +483,7 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   collapsed "Advanced settings (optional)" disclosure. "Keep gems &amp; enchants" was split out of the
   Stat-buff field into its own "Gems &amp; enchants" field (with the Imbued-meta checkbox grouped beside
   it, since it's a gem, not a buff). No engine change — controls keep their ids/behavior.
+- **Glossary tooltips at point of use.** EHP, Uncrittable, Uncrushable, Min HP, def-gemmed and kept now
+  render with a dotted underline + help cursor in the summary table, gate badges, Survival panel and
+  slot tags; hovering shows a plain-English definition and clicking opens the "How the sim works" panel.
+  The jargon stays visible/precise (a credibility signal) but is decodable in place.

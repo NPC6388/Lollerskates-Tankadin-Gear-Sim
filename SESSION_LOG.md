@@ -30,10 +30,14 @@ Shipped so far (commit on branch):
   (optional)" `<details>`. "Keep gems & enchants" split out of the Stat-buff field into its own "Gems &
   enchants" field, imbued-meta checkbox grouped with it. IDs unchanged → no app.js change.
 
-135 tests pass throughout. Dev server: `npm run serve` (port 8000). Next: #3 (jargon tooltips — EHP /
-Uncrittable / Uncrushable / gates / def-gemmed / kept, defined on hover, linking to the logic panel),
-then #9 (separate Balanced + show Min-HP "off"), #5 (shareable links), #6 (credibility/math surfacing),
-#7 (name — held for owner).
+- **Glossary tooltips (#3).** `term(label, key)` helper + GLOSSARY map in app.js wrap EHP / Uncrittable /
+  Uncrushable / Min HP / def-gemmed / kept in `<abbr class="term" title=…>` (dotted underline, help
+  cursor) across the summary table, gate badges, Survival panel and slot tags. A delegated click handler
+  opens `#logic-panel` details and scrolls to it.
+
+135 tests pass throughout. Dev server: `npm run serve` (port 8000). Next: #9 (separate Balanced visually
++ show Min-HP "off" at the 10k floor), #5 (shareable links), #6 (credibility/math surfacing), #7 (name —
+held for owner).
 
 ---
 

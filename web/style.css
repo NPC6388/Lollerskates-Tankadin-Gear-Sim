@@ -108,6 +108,11 @@ button.primary { background: var(--gold); color: #1a1206; border: none; font-wei
 button.primary:disabled { opacity: .45; cursor: not-allowed; }
 button.ghost { padding: 6px 12px; font-size: 13px; }
 
+/* Glossary terms: dotted underline + help cursor; hover shows the definition, click opens the
+   "How the sim works" panel. */
+.term { border-bottom: 1px dotted currentColor; cursor: help; text-decoration: none; }
+.term:hover { color: var(--accent); }
+
 /* summary table */
 table { width: 100%; border-collapse: collapse; margin: 4px 0 18px; }
 th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
