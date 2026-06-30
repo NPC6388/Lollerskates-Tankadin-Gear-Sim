@@ -171,6 +171,7 @@ function init() {
   });
   $('talents').addEventListener('input', updateTalentSummary);
   $('optimizeBtn').addEventListener('click', runOptimize);
+  $('shareBtn').addEventListener('click', copyShareLink);
   document.querySelectorAll('.guide-link').forEach((a) => { a.href = GUIDE_URL; }); // header/footer guide links
   // Clicking any glossary term opens the full "How the sim works" panel and jumps to it.
   document.addEventListener('click', (e) => {
@@ -180,6 +181,108 @@ function init() {
   });
   renderWeights();
   renderLogic();
+  restoreFromHash(); // if opened via a share link, rebuild the gear + settings and optimize
+}
+
+// ---- shareable link ---------------------------------------------------------
+// The whole optimization (gear + every setting + goal sliders + pins/locks) is serialized, gzipped and
+// base64url-encoded into the URL hash — entirely client-side, so a player can drop a link in Discord and
+// the recipient reopens the exact sets. Nothing is uploaded; the gear lives in the link itself.
+const b64urlEnc = (bytes) => {
+  let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+const b64urlDec = (s) => {
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+  const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+};
+async function deflateToHash(obj) {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  if (typeof CompressionStream === 'undefined') return 'u' + b64urlEnc(bytes); // older browser: store uncompressed
+  const ab = await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  return 'g' + b64urlEnc(new Uint8Array(ab));
+}
+async function inflateFromHash(h) {
+  const bytes = b64urlDec(h.slice(1));
+  if (h[0] === 'u') return JSON.parse(new TextDecoder().decode(bytes));
+  const txt = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  return JSON.parse(txt);
+}
+
+// Slim the export down to GEAR before sharing: a full bag/bank dump is mostly food, ore, coins and
+// quest items the optimizer ignores anyway, and they bloat the link. Keep the header + every equipped
+// piece + inventory items that occupy a real gear slot; drop the non-equippable noise.
+const SHARE_DROP = /\|INVTYPE_(NON_EQUIP_IGNORE|BAG|QUIVER|AMMO|TABARD|BODY)\b/;
+function slimExport(raw) {
+  return toExportText(raw).split('\n').filter((line) => !(line.startsWith('I:') && SHARE_DROP.test(line))).join('\n');
+}
+
+// Gather everything needed to reproduce the current optimization.
+function captureState() {
+  const goalState = {};
+  for (const g of GOAL_PRESETS) {
+    const row = $('goalConfig').querySelector(`.goal-row[data-goal="${g.id}"]`);
+    if (!row) continue;
+    const rs = row.querySelector('.ratio-slider'), ms = row.querySelector('.minhp-slider');
+    goalState[g.id] = { v: rs ? +rs.value : 0, ...(ms ? { hp: +ms.value } : {}) };
+  }
+  return {
+    v: 1, x: slimExport($('exportText').value),
+    p: [$('prof1').value, $('prof2').value], b: $('statBuff').value, ph: $('phase').value,
+    k: $('keepScope').value, im: $('imbuedMeta').checked ? 1 : 0,
+    sc: [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value),
+    li: $('lockIcon').value, le: $('lockEye').value, t: $('talents').value,
+    g: goalState, pin: pinnedSlots, ex: [...excludedItemIds], lk: [...lockedItemIds], tab: activeTab,
+  };
+}
+
+// Rebuild the UI from a captured state and re-optimize.
+function applyState(s) {
+  if (!s || !s.x) return;
+  $('exportText').value = s.x;
+  loadedSample = false;
+  tryParse(s.x); // parses gear, populates trinket options + faction, auto-fills talents
+  if (!items) return;
+  const set = (id, val) => { if (val != null) $(id).value = val; };
+  set('prof1', s.p && s.p[0]); set('prof2', s.p && s.p[1]);
+  set('statBuff', s.b); set('phase', s.ph); set('keepScope', s.k);
+  $('imbuedMeta').checked = !!s.im;
+  document.querySelectorAll('.scroll-cb').forEach((c) => { c.checked = (s.sc || []).includes(c.value); });
+  set('lockIcon', s.li); set('lockEye', s.le);
+  if (s.t != null) { $('talents').value = s.t; updateTalentSummary(); }
+  for (const g of GOAL_PRESETS) {
+    const gs = (s.g || {})[g.id]; if (!gs) continue;
+    const row = $('goalConfig').querySelector(`.goal-row[data-goal="${g.id}"]`); if (!row) continue;
+    const rs = row.querySelector('.ratio-slider'), ms = row.querySelector('.minhp-slider');
+    if (rs && gs.v != null) { rs.value = gs.v; row.querySelector('.ratio').textContent = isBalanced(g.id) ? balancedText(+rs.value) : ratioText(g.id, +rs.value); }
+    if (ms && gs.hp != null) { ms.value = gs.hp; row.querySelector('.minhp-val').textContent = fmtMinHp(+ms.value); }
+  }
+  updateBalMinHP();
+  for (const k of Object.keys(pinnedSlots)) delete pinnedSlots[k];
+  Object.assign(pinnedSlots, s.pin || {});
+  excludedItemIds.clear(); (s.ex || []).forEach((id) => excludedItemIds.add(id));
+  lockedItemIds.clear(); (s.lk || []).forEach((id) => lockedItemIds.add(id));
+  activeTab = s.tab || 0;
+  runOptimize(true); // optimize + scroll to results
+}
+
+async function copyShareLink() {
+  const btn = $('shareBtn');
+  try {
+    const hash = await deflateToHash(captureState());
+    history.replaceState(null, '', '#s=' + hash); // bookmarkable too
+    const url = location.href;
+    const done = () => { const t = btn.textContent; btn.textContent = '✓ Link copied'; setTimeout(() => { btn.textContent = t; }, 1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => window.prompt('Copy this share link:', url));
+    else window.prompt('Copy this share link:', url);
+  } catch { window.prompt('Copy this share link:', location.href); }
+}
+
+function restoreFromHash() {
+  const m = location.hash.match(/[#&]s=([^&]+)/);
+  if (!m) return;
+  inflateFromHash(m[1]).then(applyState).catch(() => setStatus('This share link could not be read.', 'err'));
 }
 
 // ---- Sixty Upgrades stat weights --------------------------------------------

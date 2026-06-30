@@ -20,6 +20,10 @@ footer { text-align: center; color: var(--muted); padding: 24px; font-size: 13px
   padding: 18px 20px; margin: 16px 0;
 }
 .panel h2 { margin: 0 0 14px; font-size: 17px; color: var(--gold); }
+/* Results header: title + "copy share link" on one row. */
+.results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.results-head h2 { margin: 0; }
+#shareBtn { white-space: nowrap; }
 
 .how { margin-bottom: 12px; color: var(--muted); }
 .how summary { cursor: pointer; color: var(--accent); }

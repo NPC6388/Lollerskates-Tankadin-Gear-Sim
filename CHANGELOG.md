@@ -516,3 +516,10 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   be re-gemmed into threat — switch "Gems &amp; enchants" to "Re-gem everything" (or unlock pieces) to
   convert it to spell damage. (With re-gem mode the optimizer already trims to the cap, so the hint stays
   hidden.)
+- **Shareable result links.** A "🔗 Copy share link" button on the results panel encodes the whole
+  optimization — gear + every setting + goal sliders + pins/locks/excludes — into the URL hash, gzipped
+  and base64url-encoded entirely client-side (nothing is uploaded; the gear rides inside the link).
+  Opening the link rebuilds the inputs and re-optimizes to the same sets. The shared gear is slimmed to
+  actual equipment (consumables/ore/coins/bags dropped — the optimizer ignores them, and it cut the
+  worst-case link ~28% with byte-identical results). Falls back to uncompressed encoding on browsers
+  without CompressionStream.

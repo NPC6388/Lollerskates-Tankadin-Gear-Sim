@@ -87,8 +87,24 @@ verified accurate; the only real bug was the libram SP display (fixed, option B 
   any locked piece + surplus ≥ 1.5%, nudging the player to re-gem to convert the locked surplus to threat.
   Verified it shows for keep-current (surplus 2.02%) and hides for re-gem (0.43%).
 
-136 tests pass throughout. Dev server: `npm run serve` (port 8000). Remaining roadmap: #5 (shareable
-links), #6 (credibility/math), #7 (name — held for owner).
+- **#5 shareable links — DONE.** "Copy share link" on results encodes captureState() (gear + all settings
+  + goal sliders + pins/locks/excludes) → gzip (CompressionStream) → base64url → location.hash, restored on
+  load via restoreFromHash()→applyState(). Client-side only. slimExport() drops non-gear lines
+  (NON_EQUIP_IGNORE/BAG/QUIVER/AMMO/TABARD/BODY) before encoding — verified byte-identical optimization,
+  ~28% smaller link (BulkAggro 8337→6056 chars; normal collections ~2-3K). Compression round-trip verified
+  in Node. Merged feature branch to main earlier (FF, 497aae0).
+
+Roadmap now (added by owner 2026-06-30):
+- Indicate which item is currently EQUIPPED vs swapped-in from bag/bank (per-slot badge).
+- Investigate: can "Export to Sixty Upgrades" actually CREATE the set on SU via API (vs the manual import
+  string)? Owner wants it if feasible. (Likely no public write API — confirm.)
+- Declutter the paper doll when a slot has many "≈ also viable" alternates — move them to a right-side list/frame.
+- (still) #6 credibility/math surfacing, #7 searchable name (held).
+OPEN QUESTION being investigated: sim vs in-game WeakAura disagree on EHP (WA shows EHP/HP 31109/12057
+Kings-only; likely the WA omits the Improved Righteous Fury damage-reduction factor the sim includes, and/or
+compares a different set/buff). Reconcile against the user's live SavedVariables.
+
+136 tests pass. Dev server: `npm run serve` (port 8000).
 
 ---
 
