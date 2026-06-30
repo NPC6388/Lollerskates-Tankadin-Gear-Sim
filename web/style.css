@@ -296,4 +296,8 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
   .ds-slot.right .ds-gems { justify-content: flex-start; }
   .ds-slot.right .defgem { margin-left: 6px; margin-right: 0; }
   .ds-slot.right .ds-alt .alt-line { justify-content: flex-start; }
+  /* Single column on mobile: undo the right-column mirroring for the new badges + BiS rows. */
+  .ds-slot.right .worn-badge, .ds-slot.right .swap-badge { margin-left: 6px; margin-right: 0; }
+  .ds-slot.right .bis-row { flex-direction: row; }
+  .ds-slot.right.swapped:not(.pinned) { box-shadow: inset 2px 0 0 rgba(90,169,230,.5); padding-left: 6px; padding-right: 0; }
 }

@@ -584,3 +584,5 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **"How the sim works" updated for the new controls.** Section 7 now says **Equip** (matching the
   renamed control) and documents the per-slot community-BiS reference list (reference-only, owned items
   equippable, hard-to-model exceptions flagged).
+- **Mobile layout for the new elements.** The ≤760px single-column view now un-mirrors the worn/swap
+  badges, BiS rows, and the swapped-slot edge accent (they no longer inherit the right-column reversal).
