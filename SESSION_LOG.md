@@ -38,14 +38,28 @@ Six results-page features (suite 136/136 green; both web JS files `node --check`
 - **Spell-hit cap tooltip** (summary header + per-set Spell panel) and a **Miss row** in the Defense
   panel (between Block and Dodge), using `missChance()` from `combat.js`.
 
+**Batches 3–6 (autonomous, owner asleep — "keep updating the fork till out of tokens"):**
+- **3** — BiS shown on empty slots; `test/bis-data.test.js` integrity guard (suite → 140/140).
+- **4** — BiS header tooltip (reference-only/source); empty slots dim only the label so the BiS dropdown
+  stays readable.
+- **5** — "How the sim works" §7 updated: "Pin"→"Equip", documents the community-BiS list.
+- **6** — mobile (≤760px) un-mirrors the new right-column elements (worn/swap badges, BiS rows, swapped
+  edge accent).
+
+Self-reviewed the interlocking render path (`slotHTML`/`slotDropdown`/`bisHTML`): note text is
+quote-safe for `title=`, `chosenId===null` (empty slot) falls through correctly, accordion + Wowhead
+refresh don't conflict. Stopped here deliberately — remaining ideas would be speculative features better
+done with owner direction. All on `feature/results-ui-improvements`; **`main` untouched / not merged.**
+
 ### Pick up here
-- **Owner review** the branch, then merge to `main` when happy (that's the deploy). Pre-commit asset hook
-  re-stamps `index.html` cache-bust hash on commits touching `web/`.
-- **Browser eyeball still owed**: confirm BiS Wowhead links iconize, dropdown summary reads
-  "≈ N also viable · BiS list", accordion closes siblings, swap/worn badges align, the Miss row and
-  spell-hit/armor tooltips read right.
+- **Owner review** the branch (6 commits: `bde06f1`→`85374a8`), then merge to `main` when happy (merge =
+  deploy). Pre-commit asset hook re-stamps `index.html` cache-bust hash on commits touching `web/`.
+- **Browser eyeball still owed**: BiS Wowhead links iconize, dropdown summary reads
+  "≈ N also viable · BiS list", accordion closes siblings, swap/worn badges + Miss row + spell-hit/armor
+  tooltips read right, mobile single-column looks clean.
 - Wowhead lists are "the best found" but the owner considers them mediocre — revisit BiS source later if
-  a better one appears.
+  a better one appears. Manual BiS additions go at the top of `web/bis.js` with a `note` (see Tome of
+  Fiery Redemption, P1–P2 trinkets).
 - Local review server: `python -m http.server 8000` from repo root → http://localhost:8000/.
 
 ---
