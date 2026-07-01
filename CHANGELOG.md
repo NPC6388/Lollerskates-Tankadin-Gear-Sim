@@ -609,3 +609,14 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the free mitigation it is. Reassignment only ever *earns* a bonus, never loses one, so genuine
   forfeits (3× orange can't fill a blue socket) stay skipped. `test/socket-bonus-reassign.test.js`.
   (149/149 suite.)
+- **Cache-busting now covers the whole ES-module graph (deterministic deploys).** The stamp only
+  fingerprinted `web/app.js` + `web/style.css`, but those pull in all of `src/` (and `web/bis*.js`) as
+  ES modules with un-versioned relative imports — so an *engine* change could keep serving a stale
+  `src/` file from the browser cache after a deploy (a plain reload wouldn't refetch it). `bin/stamp.mjs`
+  now crawls the module graph from `web/app.js` and writes a content-hashed **`<script type="importmap">`**
+  into `index.html` (between `importmap:start/end` markers): every module maps to a `?v=<hash>` URL, so
+  the browser resolves `app.js`'s imports to versioned URLs and busts caches exactly when a file's bytes
+  change — **without** rewriting the source imports (only `index.html` changes, no per-file cascade). The
+  pre-commit hook now re-stamps on any `src/`|`web/` `.js`/`.css` change (was: only app.js/style.css).
+  Relies on import-map support (Chrome 89+, Firefox 108+, Safari 16.4+). Safe by construction: the static
+  host ignores the `?v` query, so even a browser that skipped the map just loads the same file un-versioned.

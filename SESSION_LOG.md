@@ -31,11 +31,26 @@ already-earned one isn't double-counted. Reassignment only ever earns, never los
 `bonusKept === allFit` invariant (test/gem-socket.test.js) still holds *because* we relabel.
 `test/socket-bonus-reassign.test.js` added. Suite 143→**149/149**. CHANGELOG updated.
 
+Owner approved and this was **merged to `main` and pushed** (`bf63764`, fast-forward — main was 0 behind,
+so all 8 review commits + this fix deployed together).
+
+**Follow-up (same session): deterministic cache-busting for the whole module graph.** Noticed the stamp
+(`bin/stamp.mjs`) only fingerprinted `web/app.js` + `web/style.css`, but those import all of `src/` via
+un-versioned relative ES imports — so an engine change could serve a stale `src/` file from browser cache
+after deploy (likely why the owner's screenshot showed pre-fix behavior). Rewrote the stamp to crawl the
+module graph from `web/app.js` and emit a content-hashed **`<script type="importmap">`** into index.html
+(between `importmap:start/end` markers): each module → `?v=<hash>` URL. Import maps normalize relative
+specifiers to absolute URLs before matching, so `app.js`'s `../src/runner.js` remaps to the versioned URL
+with **no source-import rewriting and no per-file cascade** — only index.html changes. Pre-commit hook
+now re-stamps on any `src/|web/` `.js`/`.css` change (was app.js/style.css only). Stamp is CRLF-preserving
+and idempotent; verified all 19 mapped URLs serve 200, JSON parses, editing a src file flips only its
+hash. Import-map support: Chrome 89+/FF 108+/Safari 16.4+ (2021–2023). Non-breaking even if unsupported
+(host ignores the `?v` query → same file). CHANGELOG updated.
+
 ### Pick up here
-- Still on `feature/results-ui-improvements`, **not merged** — this fix is one more uncommitted change on
-  top of the 7 review commits (owner reviews, then merges to `main` = deploy).
-- Owner: after pulling, **hard-refresh** localhost (Ctrl+Shift+R) and re-check the chest — with the
-  on-disk gear it already read `active`; the fix guarantees it for any gear/export.
+- On `main`, deployed. If pulling the module-map change, no action needed — future engine commits
+  auto-stamp. The very first deploy of index.html itself still revalidates via GH Pages ETag (~10 min) or
+  a hard-refresh; after that every module is content-addressed.
 - Remaining browser eyeball items from the prior session still stand (accordion, badges, Miss row,
   spell-hit/armor tooltips, mobile column).
 
