@@ -596,3 +596,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   modeled for planning items (Wowhead encodes them as an unresolved id), so a planned item just isn't
   credited its socket bonus. `test/bis-equip.test.js` runs a synthetic item through the real optimizer
   (placed when pinned; every DB entry optimizer-ready; DB covers every display id). (143/143 suite.)
+- **Socket bonus is now permutation-aware — no more forfeiting a FREE bonus.** `bonusKept` used to check
+  whether each gem fit the socket it was *tagged* to, but the player chooses which gem goes in which
+  socket — so what matters is whether the chosen gems can be assigned (in *some* order) to fill every
+  socket by color. The greedy per-socket pick and, especially, the meta recolor could leave a hybrid gem
+  tagged to an off-color socket while a sibling that fits it sat elsewhere (e.g. a purple Nightseye in
+  the RED socket and an orange Noble Topaz in the BLUE socket), reporting the bonus "skipped — not worth
+  an off-color gem" when the very same gems, re-slotted, earn it for nothing. New `reassignForBonus`
+  (Kuhn's bipartite matching, sockets ≤4) finds the max-fit assignment, **relabels each gem's socket** so
+  the readout shows the earning layout, and `bonusEarnedAsTagged` gates crediting: a bonus the relabel
+  newly earns (which `planItemGems` had forfeited and so left out of the set stats) is now added back as
+  the free mitigation it is. Reassignment only ever *earns* a bonus, never loses one, so genuine
+  forfeits (3× orange can't fill a blue socket) stay skipped. `test/socket-bonus-reassign.test.js`.
+  (149/149 suite.)

@@ -4,6 +4,43 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-06-30 (later still) — Socket-bonus free-forfeit fix (post-crash resume)
+
+Resumed after a PC crash; working tree was clean (nothing lost — batch 7 committed at `191e677`).
+Owner did the browser eyeball pass on `feature/results-ui-improvements` (localhost:8000) and flagged
+**one bug**: the chest (Justicar Chestguard, R/Y/B sockets, +4 Def bonus) showed gems
+`Glowing Nightseye, Veiled Noble Topaz, Veiled Noble Topaz` with "✕ Socket bonus skipped — not worth an
+off-color gem", but those three gems (purple + 2×orange) *can* fill R/Y/B (Nightseye→blue, Topaz→red,
+Topaz→yellow), so the bonus was **free**.
+
+Root cause: `bonusKept` checked whether each gem fit the socket it was *tagged* to, not whether the gems
+could be *assigned* to fit (the player controls placement). The **meta recolor** (`resolveMetas` in
+runner.js) recolors specific sockets to satisfy a meta's color requirement and can leave a hybrid tagged
+to an off-color socket while a sibling that fits it sits elsewhere — a mislabel that forfeited an earnable
+bonus. (Note: the *on-disk* export never triggers it — swept every goal × slider × prof × meta and found
+**0 free forfeits** — so the owner's screenshot came from a different loaded export or a stale pre-fix
+browser bundle. Fix is defensive against the real code path regardless. If it recurs, hard-refresh first.)
+
+Fix (`src/gemsolver.js` + `src/runner.js`): new **`reassignForBonus`** (Kuhn's bipartite matching, ≤4
+sockets) finds the max-fit gem→socket assignment, **relabels** each gem's `.socket` so the readout shows
+the earning layout, and returns whether all sockets match. New **`bonusEarnedAsTagged`** is a faithful
+proxy for "was the bonus already banked into set stats" (planItemGems only banks it when it fills by
+color) — so a bonus the relabel *newly* earns is credited to `added` (free mitigation), while an
+already-earned one isn't double-counted. Reassignment only ever earns, never loses, so legit forfeits
+(3× orange → no blue-fit) stay skipped. Also applied in `nearAlternatives` (display-only). The existing
+`bonusKept === allFit` invariant (test/gem-socket.test.js) still holds *because* we relabel.
+`test/socket-bonus-reassign.test.js` added. Suite 143→**149/149**. CHANGELOG updated.
+
+### Pick up here
+- Still on `feature/results-ui-improvements`, **not merged** — this fix is one more uncommitted change on
+  top of the 7 review commits (owner reviews, then merges to `main` = deploy).
+- Owner: after pulling, **hard-refresh** localhost (Ctrl+Shift+R) and re-check the chest — with the
+  on-disk gear it already read `active`; the fix guarantees it for any gear/export.
+- Remaining browser eyeball items from the prior session still stand (accordion, badges, Miss row,
+  spell-hit/armor tooltips, mobile column).
+
+---
+
 ## 2026-06-30 (later) — Results-page UI batch on a review branch
 
 New workflow (owner instruction): **build ideas on a branch, never directly on `main`** (main deploys

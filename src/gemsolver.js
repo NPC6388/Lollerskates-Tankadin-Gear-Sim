@@ -8,7 +8,7 @@
 // by the goal's weights. This needs the v8 addon export (item.sockets = full color layout,
 // item.socketBonus = the prize); v7 imports fall back to currently-empty sockets only.
 
-import { bestGem, bestMeta, gemColors } from './gems.js';
+import { bestGem, bestMeta, gemColors, FITS } from './gems.js';
 import { bestEnchant, ENCHANTS } from './enchants.js';
 import { score } from './scoring.js';
 import { aggregate, STAT_KEYS } from './model.js';
@@ -35,6 +35,52 @@ export const GATE_STATS = new Set([
 
 function addStats(into, stats, mult = 1) {
   for (const [k, v] of Object.entries(stats)) into[k] = (into[k] || 0) + v * mult;
+}
+
+// A socket bonus activates when EVERY socket holds a color-fitting gem — but the PLAYER chooses which
+// gem goes in which socket, so what matters is whether the chosen gems can be assigned to the sockets
+// (as a permutation) with every socket matched, not the order the solver happened to tag them in. The
+// per-socket greedy pick (planItemGems) and the meta recolor (runner) can leave a gem tagged to an
+// off-color socket while a sibling hybrid that DOES fit it sits elsewhere — forfeiting a bonus the same
+// gems could earn for free. This finds the max-fit assignment (Kuhn's bipartite matching; sockets are
+// ≤4), RELABELS each gem's `.socket` to where it should physically go, and returns whether all sockets
+// end up matched (the bonus is earned). `choices` are the item's colored (non-meta) gem picks; each is
+// mutated in place. `sockets` is the item's color layout, e.g. { red:1, yellow:1, blue:1 }.
+export function reassignForBonus(choices, sockets = {}) {
+  const S = [];
+  for (const color of ['red', 'yellow', 'blue']) for (let i = 0; i < (sockets[color] || 0); i++) S.push(color);
+  if (!S.length || !choices.length) return false;
+  const fits = choices.map((c) => gemColors(c)); // socket colors each chosen gem satisfies
+  const gemOfSocket = new Array(S.length).fill(-1);
+  const socketOfGem = new Array(choices.length).fill(-1);
+  const augment = (gi, seen) => {
+    for (let si = 0; si < S.length; si++) {
+      if (seen[si] || !fits[gi].includes(S[si])) continue;
+      seen[si] = true;
+      if (gemOfSocket[si] === -1 || augment(gemOfSocket[si], seen)) {
+        gemOfSocket[si] = gi; socketOfGem[gi] = si; return true;
+      }
+    }
+    return false;
+  };
+  let matched = 0;
+  for (let gi = 0; gi < choices.length; gi++) if (augment(gi, new Array(S.length).fill(false))) matched++;
+  // Relabel: matched gems to the socket they fit; any leftover (unmatched) gems fill the leftover
+  // sockets off-color, so the readout still lists a socket for every gem.
+  const freeSockets = S.map((_, si) => si).filter((si) => gemOfSocket[si] === -1);
+  let f = 0;
+  for (let gi = 0; gi < choices.length; gi++) {
+    const si = socketOfGem[gi] !== -1 ? socketOfGem[gi] : freeSockets[f++];
+    if (si != null) choices[gi].socket = S[si];
+  }
+  return matched === S.length;
+}
+
+// Do the item's colored gems, as tagged, already sit in fitting sockets? (Faithful proxy for "was the
+// socket bonus counted into the set stats" — planItemGems only banks the bonus when it fills by color.)
+export function bonusEarnedAsTagged(choices) {
+  const colored = choices.filter((c) => c.color && FITS[c.color]);
+  return colored.length > 0 && colored.every((c) => FITS[c.color].includes(c.socket));
 }
 
 // Recommend gems for a socket-count block, e.g. { socketRed:1, socketYellow:1,

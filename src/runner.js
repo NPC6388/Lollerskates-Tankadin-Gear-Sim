@@ -12,7 +12,7 @@ import { bestGem, bestMeta, gemColors, metaActivated, GEMS, META_GEMS, CURRENT_P
 import { bestEnchant, ENCHANTS } from './enchants.js';
 import { score } from './scoring.js';
 import { SCALES, blendScale } from './weights.js';
-import { planItemGems } from './gemsolver.js';
+import { planItemGems, reassignForBonus, bonusEarnedAsTagged } from './gemsolver.js';
 import { buildPool, optimizeHeuristic, distinctOk } from './optimizer.js';
 import { professionPerks } from './professions.js';
 import { scrollStats } from './scrolls.js';
@@ -324,14 +324,21 @@ function runGoal(goal, items, ctx, seed = {}) {
       const en = bestEnchant(p.v.slot, p.scale, perks, { faction, maxPhase });
       if (en) sumInto(added, en.enchant.stats);
       gemChoices.push(...p.plan.choices);
-      // Carry the SOCKET COLOR per gem: the export's socket order is unreliable (Lua pairs()), so
-      // the bonus only activates if the user places each gem by COLOR — surface that mapping.
-      p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null, socket: c.socket || null }));
-      // Bonus is ACTIVE only if every colored gem fits the socket it's tagged to (computed on the
-      // FINAL choices, so it reflects any meta recolor). If forfeited, the UI says so explicitly.
       p.socketBonus = p.v.socketBonus || null;
+      // Bonus is ACTIVE if the item's chosen gems can be assigned (in ANY order — the player controls
+      // placement) so every socket color-matches. The greedy per-socket pick and the meta recolor can
+      // leave a gem tagged off-color while a sibling that fits it sits elsewhere; reassignForBonus finds
+      // the max-fit permutation and RELABELS each gem's socket so the readout shows the earning layout.
       const coloredCh = p.plan.choices.filter((c) => c.color && FITS[c.color]);
-      p.bonusKept = !!p.v.socketBonus && coloredCh.length > 0 && coloredCh.every((c) => FITS[c.color].includes(c.socket));
+      const earnedBefore = bonusEarnedAsTagged(p.plan.choices); // faithful "was the bonus in plan.stats?"
+      p.bonusKept = !!p.v.socketBonus && reassignForBonus(coloredCh, p.v.sockets);
+      // A bonus the relabel newly earns wasn't banked by planItemGems (it forfeited), so credit it now —
+      // it's free mitigation the same gems provide once slotted by color. (Reassignment never LOSES a
+      // bonus that was tagged-earned, so we only ever add.)
+      if (p.bonusKept && !earnedBefore) sumInto(added, { [p.v.socketBonus.stat]: p.v.socketBonus.value });
+      // Carry the SOCKET COLOR per gem: the export's socket order is unreliable (Lua pairs()), so the
+      // bonus only activates if the user places each gem by COLOR — surface that (relabeled) mapping.
+      p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null, socket: c.socket || null }));
       p.enchant = en ? { name: en.enchant.name, id: en.enchant.id || null, spell: en.enchant.spell || null, effectId: en.enchant.enchant || null } : null;
     }
     // An INACTIVE kept meta gives NO stats in-game, but a locked item's resolved stats include the
@@ -509,11 +516,12 @@ function runGoal(goal, items, ctx, seed = {}) {
       const dropInLegal = finalLegal(evaluateSet(aggregate(trialItems, aggOpts)));
       const plan = planItemGems(v, slotScale, perks, maxPhase, {});
       const coloredCh = plan.choices.filter((c) => c.color && FITS[c.color]);
+      const bonusKept = !!v.socketBonus && reassignForBonus(coloredCh, v.sockets); // relabels for display
       alts.push({
         itemId: v.itemId, name: v.name || null, objDelta: (sc - chosenScore) / denom, dropInLegal,
         gems: plan.choices.map((c) => ({ name: c.name, id: c.id || null, socket: c.socket || null })),
         socketBonus: v.socketBonus || null,
-        bonusKept: !!v.socketBonus && coloredCh.length > 0 && coloredCh.every((c) => FITS[c.color].includes(c.socket)),
+        bonusKept,
       });
     }
     alts.sort((a, b) => b.objDelta - a.objDelta);
