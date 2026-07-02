@@ -1032,14 +1032,32 @@ folder-copy testable **without CurseForge**.
   `test/lua/eval_parity.lua` checks the Lua port within 1e-6. Verified **69/69 field checks / 5
   fixtures** under a Lua VM; all addon `.lua` files syntax-clean; JS suite still **149/149**.
 
+### First in-game test + v0.8.1 fix (same day)
+Ran the Live tab in-game against the user's **Tankadin II WeakAura** (screenshot:
+`C:\Users\matth\Desktop\AI\BiS\wow-tbc\screencaps for testing\v01 tgs in-game.png`). Everything
+reconciled — miss/dodge/parry/block, armor (16294), block value (250), health (11317) — **except
+crit**: TGS showed 5.20% ("CRITTABLE") vs the WA's 5.88% (uncrittable). Root cause: on the
+Anniversary client `GetCombatRating(CR_CRIT_TAKEN_MELEE)` returns **0**, so resilience (~27 rating
+= 0.68%) was dropped. Fixed in **v0.8.1** (`Core.lua`): read resilience across the crit-taken CR_*
+indices, else fall back to `GetCombatRatingBonus` (%) → rating. Added **`/tgs debug`** to dump raw
+API reads. Widened the window / moved the value column right (text no longer overlaps). DR/EHP
+delta (57.67%/26735 vs 61.90%/29706) is **expected** — TGS mitigates vs a level-73 raid boss, the
+WA does not. Pushed: `d5693b2`.
+
 ### Pick up here next
-1. **In-game smoke test** (user): copy `addon/TankadinGearSim` into the Anniversary AddOns
-   folder, `/reload`, `/tgs` → confirm the Live tab matches the website for the same character;
-   toggle Holy Shield and watch crush surplus move by +30% block.
+1. **Re-verify the crit fix in-game** (user): re-copy `addon/TankadinGearSim`, `/reload`, `/tgs` →
+   crit should now read ~5.88% → **uncrittable**. If it still shows 5.20%, run **`/tgs debug`** and
+   send the output (tells us exactly which resilience CR index the client populates). Also confirm
+   the Holy Shield toggle moves total avoidance / crush surplus by 30%.
 2. **Phase B — CurseForge:** `.pkgmeta` + `BigWigsMods/packager` GitHub Action, swap the native
    UI for **Ace3**, `addon/PUBLISHING.md` (project id, `CF_API_KEY` secret — user-only steps).
 3. **Phase C/D:** `bin/gen-lua-data.mjs` to generate `Constants.lua` (and later gem/enchant/BiS
    tables) from the JS; then port the optimizer to run in a **frame-yielding coroutine**.
+
+### Open addon caveats (live readout)
+- **hsBlockBonus** is 30/0 only; block-libram 35.32 needs relic-slot detection (deferred).
+- **damageTakenMult** left at 1 (Imp RF −6% not auto-detected) — changes no pass/fail, only EHP.
+- **DR/EHP vs WA** differs by design (level-73 boss); not a bug.
 
 ### Caveats
 - **hsBlockBonus** is 30/0 only; block-libram 35.32 needs relic-slot detection (deferred).
