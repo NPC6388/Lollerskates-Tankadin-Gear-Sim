@@ -1,9 +1,22 @@
 ## Interface: 20504
-## Title: Tankadin Gear Sim Exporter
-## Notes: Exports your gear (equipped + bags + bank) for Lollerskate's Tankadin Gear Sim
+## Title: Tankadin Gear Sim
+## Notes: Live tank readout (uncrittable/uncrushable/EHP) + gear export for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.7.1
+## Version: 0.8.0
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB
 
+# Entry (sets the shared namespace + version) must load first.
 TankadinGearSim.lua
+
+# Ported sim engine (dependency order: Constants -> Combat -> Evaluate).
+engine\Constants.lua
+engine\Combat.lua
+engine\Evaluate.lua
+
+# Website exporter (reads ns.VERSION) and the live-sheet reader.
+Exporter.lua
+Core.lua
+
+# UI last (consumes ns.Core + ns.Exporter).
+UI.lua

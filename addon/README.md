@@ -1,7 +1,20 @@
-# Tankadin Gear Sim — Exporter Addon
+# Tankadin Gear Sim — In-game Addon
 
-A tiny WoW Classic (TBC Anniversary) addon that exports your gear and current
-character stats for [Lollerskate's Tankadin Gear Sim](../README.md).
+A WoW Classic (TBC Anniversary) addon for Protection Paladins. It does two things:
+
+1. **Live readout (v0.8.0+):** reads your *equipped* set straight off the character sheet and
+   shows the tank checks in-game — crit reduction vs raid/heroic (uncrittable ✓/✗ + surplus),
+   the avoidance breakdown, **uncrushable** status + crush surplus, armor DR, physical EHP, spell
+   power and block value — recomputing as you swap gear. Same math as the website (the ported
+   engine is parity-checked against the JS `evaluateSet`).
+2. **Export:** dumps your gear + stats + talents as a string for the full
+   [website sim](../README.md) (optimizer + gem/enchant solver still live there).
+
+## Commands
+- `/tgs` (or `/tankadin`) — open the window on the **Live** readout.
+- `/tgs export` — open the **Export** tab (copy box + SavedVariables flush).
+- In the Live tab, tick **Assume Holy Shield up** to include/exclude the +30% block in the
+  uncrushable check.
 
 ## Install
 1. Copy the `TankadinGearSim` folder into your client's AddOns folder. For TBC
@@ -9,10 +22,10 @@ character stats for [Lollerskate's Tankadin Gear Sim](../README.md).
 2. Restart the client (or `/reload`). Enable it on the character-select AddOns list;
    if it shows as out of date, tick **Load out of date AddOns**.
 
-## Use
+## Use (export to the website)
 1. **Open your bank** first if you want banked gear included.
-2. Type `/tgs` (or `/tankadin`).
-3. In the window that opens: **Ctrl+A**, **Ctrl+C**, then paste the string into the sim.
+2. Type `/tgs export` (or `/tgs`, then click the **Export** tab).
+3. In the box: **Ctrl+A**, **Ctrl+C**, then paste the string into the website sim.
 
 ## What it exports
 - **Line 1:** `TGS<version>` (format version; currently `TGS9`)

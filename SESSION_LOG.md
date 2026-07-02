@@ -1008,3 +1008,42 @@ weapons excluded; paired ring/trinket slots + distinctness handled in the harnes
   for owned gear are covered by addon v9. Scope shrank accordingly.
 - **Minor addon glitch:** a few random-suffix bag items export a mangled token
   (`…RESISTANCE0_NAME=364ESISTANCE0_NAME=364`); parser drops it harmlessly. Cosmetic v9.x fix.
+
+## 2026-07-02 — In-game addon, phase 1: live evaluator (addon v0.8.0)
+
+Kicked off turning the browser sim into a real in-game addon (CurseForge later). Plan file:
+`~/.claude/plans/snappy-forging-knuth.md`. Decisions locked with the user: **phased** (live
+evaluator now, optimizer later); **generate data / hand-port logic** for engine sync; **Ace3**
+as the eventual UI; addon **stays in this repo** under `addon/TankadinGearSim/`. MVP is
+folder-copy testable **without CurseForge**.
+
+### What landed
+- **Ported engine (pure math, no WoW API):** `addon/TankadinGearSim/engine/Constants.lua`,
+  `Combat.lua`, `Evaluate.lua` — a faithful port of `src/{constants,combat,character}.js`.
+  Fixed the classic Lua `a and b or c` ternary trap in `passesGates` (raid-immune=false would
+  fall through to the heroic check) with an explicit branch.
+- **Live readout:** `Core.lua` reads the sheet finals (dodge/parry/block/defense/resilience/
+  armor/health/spellpower/blockvalue), derives miss-vs-boss from defense skill (same formula as
+  `model.js:124`), and feeds `evaluateSet`. Recomputes on equipment/stat events (coalesced one
+  frame). `UI.lua` renders it in a native-frame window (Live + Export tabs) with a Holy Shield
+  toggle. `TankadinGearSim.lua` is now a thin entry (namespace + slashes); the exporter moved
+  intact to `Exporter.lua` behind `/tgs export`.
+- **Parity harness (anti-drift):** `bin/gen-fixtures.mjs` → `test/lua/fixtures.lua` (JS goldens);
+  `test/lua/eval_parity.lua` checks the Lua port within 1e-6. Verified **69/69 field checks / 5
+  fixtures** under a Lua VM; all addon `.lua` files syntax-clean; JS suite still **149/149**.
+
+### Pick up here next
+1. **In-game smoke test** (user): copy `addon/TankadinGearSim` into the Anniversary AddOns
+   folder, `/reload`, `/tgs` → confirm the Live tab matches the website for the same character;
+   toggle Holy Shield and watch crush surplus move by +30% block.
+2. **Phase B — CurseForge:** `.pkgmeta` + `BigWigsMods/packager` GitHub Action, swap the native
+   UI for **Ace3**, `addon/PUBLISHING.md` (project id, `CF_API_KEY` secret — user-only steps).
+3. **Phase C/D:** `bin/gen-lua-data.mjs` to generate `Constants.lua` (and later gem/enchant/BiS
+   tables) from the JS; then port the optimizer to run in a **frame-yielding coroutine**.
+
+### Caveats
+- **hsBlockBonus** is 30/0 only; block-libram 35.32 needs relic-slot detection (deferred).
+- **damageTakenMult** left at 1 (Imp RF −6% not auto-detected); constant factor, changes no
+  pass/fail, just the honest EHP number.
+- **Ace3 deferred:** MVP UI is native frames so it loads on a bare folder-copy; Ace3 comes with
+  the packager that embeds its libs (Phase B).

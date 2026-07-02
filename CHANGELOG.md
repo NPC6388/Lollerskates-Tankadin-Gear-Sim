@@ -620,3 +620,19 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   pre-commit hook now re-stamps on any `src/`|`web/` `.js`/`.css` change (was: only app.js/style.css).
   Relies on import-map support (Chrome 89+, Firefox 108+, Safari 16.4+). Safe by construction: the static
   host ignores the `?v` query, so even a browser that skipped the map just loads the same file un-versioned.
+- **Addon grows an in-game LIVE readout (v0.8.0) — the sim starts moving in-game.** The companion addon
+  is no longer export-only: `/tgs` now opens a window whose **Live tab** reads your equipped set straight
+  off the character sheet and shows crit reduction vs raid/heroic (uncrittable ✓/✗ + surplus), the
+  avoidance breakdown (miss/dodge/parry/block), total avoidance with/without Holy Shield, **uncrushable**
+  status + crush surplus, armor DR, health, physical EHP, spell power and block value — recomputing live
+  as you swap gear (a **Holy Shield up** toggle flips the +30% block). This is the first slice of turning
+  the browser sim into an in-game tool (see `snappy-forging-knuth` plan): the optimizer + gem/enchant
+  solver stay on the website for now. The old exporter is unchanged, split out to `Exporter.lua` and moved
+  behind the window's **Export tab** (`/tgs export`). Structure: the addon now loads `engine/{Constants,
+  Combat,Evaluate}.lua` — a hand-port of `src/{constants,combat,character}.js` that feeds live sheet
+  values into the same `evaluateSet` the website uses (no forward model needed in-game, since the game
+  already computes the sheet finals). **Anti-drift parity:** `bin/gen-fixtures.mjs` emits the JS
+  `evaluateSet` goldens (from the `sheet-parity` inputs) to `test/lua/fixtures.lua`, and
+  `test/lua/eval_parity.lua` runs the ported Lua engine against them within 1e-6 — verified **69/69 field
+  checks across 5 fixtures** (run under a Lua VM; JS suite still 149/149). UI is native frames for the MVP
+  (loads on a plain folder-copy, no external libs); Ace3 + CurseForge packaging are the next phase.
