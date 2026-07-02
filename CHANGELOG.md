@@ -636,3 +636,15 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   `test/lua/eval_parity.lua` runs the ported Lua engine against them within 1e-6 — verified **69/69 field
   checks across 5 fixtures** (run under a Lua VM; JS suite still 149/149). UI is native frames for the MVP
   (loads on a plain folder-copy, no external libs); Ace3 + CurseForge packaging are the next phase.
+- **Addon v0.8.1 — fix live resilience read (was reporting crittable when uncrittable) + text
+  overlap.** On the Anniversary client `GetCombatRating(CR_CRIT_TAKEN_MELEE)` was coming back 0, so
+  the Live tab counted **zero resilience** and under-reported crit reduction — e.g. a real 5.88%
+  (uncrittable) showed as 5.20% ("CRITTABLE"). `Core.lua` now reads resilience robustly: it tries
+  `GetCombatRating` across the crit-taken indices (melee/spell/ranged CR_* globals) and, if those are
+  0, falls back to the % the game reports via `GetCombatRatingBonus` converted back to a rating.
+  (The website never hit this — it parses resilience off item tooltips.) Added **`/tgs debug`** to
+  print the raw API reads (defense/avoidance + per-index resilience rating & bonus) so any future
+  live-vs-website mismatch can be pinned to the exact source. Also widened the window and moved the
+  value column right so long avoidance labels no longer overlap their numbers. Everything else in the
+  screenshot reconciled: miss/dodge/parry/block, armor, block value, health all matched the Tankadin
+  II WeakAura; the DR/EHP difference is expected (TGS mitigates vs a level-73 raid boss, the WA does not).

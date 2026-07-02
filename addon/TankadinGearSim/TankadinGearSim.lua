@@ -20,6 +20,10 @@ SLASH_TANKADINGEARSIM1 = "/tgs"
 SLASH_TANKADINGEARSIM2 = "/tankadin"
 SlashCmdList["TANKADINGEARSIM"] = function(msg)
   msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+  if msg == "debug" then
+    if ns.Core and ns.Core.debug then ns.Core.debug() end
+    return
+  end
   if not ns.UI then return end
   if msg == "export" then
     ns.UI.Show("export")
