@@ -292,13 +292,13 @@ return {
       impRighteousFuryDR = 0.06,
     } },
   { name = "fullProt", ranks = {
-      Sacred Duty = 2,
-      Combat Expertise = 5,
+      ["Sacred Duty"] = 2,
+      ["Combat Expertise"] = 5,
       Toughness = 5,
       Anticipation = 5,
       Deflection = 5,
       Precision = 3,
-      Improved Righteous Fury = 3,
+      ["Improved Righteous Fury"] = 3,
     }, expected = {
       anticipationDefenseSkill = 20,
       deflectionParryPct = 5,
@@ -313,7 +313,7 @@ return {
       Anticipation = 0,
       Deflection = 3,
       Toughness = 0,
-      Improved Righteous Fury = 0,
+      ["Improved Righteous Fury"] = 0,
       Precision = 2,
     }, expected = {
       anticipationDefenseSkill = 0,

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
+    "test:lua:wasm": "node bin/run-lua-parity.mjs",
     "optimize": "node bin/optimize.mjs",
     "serve": "node bin/serve.mjs",
     "stamp": "node bin/stamp.mjs",

@@ -4,6 +4,36 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-03 (later) — CI + local Lua parity (verify the foundation before D3)
+
+User: "lua-parity check first" (before continuing to D3). Built the verification layer and — for the
+first time — actually **ran** the Lua ports.
+- **`.github/workflows/ci.yml`:** JS suite → generated-files-in-sync check (regen + `git diff`) →
+  `luac5.1 -p` syntax-check of every addon `.lua` → the three parity harnesses under real **lua5.1**.
+- **`bin/run-lua-parity.mjs` + `npm run test:lua:wasm`:** runs the same syntax pass + parity locally
+  **without native Lua** via `wasmoon` (Lua-in-WASM). Kept `wasmoon` OUT of package.json (repo stays
+  zero-dep); the script prints `npm i -D wasmoon` if missing. Installed it here with
+  `npm i --no-save --no-package-lock` (node_modules is gitignored) to verify — nothing leaked into git.
+- **Bug it caught immediately:** `gen-model-fixtures.mjs` emitted talent-rank keys with spaces as bare
+  identifiers (`Sacred Duty = 2`) → Lua syntax error in `model_fixtures.lua`. Fixed with a `luaKey`
+  helper that bracket-quotes non-identifiers (`["Sacred Duty"] = 2`). CI would've caught it on push;
+  local run caught it now.
+- **Result: all green** — syntax PASS (11 addon files, incl. Core/UI/Exporter compile clean) + **313
+  parity checks** (eval 69 + scoring 118 + model 126). So D1+D2 ports are verified against the JS
+  goldens, not just eyeballed.
+
+Note: wasmoon is Lua 5.4 (WoW/CI is 5.1) — fine for arithmetic parity + syntax; CI's lua5.1 is
+authoritative. No `.toc` bump / zip rebuild (only CI + tooling + a test-fixture fix changed; nothing
+shipped in the addon).
+
+### Pick up here (D3) — unchanged from below, now on a verified base
+- **D3 — live item pool:** refactor `Exporter.lua`'s owned-item reads into structured item objects
+  ({ slot, stats = { STAT_KEYS... }, sockets, name }) that `Model.aggregate` consumes (replaces the
+  website's `import.js`). Add a `*_parity`-style guard where it makes sense. Then D4 solver, D5 search
+  (frame-yielding coroutine), D6 runner + Optimize tab.
+
+---
+
 ## 2026-07-03 — In-game optimizer, D2: forward model (addon v0.8.7)
 
 Continued Phase D (user: "what's next… continue"). **D2 landed** — the forward model that turns a

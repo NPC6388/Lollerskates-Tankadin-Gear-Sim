@@ -41,9 +41,11 @@ const RANKS = [
 ];
 
 const luaScalar = (v) => (typeof v === 'boolean' ? (v ? 'true' : 'false') : v == null ? 'nil' : String(v));
+// Talent-rank keys like "Sacred Duty" aren't valid Lua identifiers — bracket-quote those.
+const luaKey = (k) => (/^[A-Za-z_]\w*$/.test(k) ? k : `[${JSON.stringify(k)}]`);
 const luaFlat = (obj, indent) => {
   const pad = ' '.repeat(indent);
-  const inner = Object.entries(obj).map(([k, v]) => `${pad}  ${k} = ${luaScalar(v)},`).join('\n');
+  const inner = Object.entries(obj).map(([k, v]) => `${pad}  ${luaKey(k)} = ${luaScalar(v)},`).join('\n');
   return `{\n${inner}\n${pad}}`;
 };
 const luaItems = (items, indent) => {

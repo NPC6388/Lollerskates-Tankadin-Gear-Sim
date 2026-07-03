@@ -736,6 +736,18 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   talents} + `talentsFromRanks` rank maps); `test/lua/model_parity.lua` checks the Lua port. Pre-commit
   drift guard extended (regen `CharacterData.lua` + model goldens on `src/model.js` changes). Loads in
   the `.toc` but not wired to any UI. JS suite still 149/149. `.toc` → 0.8.7.
+- **CI + local Lua parity (verify the ported addon).** Added `.github/workflows/ci.yml`: on push/PR it
+  runs the JS suite, checks every generated Lua/fixture is in sync with its JS source (regenerate +
+  `git diff`), syntax-checks **every** addon `.lua` under Lua 5.1 (`luac -p` — WoW's Lua version, so it
+  covers the WoW-facing `Core`/`UI`/`Exporter` files too), and runs the three parity harnesses
+  (`eval`/`scoring`/`model`) — turning all the previously "unrun locally" parity work into an actual
+  green check. Also added `bin/run-lua-parity.mjs` + `npm run test:lua:wasm`: runs the same syntax pass
+  + parity harnesses locally **without a native Lua** via `wasmoon` (kept out of `package.json` so the
+  repo stays dependency-free — the script prints `npm i -D wasmoon` if it's absent). This immediately
+  earned its keep: it caught a real bug — the model fixtures emitted talent-rank keys with spaces
+  (`Sacred Duty = 2`) as bare Lua identifiers (a syntax error); `gen-model-fixtures.mjs` now
+  bracket-quotes non-identifier keys (`["Sacred Duty"] = 2`). Verified: syntax PASS (11 files) + 313
+  parity checks (69 + 118 + 126) all green.
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from
