@@ -2,7 +2,7 @@
 ## Title: Tankadin Gear Sim
 ## Notes: Live tank readout (uncrittable/uncrushable/EHP) + gear export for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.8.6
+## Version: 0.8.7
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB
 ## X-Category: Combat
@@ -14,12 +14,15 @@
 # Entry (sets the shared namespace + version) must load first.
 TankadinGearSim.lua
 
-# Ported sim engine (dependency order: Constants -> Combat -> Evaluate; Weights -> Scoring).
+# Ported sim engine (dependency order: Constants -> Combat -> Evaluate; Weights -> Scoring;
+# CharacterData -> Model, which also needs Constants).
 engine\Constants.lua
 engine\Combat.lua
 engine\Evaluate.lua
 engine\Weights.lua
 engine\Scoring.lua
+engine\CharacterData.lua
+engine\Model.lua
 
 # Website exporter (reads ns.VERSION) and the live-sheet reader.
 Exporter.lua

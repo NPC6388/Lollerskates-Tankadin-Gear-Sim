@@ -723,6 +723,19 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   text and the slash handler opens the window on the Export tab with the debug lines in the copy box
   (`UI.ShowDebug`), so you can Ctrl+C it instead of digging through chat. Still prints to chat too.
   `.toc` → 0.8.6.
+- **Addon v0.8.7 — in-game optimizer, D2: forward model (internal, no UI yet).** Second Phase-D brick:
+  the first-principles forward calc that turns a hypothetical item selection into the sheet stats
+  `evaluateSet` consumes (what the optimizer needs to score a candidate set — the Live readout still
+  reads finals off the sheet directly). `bin/gen-lua-data.mjs` now also generates
+  **`engine/CharacterData.lua`** (the L70 Blood Elf Paladin base intercepts, default talent mods, and
+  Kings/MotW buffs — `CHARACTER`/`TALENTS`/`BUFFS`/`STAT_KEYS` from `src/model.js`). Hand-ported
+  **`engine/Model.lua`** mirrors `model.js`'s `aggregate`, `talentsFromRanks`, and `sumStats` — incl.
+  the Kings ×1.10 multiplier applied after flat buffs, Toughness item-armor scaling, the Strength/20
+  block-value term, and Improved-RF `damageTakenMult`. Anti-drift: `bin/gen-model-fixtures.mjs` →
+  `test/lua/model_fixtures.lua` (aggregate over gear × {unbuffed, Kings, Kings+MotW, scroll+HS, alt
+  talents} + `talentsFromRanks` rank maps); `test/lua/model_parity.lua` checks the Lua port. Pre-commit
+  drift guard extended (regen `CharacterData.lua` + model goldens on `src/model.js` changes). Loads in
+  the `.toc` but not wired to any UI. JS suite still 149/149. `.toc` → 0.8.7.
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

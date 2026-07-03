@@ -4,6 +4,35 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-03 — In-game optimizer, D2: forward model (addon v0.8.7)
+
+Continued Phase D (user: "what's next… continue"). **D2 landed** — the forward model that turns a
+hypothetical item selection into the sheet stats `evaluateSet` eats (the optimizer's scoring input;
+the Live readout still reads finals off the sheet, so this isn't wired to any UI yet).
+- `bin/gen-lua-data.mjs` now also emits **`engine/CharacterData.lua`** (CHARACTER/TALENTS/BUFFS/
+  STAT_KEYS from `src/model.js`) — added a `luaArray` helper for STAT_KEYS.
+- **`engine/Model.lua`** hand-ports `aggregate`/`talentsFromRanks`/`sumStats` (Kings ×1.10 after flats,
+  Toughness item-armor, Strength/20 block value, Imp-RF damageTakenMult). Loads after CharacterData
+  (needs it + Constants).
+- Parity: `bin/gen-model-fixtures.mjs` → `test/lua/model_fixtures.lua`; runner `model_parity.lua`.
+- Pre-commit guard: regen CharacterData.lua + model goldens on `src/model.js`. `gen-model-fixtures`
+  npm script. `.toc` → 0.8.7; zip rebuilt. JS suite 149/149.
+
+**Still no Lua interpreter here** → eval/scoring/model parity harnesses are unrun locally. Port is a
+direct 1:1 of model.js (re-checked every field + RATING key by eye); base fixture sanity-checks by hand
+(defenseSkill 370 = 350+20 Anticipation, health 4612.2, blockValue 6). Verify under CI / a Lua box.
+
+### Pick up here (D3)
+- **D3 — live item pool:** refactor `Exporter.lua`'s owned-item reads into structured item objects
+  ({ slot, stats = { key=val }, sockets, name }) that `Model.aggregate` can consume — replacing the
+  website's `import.js` string parse. The Exporter already scans equipped+bags+bank, so most of the
+  gather exists; the work is mapping tooltip/GetItemStats reads → the STAT_KEYS stat block per item and
+  grouping by slot. Then D4 (gem/enchant solver), D5 (search in a frame-yielding coroutine), D6 (runner
+  + Optimize tab).
+- Everything still loads on a bare folder-copy (no Ace3) — keep it that way until the CurseForge phase.
+
+---
+
 ## 2026-07-02 (night) — Addon v0.8.5: Live readout reacts to buffs
 
 User (after approving the reskin): "armor dr, ehp, block chance doesn't change when i buff righteous

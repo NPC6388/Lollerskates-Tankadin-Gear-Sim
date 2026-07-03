@@ -8,16 +8,23 @@ if git diff --cached --name-only | grep -qE '^(src|web)/.*\.(js|css)$'; then
   git add index.html
 fi
 
-# Keep the addon's generated data (engine/Constants.lua, engine/Weights.lua) in lockstep with the JS
-# source of truth (src/constants.js, src/weights.js). Re-run the generator whenever those — or the
-# generator itself — are part of this commit, and stage the result. Same spirit as the asset stamp.
-if git diff --cached --name-only | grep -qE '^(src/constants\.js|src/weights\.js|bin/gen-lua-data\.mjs)$'; then
+# Keep the addon's generated data (Constants/Weights/CharacterData.lua) in lockstep with the JS source
+# of truth (src/{constants,weights,model}.js). Re-run the generator whenever those — or the generator
+# itself — are part of this commit, and stage the result. Same spirit as the asset stamp.
+if git diff --cached --name-only | grep -qE '^(src/(constants|weights|model)\.js|bin/gen-lua-data\.mjs)$'; then
   node bin/gen-lua-data.mjs || exit 1
-  git add addon/TankadinGearSim/engine/Constants.lua addon/TankadinGearSim/engine/Weights.lua
+  git add addon/TankadinGearSim/engine/Constants.lua addon/TankadinGearSim/engine/Weights.lua \
+    addon/TankadinGearSim/engine/CharacterData.lua
 fi
 
 # Keep the Lua scoring parity goldens fresh when the scoring core (or its generator) changes.
 if git diff --cached --name-only | grep -qE '^(src/weights\.js|src/scoring\.js|bin/gen-scoring-fixtures\.mjs)$'; then
   node bin/gen-scoring-fixtures.mjs || exit 1
   git add test/lua/scoring_fixtures.lua
+fi
+
+# Keep the Lua forward-model parity goldens fresh when the model (or its generator) changes.
+if git diff --cached --name-only | grep -qE '^(src/model\.js|bin/gen-model-fixtures\.mjs)$'; then
+  node bin/gen-model-fixtures.mjs || exit 1
+  git add test/lua/model_fixtures.lua
 fi
