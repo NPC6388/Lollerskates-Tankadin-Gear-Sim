@@ -692,3 +692,14 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   (`bin/gen-fixtures.mjs` + `test/lua/eval_parity.lua` already covered the *logic* parity in Phase A;
   this closes the DATA half. The remaining Phase C/D generators — gems/enchants/BiS tables — are
   additive once the optimizer port begins.)
+- **Addon v0.8.3 — Live tab reskinned to the Tankadin II WeakAura look.** Cosmetic pass on the Live
+  pane (`UI.lua`) at the user's request: a compact vertical stat-stack instead of the wide two-column
+  table — **gold** stat labels, **cyan** values, grouped Avoidance (Miss/Dodge/Parry/Avoid/Block) ·
+  Caps (Crit raid + heroic, Crush) · Mitigation (Block value/Armor/Armor DR/EHP·HP) · Throughput
+  (Spell power), on the existing **black background**. Pass/fail now uses the built-in green-check /
+  red-cross ready-check textures with green/red value coloring (raid-crit, heroic-crit, crush each get
+  their own mark), and the crush/crit rows show `value / threshold`. Avoid = miss+dodge+parry and Block
+  is the effective (HS-inclusive) figure, matching the WeakAura's rows. The window is now **narrow on
+  the Live tab** and widens only for the Export tab (whose copy box is unchanged). Done in native
+  frames (no Ace3) so the bare folder-copy dev loop keeps working; the styling carries over when the UI
+  is later ported to Ace3.

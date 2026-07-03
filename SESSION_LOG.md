@@ -4,6 +4,37 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-02 (evening) — Addon v0.8.3: Live tab reskinned to the WeakAura look
+
+User direction: **reskin the Live readout to look like the Tankadin II WeakAura** (compact colored
+stat-stack) keeping TGS's black background, **then** build the in-game optimizer, **CurseForge last**.
+Did the reskin in **native frames** (chosen option 3 — no Ace3 yet, so the folder-copy dev loop keeps
+working; styling carries into the eventual Ace3 port).
+
+`UI.lua` Live pane rewritten from the wide two-column table into a compact vertical stack: gold labels
+(`GOLD`), cyan values (`CYAN`), grouped Avoidance (Miss/Dodge/Parry/Avoid/Block) · Caps (Crit + a dim
+heroic line + Crush) · Mitigation (Block value/Armor/Armor DR/EHP·HP) · Throughput (Spell power). New
+`statRow` helper (label x14, value x118); pass/fail uses the built-in `ReadyCheck-Ready`/`-NotReady`
+textures (`mark()`) + green/red value color; crush/crit rows show `value / threshold`. Avoid =
+`e.actualAvoidance` (miss+dodge+parry); Block = `blockPctEffective`. Window is now **narrow (300×404)
+on Live**, widens to 600×440 for Export (via `UI.Select`). `.toc` → **0.8.3**; zip rebuilt.
+
+**Not verified in-game** (no WoW here) — the user will eyeball it. Watch for: the bottom note crowding
+the Spell-power row (height padded to 404 + note shortened to one line), and whether the ready-check
+`|T…|t` icons render inline at the chosen `:0` size. If layout's off, nudge row pitch (17) / window
+height. Lua syntax not machine-checked (no luac locally); reviewed by eye, all `liveRows` keys are set.
+
+### Pick up here
+- **Next: in-game optimizer (Phase D).** Duplicate the website's optimize functionality in-game — port
+  `model.js`/`weights.js`/`scoring.js`/`sets.js`/`optimizer.js` (+ gems/enchants) to Lua, generate the
+  item/gem/enchant data tables via `bin/gen-lua-data.mjs` (extend it — it's structured for this), read
+  owned gear directly (no export string), and run the search in a **frame-yielding coroutine** to dodge
+  the "script ran too long" watchdog. This is the big one; scope it in phases.
+- CurseForge is explicitly **last** (pipeline already scaffolded in Phase B part 1; needs the user's CF
+  account setup + a dry-run tag — see `addon/PUBLISHING.md`).
+
+---
+
 ## 2026-07-02 (later) — Addon v0.8.2: real crit fix + Holy Shield/libram accuracy
 
 Second in-game test of the Live tab (user, Libram of Repentance equipped, two screenshots: HS
