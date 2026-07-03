@@ -21,10 +21,18 @@ fury or cast hs." Diagnosed three things in `Core.lua`:
 `buffActive` helper shared by HS + RF checks. `/tgs debug` prints RF/rank/damageTakenMult. `.toc` → 0.8.5;
 zip rebuilt.
 
-**Not verified in-game** (no WoW here). Watch: GetTalentInfo name-match "Improved Righteous Fury" is
-enUS-only (fine for the user); and the resilience gear-scan now re-runs on every coalesced UNIT_AURA
-tick while the window is open — cheap enough (coalesced 1/frame, only when shown) but a possible future
-optimization is to cache resilience and only rescan on equipment change.
+**Verified in-game** (user): numbers now change in realtime with buffs. RF discrepancy vs the WeakAura
+reconciled — with RF up, TGS EHP +6.38% (26038→27700) vs WA +11.11% (→28931). `/tgs debug` confirmed
+`impRF rank=3, damageTakenMult=0.940` → TGS is on the textbook 3/3 = 6%; the **WeakAura over-counts**
+by ~4% (its 10%), probably folding a magic-only reduction (Spell Warding) into physical EHP. **TGS
+correct, no engine change.**
+
+**v0.8.6 follow-up:** `/tgs debug` now dumps into the **Export copy box** (`Core.debug()` returns the
+text; `UI.ShowDebug` opens the Export tab with it) so it's Ctrl+C-able, not just printed to chat.
+
+Watch: GetTalentInfo name-match "Improved Righteous Fury" is enUS-only (fine for the user); the
+resilience gear-scan re-runs on each coalesced UNIT_AURA tick while the window's open — cheap
+(1/frame, only when shown) but a candidate to cache (rescan only on equipment change) if perf bites.
 
 ---
 

@@ -173,6 +173,21 @@ function UI.Show(key)
   UI.Select(key or "live")
 end
 
+-- Drop arbitrary text (e.g. /tgs debug output) into the Export copy box for Ctrl+C, without the
+-- gear-string refresh that selecting the Export tab normally triggers.
+function UI.ShowDebug(text)
+  if not frame then buildFrame() end
+  frame:Show()
+  frame:SetSize(600, 440)
+  for k, p in pairs(panes) do
+    p:SetShown(k == "export")
+    tabs[k]:SetEnabled(k ~= "export")
+  end
+  exportEdit:SetText(text or "")
+  exportEdit:SetCursorPosition(0)
+  exportInfo:SetText("/tgs debug output — Ctrl+A, Ctrl+C to copy. Click the Export tab to regenerate the gear string.")
+end
+
 function UI.Toggle(key)
   if frame and frame:IsShown() and (not key or panes[key]:IsShown()) then
     frame:Hide()

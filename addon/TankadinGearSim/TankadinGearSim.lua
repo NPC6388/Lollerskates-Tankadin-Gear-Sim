@@ -21,7 +21,8 @@ SLASH_TANKADINGEARSIM2 = "/tankadin"
 SlashCmdList["TANKADINGEARSIM"] = function(msg)
   msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
   if msg == "debug" then
-    if ns.Core and ns.Core.debug then ns.Core.debug() end
+    local text = ns.Core and ns.Core.debug and ns.Core.debug()
+    if ns.UI and ns.UI.ShowDebug then ns.UI.ShowDebug(text) end
     return
   end
   if not ns.UI then return end

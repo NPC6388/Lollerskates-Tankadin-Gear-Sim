@@ -715,6 +715,14 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   from the RF aura + talent rank and folded into physical **EHP** via `damageTakenMult` — so EHP rises
   ~6% at 3/3 when RF is up. (Armor DR is unchanged by RF/HS by design — neither touches armor; it only
   moves with armor.) `/tgs debug` now prints RF state / rank / damageTakenMult. `.toc` → 0.8.5.
+  - Reconciled against the Tankadin II WeakAura: with RF up, TGS EHP +6.38% (26038→27700) vs the WA's
+    +11.11% (→28931). TGS is correct — `/tgs debug` confirmed `impRF rank=3, damageTakenMult=0.940`
+    (textbook 3/3 = 6%); the WA's 10% over-counts physical damage reduction by ~4% (likely folding in a
+    magic-only reduction like Spell Warding). No engine change.
+- **Addon v0.8.6 — `/tgs debug` dumps to the Export copy box.** `Core.debug()` now also returns its
+  text and the slash handler opens the window on the Export tab with the debug lines in the copy box
+  (`UI.ShowDebug`), so you can Ctrl+C it instead of digging through chat. Still prints to chat too.
+  `.toc` → 0.8.6.
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

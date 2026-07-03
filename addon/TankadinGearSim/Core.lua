@@ -196,11 +196,12 @@ function Core.snapshot(opts)
   return { input = input, evald = Evaluate.evaluateSet(input) }
 end
 
--- /tgs debug — print the raw API reads so a live-vs-website mismatch can be pinned to the exact
--- source (e.g. which resilience combat-rating index the client actually populates).
+-- /tgs debug — dump the raw API reads so a live-vs-website mismatch can be pinned to the exact source
+-- (e.g. which resilience combat-rating index the client populates). Prints to chat AND returns the
+-- text as one string, so the UI can drop it in the Export copy box for easy Ctrl+C.
 function Core.debug()
-  local out = DEFAULT_CHAT_FRAME
-  local function p(s) out:AddMessage("|cff7ee787TGS|r " .. s) end
+  local lines = {}
+  local function p(s) lines[#lines + 1] = s end
   local input = Core.readSheet({})
   p(string.format("defenseSkill=%.2f  miss=%.2f  dodge=%.2f  parry=%.2f  block=%.2f",
     input.defenseSkill, input.missPct, input.dodgePct, input.parryPct, input.blockPct))
@@ -219,6 +220,10 @@ function Core.debug()
     p(string.format("CR idx %d (%s): GetCombatRating=%s  GetCombatRatingBonus=%s",
       i, names[i] or "?", tostring(safe(GetCombatRating, i)), tostring(safe(GetCombatRatingBonus, i))))
   end
+
+  local out = DEFAULT_CHAT_FRAME
+  for _, s in ipairs(lines) do out:AddMessage("|cff7ee787TGS|r " .. s) end
+  return table.concat(lines, "\n")
 end
 
 -- ---- Refresh plumbing: let the UI subscribe to gear/stat changes ----
