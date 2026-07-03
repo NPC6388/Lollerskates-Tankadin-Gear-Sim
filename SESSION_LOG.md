@@ -4,6 +4,30 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-02 (night) — Addon v0.8.5: Live readout reacts to buffs
+
+User (after approving the reskin): "armor dr, ehp, block chance doesn't change when i buff righteous
+fury or cast hs." Diagnosed three things in `Core.lua`:
+- **Root cause for all of it:** the refresh frame listened for gear/stat events but **not `UNIT_AURA`**,
+  so nothing recomputed when a buff/aura changed. Registered `UNIT_AURA` (player).
+- **Block/Crush now move on a live HS cast.** v0.8.2 made block state-independent (strip live HS to
+  base, re-add only when the toggle was on) — correct against double-counting but it meant casting HS
+  did nothing. Changed to apply the bonus when **`hsActive OR toggle`**: casting HS moves Block+Crush
+  live (toggle off), the toggle still previews when HS is down, and it still can't double-count.
+- **EHP now reflects Improved Righteous Fury.** Detect the live RF aura (`buffActive`) + talent rank
+  (`impRighteousFuryRank` via GetTalentInfo) → `damageTakenMult = 1 - 0.02*rank` while RF is up; folds
+  into physical EHP in evaluateSet (~+6% at 3/3). **Armor DR is correctly unchanged by RF/HS** (armor
+  only) — explained to the user, not a bug.
+`buffActive` helper shared by HS + RF checks. `/tgs debug` prints RF/rank/damageTakenMult. `.toc` → 0.8.5;
+zip rebuilt.
+
+**Not verified in-game** (no WoW here). Watch: GetTalentInfo name-match "Improved Righteous Fury" is
+enUS-only (fine for the user); and the resilience gear-scan now re-runs on every coalesced UNIT_AURA
+tick while the window is open — cheap enough (coalesced 1/frame, only when shown) but a possible future
+optimization is to cache resilience and only rescan on equipment change.
+
+---
+
 ## 2026-07-02 (evening) — Addon v0.8.3: Live tab reskinned to the WeakAura look
 
 User direction: **reskin the Live readout to look like the Tankadin II WeakAura** (compact colored

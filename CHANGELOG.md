@@ -703,6 +703,18 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the Live tab** and widens only for the Export tab (whose copy box is unchanged). Done in native
   frames (no Ace3) so the bare folder-copy dev loop keeps working; the styling carries over when the UI
   is later ported to Ace3.
+- **Addon v0.8.5 — Live readout reacts to buffs (Holy Shield / Righteous Fury).** The Live tab wasn't
+  updating when auras changed — it only listened for gear/stat events, not `UNIT_AURA` — so casting
+  Holy Shield or buffing Righteous Fury moved nothing. Three fixes in `Core.lua`:
+  (1) register `UNIT_AURA` (player) so the readout recomputes on buff changes;
+  (2) the Holy Shield block bonus now applies when HS is **live OR assumed** (was: only when the toggle
+  was on, then normalized back out) — so **casting Holy Shield now moves Block + Crush live** with the
+  toggle off, while the toggle still previews it when HS is down (still no double-count: a live aura is
+  stripped to base then the bonus re-added once);
+  (3) **Improved Righteous Fury's damage reduction** (2%/rank, only while RF is up) is detected live
+  from the RF aura + talent rank and folded into physical **EHP** via `damageTakenMult` — so EHP rises
+  ~6% at 3/3 when RF is up. (Armor DR is unchanged by RF/HS by design — neither touches armor; it only
+  moves with armor.) `/tgs debug` now prints RF state / rank / damageTakenMult. `.toc` → 0.8.5.
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

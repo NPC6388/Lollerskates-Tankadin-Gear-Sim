@@ -88,21 +88,24 @@ local function liveDefenseSkill()
   return level * 5 + defBonus
 end
 
+-- Is a named buff active on the player? (AuraUtil when present, else a UnitBuff scan.)
+local function buffActive(name)
+  if AuraUtil and AuraUtil.FindAuraByName then
+    return AuraUtil.FindAuraByName(name, "player", "HELPFUL") ~= nil
+  end
+  for i = 1, 40 do
+    local n = safe(UnitBuff, "player", i)
+    if not n then break end
+    if n == name then return true end
+  end
+  return false
+end
+
 -- Is Holy Shield currently up? When it is, GetBlockChance() already includes its +30% block (and a
 -- block libram's HS-conditional block), so we must NOT add the bonus again — doing so double-counted
 -- the crush table live (134% instead of 104%). When HS is down, GetBlockChance() is the base and the
 -- toggle previews HS up.
-local function holyShieldAuraActive()
-  if AuraUtil and AuraUtil.FindAuraByName then
-    return AuraUtil.FindAuraByName("Holy Shield", "player", "HELPFUL") ~= nil
-  end
-  for i = 1, 40 do
-    local name = safe(UnitBuff, "player", i)
-    if not name then break end
-    if name == "Holy Shield" then return true end
-  end
-  return false
-end
+local function holyShieldAuraActive() return buffActive("Holy Shield") end
 
 -- Block rating granted by an equipped block libram (relic slot) while Holy Shield is up. Mirrors
 -- src/librams.js. Libram of Repentance = +42 block rating; it's HS-conditional, so it rides with the
@@ -113,6 +116,21 @@ local function blockLibramRating()
   if not link then return 0 end
   local id = tonumber(link:match("item:(%d+)"))
   return (id and BLOCK_LIBRAMS[id]) or 0
+end
+
+-- Improved Righteous Fury talent rank (0-3). Its 2%/rank damage reduction applies only while
+-- Righteous Fury is up — read the live rank so a non-tank spec doesn't get a phantom EHP boost.
+local function impRighteousFuryRank()
+  if type(GetTalentInfo) ~= "function" then return 0 end
+  local tabs = (GetNumTalentTabs and GetNumTalentTabs()) or 3
+  for tab = 1, tabs do
+    local n = (GetNumTalents and GetNumTalents(tab)) or 0
+    for i = 1, n do
+      local name, _, _, _, rank = GetTalentInfo(tab, i)
+      if name == "Improved Righteous Fury" then return rank or 0 end
+    end
+  end
+  return 0
 end
 
 -- Read the final sheet values evaluateSet() consumes. `opts.holyShield` (default true) toggles
@@ -134,7 +152,17 @@ function Core.readSheet(opts)
   local libramRating = blockLibramRating()
   local hsBonusFull = Const.THREAT.holyShieldActive + libramRating / RATING.blockPer1 -- +30% HS + libram
   local baseBlock = hsActive and math.max(0, blockRaw - hsBonusFull) or blockRaw
-  local hsBlockBonus = holyShield and hsBonusFull or 0
+  -- Apply the bonus when Holy Shield is actually up OR when the user asks to assume it — so casting
+  -- Holy Shield moves the Block/Crush numbers live (toggle off), while the toggle still previews it
+  -- when HS is down. baseBlock already stripped any live aura out, so this never double-counts.
+  local assumeHS = hsActive or holyShield
+  local hsBlockBonus = assumeHS and hsBonusFull or 0
+
+  -- Improved Righteous Fury cuts damage taken by 2%/rank, but only while Righteous Fury is up — so it
+  -- raises physical EHP (not Armor DR, which is armor-only). Detect the live RF aura + the talent rank.
+  local rfRank = impRighteousFuryRank()
+  local rfActive = buffActive("Righteous Fury")
+  local damageTakenMult = (rfActive and rfRank > 0) and (1 - 0.02 * rfRank) or 1
 
   return {
     defenseSkill = defenseSkill,
@@ -155,8 +183,10 @@ function Core.readSheet(opts)
     health = safe(UnitHealthMax, "player") or 0,
     spellPower = safe(GetSpellBonusDamage, 2) or 0, -- holy school
     blockValue = safe(GetShieldBlock) or 0,
-    -- damageTakenMult (Improved Righteous Fury -6%) left at default 1 for the honest raw EHP;
-    -- it's a constant factor and doesn't change any pass/fail. Aura detection is a later refinement.
+    -- Improved Righteous Fury's damage reduction, live (folds into physical EHP in evaluateSet).
+    damageTakenMult = damageTakenMult,
+    righteousFuryLive = rfActive,
+    impRfRank = rfRank,
   }
 end
 
@@ -180,6 +210,8 @@ function Core.debug()
   p(string.format("resil scan (gear)=%s  |  HS live=%s  blockLibram=%d rating  blockBase=%.2f  blockEff=%.2f",
     tostring(equippedResilienceRating()), tostring(input.holyShieldLive), input.blockLibramRating or 0,
     input.blockPct, input.blockPctEffective))
+  p(string.format("RF live=%s  impRF rank=%d  damageTakenMult=%.3f",
+    tostring(input.righteousFuryLive), input.impRfRank or 0, input.damageTakenMult or 1))
   -- Raw resilience reads per combat-rating index, so we can see which one the client fills.
   local names = { [CR_CRIT_TAKEN_MELEE or -1] = "MELEE", [CR_CRIT_TAKEN_SPELL or -2] = "SPELL",
     [CR_CRIT_TAKEN_RANGED or -3] = "RANGED" }
@@ -199,6 +231,7 @@ end
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 frame:RegisterUnitEvent("UNIT_STATS", "player")
+frame:RegisterUnitEvent("UNIT_AURA", "player") -- Holy Shield / Righteous Fury / buffs change block & EHP
 if CR_DEFENSE_SKILL then frame:RegisterEvent("COMBAT_RATING_UPDATE") end
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 -- Coalesce bursts (equipping a full set fires many events) into one refresh next frame.
