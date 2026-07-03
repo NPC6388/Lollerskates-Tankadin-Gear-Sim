@@ -25,13 +25,39 @@ the Spell-power row (height padded to 404 + note shortened to one line), and whe
 height. Lua syntax not machine-checked (no luac locally); reviewed by eye, all `liveRows` keys are set.
 
 ### Pick up here
-- **Next: in-game optimizer (Phase D).** Duplicate the website's optimize functionality in-game — port
-  `model.js`/`weights.js`/`scoring.js`/`sets.js`/`optimizer.js` (+ gems/enchants) to Lua, generate the
-  item/gem/enchant data tables via `bin/gen-lua-data.mjs` (extend it — it's structured for this), read
-  owned gear directly (no export string), and run the search in a **frame-yielding coroutine** to dodge
-  the "script ran too long" watchdog. This is the big one; scope it in phases.
 - CurseForge is explicitly **last** (pipeline already scaffolded in Phase B part 1; needs the user's CF
   account setup + a dry-run tag — see `addon/PUBLISHING.md`).
+
+---
+
+## 2026-07-02 (night) — In-game optimizer, D1: scoring core (addon v0.8.4)
+
+Started Phase D (in-game optimizer). Agreed sub-phase plan (in the CHANGELOG/handoff):
+**D1 scoring core → D2 forward model (aggregate) → D3 live item pool (refactor Exporter reads) →
+D4 gem/enchant solver → D5 search in a frame-yielding coroutine → D6 runner+UI (Optimize tab).**
+Each parity-tested against JS goldens.
+
+**D1 landed** (internal scaffolding — loads in the .toc, no UI wired yet):
+- `bin/gen-lua-data.mjs` now also emits **`engine/Weights.lua`** (ZERO/SCALES/PARTS from
+  `src/weights.js`) via a nested Lua serializer — scales stay single-sourced in JS.
+- **`engine/Scoring.lua`** hand-ports `score`/`scoreByScale`/`contributions`/`blendScale`.
+- Parity: `bin/gen-scoring-fixtures.mjs` → `test/lua/scoring_fixtures.lua`; runner
+  `test/lua/scoring_parity.lua` (block×scale scores, blendScale tables, blend-then-score).
+- Pre-commit drift guard extended (regen Weights.lua on weights.js; regen scoring goldens on
+  weights/scoring changes). `gen-scoring-fixtures` npm script added. `.toc` → 0.8.4; zip rebuilt.
+
+**Couldn't run the Lua parity locally** — no `lua` interpreter on this box (checked PATH, scoop, choco,
+localappdata). The scoring logic is a trivial dot-product + blend and the data is machine-generated, so
+confidence is high, but the two Lua harnesses (eval + scoring) are **unrun here** — verify under CI or
+a machine with Lua (`lua test/lua/scoring_parity.lua` / `eval_parity.lua`). JS suite 149/149.
+
+### Pick up here (D2)
+- **D2 — forward model:** port `src/model.js:aggregate()` (sum a selection of items → the sheet stats
+  `evaluateSet` eats, incl. Kings+MotW buff handling: flat then ×1.10 — see [[buffs-kings-motw-stack]]).
+  Add `engine/Model.lua` + parity fixtures (feed item selections, compare aggregate output). Then D3
+  reads owned gear live (refactor `Exporter.lua`'s item reads into structured item objects — the
+  Exporter already gathers equipped+bags+bank, so most of the scan exists).
+- Keep everything loading on a bare folder-copy (no Ace3) until the CurseForge phase.
 
 ---
 

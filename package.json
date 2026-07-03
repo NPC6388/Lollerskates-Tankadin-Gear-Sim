@@ -10,6 +10,7 @@
     "stamp": "node bin/stamp.mjs",
     "gen-lua": "node bin/gen-lua-data.mjs",
     "gen-fixtures": "node bin/gen-fixtures.mjs",
+    "gen-scoring-fixtures": "node bin/gen-scoring-fixtures.mjs",
     "test:lua": "lua test/lua/eval_parity.lua"
   },
   "license": "MIT",

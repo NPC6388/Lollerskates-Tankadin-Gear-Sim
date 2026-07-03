@@ -703,3 +703,14 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the Live tab** and widens only for the Export tab (whose copy box is unchanged). Done in native
   frames (no Ace3) so the bare folder-copy dev loop keeps working; the styling carries over when the UI
   is later ported to Ace3.
+- **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
+  the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
+  also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from
+  `src/weights.js` — so the scales stay single-sourced in JS. Hand-ported **`engine/Scoring.lua`**
+  (`score`, `scoreByScale`, `contributions`, `blendScale`) mirrors `src/scoring.js` + `weights.js:blendScale`.
+  Anti-drift: `bin/gen-scoring-fixtures.mjs` emits JS goldens (score of representative stat blocks ×
+  every scale, `blendScale` tables, and blend-then-score end-to-end) to `test/lua/scoring_fixtures.lua`;
+  `test/lua/scoring_parity.lua` checks the Lua port against them. Pre-commit drift guard extended to
+  regenerate `Weights.lua` (on `src/weights.js` changes) and the scoring goldens. These files load in
+  the `.toc` but aren't wired to any UI yet — they're the foundation the D2+ forward-model / search
+  sub-phases score through. JS suite still 149/149.
