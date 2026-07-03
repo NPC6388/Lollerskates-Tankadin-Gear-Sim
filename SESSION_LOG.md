@@ -20,14 +20,22 @@ itemId, gems, … }`), mirroring `src/import.js`.
 - Wired into CI, `run-lua-parity`, drift guard, `gen-items-fixtures` script. `.toc` → 0.8.8; zip rebuilt.
   JS 149/149.
 
-### Pick up here (D3b, then D4)
-- **D3b — live reads (WoW glue, not parity-testable):** refactor `Exporter.lua` to expose a shared
-  `readItemRaw(link)` (tooltip scan + stripped GetItemStats + socketBonus + equipLoc/name) — keeping the
-  export STRING byte-identical — then add **`ItemPool.lua`** (addon root, impure) that iterates
-  equipped+bags+bank, calls `readItemRaw` → `engine/Items.build`, and groups by slot into the optimizer
-  pool. Syntax-checkable via `npm run test:lua:wasm` (compile pass); real check is in-game.
-- Then **D4** (gem/enchant solver + librams — where the deferred libram override lands), **D5** (search
-  in a frame-yielding coroutine), **D6** (runner + Optimize tab).
+### D3b done (same session) — live item pool (addon v0.8.9)
+Refactored `Exporter.lua` to expose `readItemRaw(link)` (export string byte-identical — factored, not
+changed) and added **`ItemPool.lua`** (`ns.ItemPool.scan()`/`bySlot()`): iterates equipped+bags+open
+bank, dedupes by item string, `readItemRaw` → `engine/Items.build`, groups by slot. Impure → compile-
+checked only (14 files PASS via wasm); real verification is in-game. `.toc` → 0.8.9; zip rebuilt.
+**D3 complete** (both halves). Parity still 725 checks.
+
+### Pick up here (D4)
+- **D4 — gem/enchant solver:** port `src/gems.js`/`enchants.js`/`gemsolver.js`/`professions.js`/
+  `librams.js`/`scrolls.js` + generate their data tables (extend `gen-lua-data.mjs`). This is where the
+  **libram effective-stat override** deferred in D3a lands (apply in `Items.build` or the solver).
+  Parity-test the gem/enchant planning against the JS. Then **D5** (optimizer search in a frame-
+  yielding coroutine — the hard one) and **D6** (runner + Optimize tab; first user-visible payoff).
+- Everything still loads on a bare folder-copy (no Ace3) — keep it that way until CurseForge.
+- **In-game smoke test worth doing** once D6 exists: confirm `ItemPool.scan()` reads the same gear the
+  exporter does (open bank first). No UI hook yet, so nothing to see in-game from D3 alone.
 
 ---
 

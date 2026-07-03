@@ -762,6 +762,15 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   (**412 checks, 26 items**). CI + `run-lua-parity` + the drift guard extended. The WoW-API reads that
   feed this (bag/bank/equipped scan) are D3b. Loads in the `.toc`, no UI yet. JS suite 149/149;
   full parity now **725 checks** (69+118+126+412). `.toc` → 0.8.8.
+- **Addon v0.8.9 — in-game optimizer, D3b: live item pool.** The WoW-API half of D3, completing the
+  live gear read. Refactored `Exporter.lua` to expose a shared **`readItemRaw(link)`** (tooltip scan +
+  live socket layout + gem/enchant-stripped `GetItemStats` + socket bonus + equipLoc/name) — the export
+  string is byte-identical (same reads, just factored out of `itemSegment`). New **`ItemPool.lua`**
+  (`ns.ItemPool.scan()` / `bySlot()`) iterates equipped + bags + open bank, dedupes by item string,
+  feeds each through `readItemRaw` → `engine/Items.build`, and groups by slot — the in-game replacement
+  for the website's export-string round-trip (`import.js`), producing the same item objects read
+  straight from the game. Impure (inventory APIs), so it's syntax-checked (compile pass, 14 files) but
+  not parity-tested; the real check is in-game. Not wired to any UI yet (D6). `.toc` → 0.8.9.
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

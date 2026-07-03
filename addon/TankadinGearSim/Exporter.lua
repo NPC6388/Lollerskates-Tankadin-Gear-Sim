@@ -217,23 +217,43 @@ local function serializeStats(t)
   return table.concat(parts, ";")
 end
 
-local function itemSegment(link)
-  local stats, socketBonus = parseTooltipStats(link)
+local EMPTY_SOCKET_KEYS = { "EMPTY_SOCKET_RED", "EMPTY_SOCKET_YELLOW", "EMPTY_SOCKET_BLUE",
+  "EMPTY_SOCKET_META", "EMPTY_SOCKET_PRISMATIC" }
+
+-- Read one item's raw components (shared by the export string AND the in-game item pool):
+--   resolved = tooltip-scanned stats (gems/enchants as worn) + the live empty-socket layout;
+--   base = GetItemStats on the gem/enchant-stripped link (clean stats + full socket layout);
+--   socketBonus token; equipLoc / name / itemLevel. Exposed as ns.Exporter.readItemRaw so
+--   ItemPool.lua can feed it straight into engine/Items.build (no export-string round-trip).
+local function readItemRaw(link)
+  local resolved, socketBonus = parseTooltipStats(link)
   local liveBase = safe(GetItemStatsFn, link)
   if type(liveBase) == "table" then
-    for _, k in ipairs({ "EMPTY_SOCKET_RED", "EMPTY_SOCKET_YELLOW", "EMPTY_SOCKET_BLUE",
-      "EMPTY_SOCKET_META", "EMPTY_SOCKET_PRISMATIC" }) do
-      if liveBase[k] then stats[k] = liveBase[k] end
+    for _, k in ipairs(EMPTY_SOCKET_KEYS) do
+      if liveBase[k] then resolved[k] = liveBase[k] end
     end
   end
   local ok, name, _, _, ilvl, _, _, _, _, equipLoc = pcall(GetItemInfo, link)
   if not ok then name, ilvl, equipLoc = nil, 0, "" end
-  ilvl = ilvl or 0; equipLoc = equipLoc or ""
-  local resolvedSeg = "ilvl=" .. tostring(ilvl) ..
-    (next(stats) and (";" .. serializeStats(stats)) or "")
-  local id = link:match("item:(%d+)")
-  local baseSeg = id and serializeStats(safe(GetItemStatsFn, "item:" .. id)) or ""
-  return equipLoc .. "|" .. resolvedSeg .. "|" .. baseSeg .. "|" .. (socketBonus or "") .. "|" .. (name or "")
+  local id = link and link:match("item:(%d+)")
+  return {
+    itemString = extractItemString(link),
+    equipLoc = equipLoc or "",
+    name = name,
+    itemLevel = ilvl or 0,
+    resolved = resolved,
+    base = (id and safe(GetItemStatsFn, "item:" .. id)) or {},
+    socketBonus = socketBonus,
+  }
+end
+ns.Exporter.readItemRaw = readItemRaw
+
+local function itemSegment(link)
+  local r = readItemRaw(link)
+  local resolvedSeg = "ilvl=" .. tostring(r.itemLevel) ..
+    (next(r.resolved) and (";" .. serializeStats(r.resolved)) or "")
+  local baseSeg = serializeStats(r.base)
+  return r.equipLoc .. "|" .. resolvedSeg .. "|" .. baseSeg .. "|" .. (r.socketBonus or "") .. "|" .. (r.name or "")
 end
 
 local function scanGear()
