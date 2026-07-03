@@ -45,11 +45,14 @@ const PATHS = [
   'addon/TankadinGearSim/engine/Scoring.lua',
   'addon/TankadinGearSim/engine/CharacterData.lua',
   'addon/TankadinGearSim/engine/Model.lua',
+  'addon/TankadinGearSim/engine/ItemsData.lua',
+  'addon/TankadinGearSim/engine/Items.lua',
   'test/lua/fixtures.lua',
   'test/lua/scoring_fixtures.lua',
   'test/lua/model_fixtures.lua',
+  'test/lua/items_fixtures.lua',
 ];
-const HARNESSES = ['test/lua/eval_parity.lua', 'test/lua/scoring_parity.lua', 'test/lua/model_parity.lua'];
+const HARNESSES = ['test/lua/eval_parity.lua', 'test/lua/scoring_parity.lua', 'test/lua/model_parity.lua', 'test/lua/items_parity.lua'];
 
 let anyFail = false;
 

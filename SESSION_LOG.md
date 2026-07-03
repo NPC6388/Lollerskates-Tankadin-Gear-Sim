@@ -4,6 +4,33 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-03 (later still) — In-game optimizer, D3a: item-object builder (addon v0.8.8)
+
+Continued (user: "keep going"). **D3a landed** — the PURE half of the live item pool: raw
+GetItemStats/tooltip reads → structured item objects (`{ slot, stats, baseStats, sockets, socketBonus,
+itemId, gems, … }`), mirroring `src/import.js`.
+- Exported `STAT_KEY_MAP` + `SLOT_MAP` from `import.js`; `gen-lua-data.mjs` now emits
+  **`engine/ItemsData.lua`** (added a string-value map serializer).
+- **`engine/Items.lua`** hand-ports `parseItemString`/`mapStats`/`socketsFromStats`/`parseSocketBonus`/
+  `build` — incl. shield armor-backfill + base>resolved lift. (Libram effective-stat override deferred
+  to D4.)
+- Parity: `bin/gen-items-fixtures.mjs` drives `import.js` `parseExport` with synthetic exports (per
+  stat-key + per slot + edge cases) → `items_fixtures.lua`; `items_parity.lua` deep-compares. **412
+  checks / 26 items.** Full suite now **725 parity checks** + 13-file syntax, all green under wasmoon.
+- Wired into CI, `run-lua-parity`, drift guard, `gen-items-fixtures` script. `.toc` → 0.8.8; zip rebuilt.
+  JS 149/149.
+
+### Pick up here (D3b, then D4)
+- **D3b — live reads (WoW glue, not parity-testable):** refactor `Exporter.lua` to expose a shared
+  `readItemRaw(link)` (tooltip scan + stripped GetItemStats + socketBonus + equipLoc/name) — keeping the
+  export STRING byte-identical — then add **`ItemPool.lua`** (addon root, impure) that iterates
+  equipped+bags+bank, calls `readItemRaw` → `engine/Items.build`, and groups by slot into the optimizer
+  pool. Syntax-checkable via `npm run test:lua:wasm` (compile pass); real check is in-game.
+- Then **D4** (gem/enchant solver + librams — where the deferred libram override lands), **D5** (search
+  in a frame-yielding coroutine), **D6** (runner + Optimize tab).
+
+---
+
 ## 2026-07-03 (later) — CI + local Lua parity (verify the foundation before D3)
 
 User: "lua-parity check first" (before continuing to D3). Built the verification layer and — for the

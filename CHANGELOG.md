@@ -748,6 +748,20 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   (`Sacred Duty = 2`) as bare Lua identifiers (a syntax error); `gen-model-fixtures.mjs` now
   bracket-quotes non-identifier keys (`["Sacred Duty"] = 2`). Verified: syntax PASS (11 files) + 313
   parity checks (69 + 118 + 126) all green.
+- **Addon v0.8.8 — in-game optimizer, D3a: item-object builder (internal, no UI yet).** The pure half
+  of the live item pool — turning raw GetItemStats/tooltip reads into the structured item objects the
+  optimizer consumes (`{ slot, stats, baseStats, sockets, socketBonus, itemId, gems, … }`), mirroring
+  `src/import.js`. `bin/gen-lua-data.mjs` now also generates **`engine/ItemsData.lua`** (the
+  `STAT_KEY_MAP` GetItemStats-key→our-stat and `SLOT_MAP` equipLoc→slot maps, now `export`ed from
+  `import.js` so they're single-sourced). Hand-ported **`engine/Items.lua`** does the logic:
+  `parseItemString`, `mapStats`, `socketsFromStats`, `parseSocketBonus`, and `build` — incl. the
+  shield armor-backfill and the base>resolved stat-lift import.js does. Anti-drift:
+  `bin/gen-items-fixtures.mjs` drives `import.js`'s `parseExport` with synthetic exports (one item per
+  stat-key + per slot, plus the backfill/lift/unmapped-slot cases) for goldens →
+  `test/lua/items_fixtures.lua`; `test/lua/items_parity.lua` deep-compares `Items.build` against them
+  (**412 checks, 26 items**). CI + `run-lua-parity` + the drift guard extended. The WoW-API reads that
+  feed this (bag/bank/equipped scan) are D3b. Loads in the `.toc`, no UI yet. JS suite 149/149;
+  full parity now **725 checks** (69+118+126+412). `.toc` → 0.8.8.
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

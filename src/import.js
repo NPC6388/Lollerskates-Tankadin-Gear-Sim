@@ -32,7 +32,7 @@ const STAT_BASE_MAP = {
   ITEM_MOD_ATTACK_POWER: 'attackPower',
 };
 
-const STAT_KEY_MAP = {
+export const STAT_KEY_MAP = {
   // armor, per-school resistance, and sockets (fixed key names)
   RESISTANCE0_NAME: 'armor',
   ARMOR: 'armor',
@@ -55,7 +55,7 @@ for (const [k, v] of Object.entries(STAT_BASE_MAP)) {
 }
 
 // WoW equip locations -> our slot keys (paired slots share a key).
-const SLOT_MAP = {
+export const SLOT_MAP = {
   INVTYPE_HEAD: 'head', INVTYPE_NECK: 'neck', INVTYPE_SHOULDER: 'shoulder',
   INVTYPE_CLOAK: 'back', INVTYPE_CHEST: 'chest', INVTYPE_ROBE: 'chest',
   INVTYPE_WRIST: 'wrist', INVTYPE_HAND: 'hands', INVTYPE_WAIST: 'waist',

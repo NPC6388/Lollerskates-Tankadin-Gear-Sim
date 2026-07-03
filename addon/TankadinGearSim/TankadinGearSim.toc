@@ -2,7 +2,7 @@
 ## Title: Tankadin Gear Sim
 ## Notes: Live tank readout (uncrittable/uncrushable/EHP) + gear export for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.8.7
+## Version: 0.8.8
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB
 ## X-Category: Combat
@@ -23,6 +23,8 @@ engine\Weights.lua
 engine\Scoring.lua
 engine\CharacterData.lua
 engine\Model.lua
+engine\ItemsData.lua
+engine\Items.lua
 
 # Website exporter (reads ns.VERSION) and the live-sheet reader.
 Exporter.lua

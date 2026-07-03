@@ -32,13 +32,16 @@ jobs:
           npm run gen-fixtures
           npm run gen-scoring-fixtures
           npm run gen-model-fixtures
+          npm run gen-items-fixtures
           git diff --exit-code -- \
             addon/TankadinGearSim/engine/Constants.lua \
             addon/TankadinGearSim/engine/Weights.lua \
             addon/TankadinGearSim/engine/CharacterData.lua \
+            addon/TankadinGearSim/engine/ItemsData.lua \
             test/lua/fixtures.lua \
             test/lua/scoring_fixtures.lua \
             test/lua/model_fixtures.lua \
+            test/lua/items_fixtures.lua \
           || { echo "::error::Generated files are stale — run the gen-* npm scripts and commit."; exit 1; }
 
       - name: Install Lua 5.1 (WoW's Lua version)
@@ -52,3 +55,4 @@ jobs:
           lua5.1 test/lua/eval_parity.lua
           lua5.1 test/lua/scoring_parity.lua
           lua5.1 test/lua/model_parity.lua
+          lua5.1 test/lua/items_parity.lua
