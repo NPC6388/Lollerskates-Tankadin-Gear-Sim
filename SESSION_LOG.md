@@ -43,6 +43,37 @@ Bumped `.toc` → **0.8.2**. CHANGELOG updated.
 
 ---
 
+## 2026-07-02 (later still) — Phase B part 1: CurseForge release pipeline
+
+Committed the v0.8.2 fixes (`e175d66`), then moved to the next plan item (Phase B, `snappy-forging-knuth`).
+Built the **distribution pipeline only** — deliberately NOT the Ace3 UI swap — so the current
+native-frame addon keeps loading on a plain folder-copy (the user's in-game test loop). New files:
+- **`.pkgmeta`** (repo root): `package-as: TankadinGearSim`, `move-folders: {TankadinGearSim: addon/TankadinGearSim}`
+  + an `ignore` list covering the whole web project, so the packager emits a clean `AddOns/TankadinGearSim/`.
+  Ace3 `externals:` block is present but **commented out** (enable when UI.lua goes Ace3).
+- **`.github/workflows/release.yml`**: BigWigsMods/packager on `v*` tags; `permissions: contents: write`;
+  `CF_API_KEY` + `GITHUB_TOKEN` env. Skips CF upload gracefully if the secret is absent.
+- **`.toc`**: `X-Category/X-License/X-Website`; project-id line left commented (`# ## X-Curse-Project-ID`).
+- **`LICENSE`** (MIT, matches package.json) and **`addon/PUBLISHING.md`** (the user-only CF steps + release flow).
+- Updated `addon/README.md` with a Releasing section.
+
+**Not yet verified** (can't be, locally): the `.pkgmeta` `move-folders`/`ignore` recipe and the
+workflow only truly prove out via a **packaging dry run** — the plan's verification step. That needs a
+`v0.8.2-rc1` tag pushed (produces a GitHub Release zip even without CurseForge configured). Confirm the
+zip extracts as `AddOns/TankadinGearSim/` with `.toc` + `engine/` + the `.lua` files, no stray repo dirs.
+
+### Pick up here
+- **User-only (blocks CurseForge publish):** create the CF project, uncomment+set `## X-Curse-Project-ID`,
+  generate a CF API token, add it as the `CF_API_KEY` GitHub secret (all in `addon/PUBLISHING.md`).
+- **Dry run:** push a `v0.8.2-rc1` tag and check the Actions run + the produced zip layout. Adjust the
+  `.pkgmeta` ignore/move recipe if the packager includes stray top-level dirs.
+- **Decision pending — Ace3 timing.** Deferred here to protect folder-copy testing. When we do port the
+  UI, that's when the WeakAura reskin lands and the `.pkgmeta` externals get uncommented.
+- **Phase C leftover:** `bin/gen-lua-data.mjs` to generate `Constants.lua` from `src/constants.js`
+  (gen-fixtures + eval_parity already exist).
+
+---
+
 ## 2026-06-30 (later still) — Socket-bonus free-forfeit fix (post-crash resume)
 
 Resumed after a PC crash; working tree was clean (nothing lost — batch 7 committed at `191e677`).

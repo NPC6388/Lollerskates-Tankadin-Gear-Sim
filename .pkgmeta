@@ -1,0 +1,44 @@
+# BigWigsMods/packager config — how the release zip is built from this repo.
+# The addon lives in a subfolder (addon/TankadinGearSim), while the repo root also holds the
+# website (src/, web/, index.html, …). move-folders lifts the addon to the package root and the
+# ignore list drops everything that isn't the addon, so the released zip extracts cleanly as
+# AddOns/TankadinGearSim/.
+
+package-as: TankadinGearSim
+
+# We ship no stripped "nolib" variant (no embedded libs yet — native-frame UI). When the UI is
+# ported to Ace3 (Phase B UI), add the externals block below and flip this as needed.
+enable-nolib-creation: no
+
+move-folders:
+    TankadinGearSim: addon/TankadinGearSim
+
+ignore:
+    - addon
+    - bin
+    - scripts
+    - src
+    - test
+    - web
+    - index.html
+    - package.json
+    - .gitattributes
+    - .gitignore
+    - .nojekyll
+    - CHANGELOG.md
+    - GEM_ENCHANT_REVIEW.md
+    - PLAN.md
+    - README.md
+    - SESSION_LOG.md
+
+# --- Ace3 UI (Phase B, deferred) ------------------------------------------------------------
+# Uncomment when UI.lua is ported from native frames to AceGUI. These are pulled into
+# TankadinGearSim/Libs/ at PACKAGE time only, so the git repo stays lean and the folder-copy dev
+# workflow keeps loading without them.
+#
+# externals:
+#     TankadinGearSim/Libs/LibStub: https://repos.curseforge.com/wow/libstub/trunk
+#     TankadinGearSim/Libs/CallbackHandler-1.0: https://repos.curseforge.com/wow/callbackhandler/trunk/CallbackHandler-1.0
+#     TankadinGearSim/Libs/Ace3: https://repos.wowace.com/wow/ace3/trunk
+#     TankadinGearSim/Libs/LibDataBroker-1.1: https://repos.curseforge.com/wow/libdatabroker-1-1/trunk
+#     TankadinGearSim/Libs/LibDBIcon-1.0: https://repos.curseforge.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0

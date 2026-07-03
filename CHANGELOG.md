@@ -666,3 +666,17 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     effective (HS-inclusive) block so it matches the WeakAura's live figure. `/tgs debug` extended to
     print the gear-scanned resilience, live-HS state, block-libram rating, and base-vs-effective block.
     (`engine/{Evaluate,Combat,Constants}.lua` unchanged, so the 69/69 parity harness is unaffected.)
+- **Phase B (part 1) — CurseForge release pipeline.** Distribution scaffolding so a `v*` git tag
+  publishes the addon, without touching the working folder-copy install. Added a repo-root
+  **`.pkgmeta`** ([BigWigsMods/packager](https://github.com/BigWigsMods/packager)) that lifts
+  `addon/TankadinGearSim/` out of the web repo (via `move-folders` + an `ignore` list) so the zip
+  extracts cleanly as `AddOns/TankadinGearSim/`; a **`.github/workflows/release.yml`** that runs the
+  packager on `v*` tags, attaches the zip to a **GitHub Release**, and uploads to **CurseForge** when
+  a `CF_API_KEY` secret + project id are present (skips the CF step gracefully until then); CurseForge
+  `## X-Category`/`X-License`/`X-Website` `.toc` metadata (project-id line left commented until the
+  project exists); a root **`LICENSE`** (MIT, matching `package.json`); and **`addon/PUBLISHING.md`**
+  documenting the user-only setup (create the CF project, add the id, generate an API token, add the
+  GitHub secret) and the tag-to-release flow. **Ace3 UI is deliberately deferred** — the native-frame
+  MVP loads on a bare folder-copy (good for in-game iteration); the Ace3 externals block sits
+  commented in `.pkgmeta`, to be enabled when `UI.lua` is ported (which is also where the requested
+  Tankadin-II-WeakAura reskin will land).

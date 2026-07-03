@@ -1,0 +1,34 @@
+# Package the TankadinGearSim addon on every v* tag and publish it.
+# Reads .pkgmeta at the repo root: lifts addon/TankadinGearSim to the package root, (later) embeds
+# Ace3, zips it, uploads to CurseForge, and attaches the zip to a GitHub Release.
+#
+# Requires (user-only setup — see addon/PUBLISHING.md):
+#   - ## X-Curse-Project-ID in TankadinGearSim.toc (the CurseForge project's numeric id)
+#   - a CF_API_KEY repo secret (a CurseForge upload API token)
+# Without CF_API_KEY the CurseForge upload is skipped and only the GitHub Release is produced —
+# so the workflow is safe to have in place before the CurseForge project exists.
+
+name: Package and release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # needed to create the GitHub Release + upload the zip asset
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # packager reads tags/history for the changelog + version
+
+      - name: Package and release
+        uses: BigWigsMods/packager@master
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

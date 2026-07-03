@@ -62,3 +62,12 @@ extracts as `AddOns/TankadinGearSim/`). **Rebuild it whenever the .lua/.toc chan
     Compress-Archive -Path addon/TankadinGearSim -DestinationPath addon/TankadinGearSim.zip -Force
 
 (or `cd addon && zip -r TankadinGearSim.zip TankadinGearSim` on a unix shell), then commit the zip.
+
+## Releasing (CurseForge + GitHub)
+
+Pushing a `v*` git tag runs `.github/workflows/release.yml`
+([BigWigsMods/packager](https://github.com/BigWigsMods/packager)), which reads the repo-root
+`.pkgmeta`, builds a clean `TankadinGearSim/` package, attaches the zip to a GitHub Release, and
+(once configured) uploads it to CurseForge. The one-time CurseForge setup (project id, `CF_API_KEY`
+secret) and the release steps are documented in **[PUBLISHING.md](PUBLISHING.md)**. Until CurseForge
+is wired up, tagging still produces the GitHub Release zip.
