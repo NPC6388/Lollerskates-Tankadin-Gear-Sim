@@ -7,3 +7,11 @@ if git diff --cached --name-only | grep -qE '^(src|web)/.*\.(js|css)$'; then
   node bin/stamp.mjs || exit 1
   git add index.html
 fi
+
+# Keep the addon's generated constants in lockstep with the JS source of truth. Re-run the data
+# generator whenever src/constants.js (or the generator itself) is part of this commit, and stage
+# the result — so engine/Constants.lua can't drift from src/constants.js. Same spirit as the stamp.
+if git diff --cached --name-only | grep -qE '^(src/constants\.js|bin/gen-lua-data\.mjs)$'; then
+  node bin/gen-lua-data.mjs || exit 1
+  git add addon/TankadinGearSim/engine/Constants.lua
+fi

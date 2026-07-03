@@ -680,3 +680,15 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   MVP loads on a bare folder-copy (good for in-game iteration); the Ace3 externals block sits
   commented in `.pkgmeta`, to be enabled when `UI.lua` is ported (which is also where the requested
   Tankadin-II-WeakAura reskin will land).
+- **Phase C (part 1) — constants generator + drift guard.** `bin/gen-lua-data.mjs` (npm run
+  **`gen-lua`**) imports `src/constants.js` and regenerates `engine/Constants.lua`, making the JS the
+  single source of truth for the addon's DATA — a value edit on the website now flows straight into the
+  in-game engine. Output is idempotent (two runs byte-identical) and reproduces the prior hand-stub's
+  values exactly (only cosmetic diffs: comment alignment, `1.10`→`1.1`). Per the plan's "generate data,
+  hand-port logic" split, the two helper *formulas* (`ARMOR_CONST`/`RESIST_DENOM`) are emitted from a
+  fixed template and remain backstopped by the Lua parity harness, not the import. The **pre-commit
+  hook** now re-runs the generator and stages `Constants.lua` whenever `src/constants.js` (or the
+  generator) is committed — same discipline as the existing asset-stamp step — so the two can't drift.
+  (`bin/gen-fixtures.mjs` + `test/lua/eval_parity.lua` already covered the *logic* parity in Phase A;
+  this closes the DATA half. The remaining Phase C/D generators — gems/enchants/BiS tables — are
+  additive once the optimizer port begins.)

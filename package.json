@@ -8,6 +8,7 @@
     "optimize": "node bin/optimize.mjs",
     "serve": "node bin/serve.mjs",
     "stamp": "node bin/stamp.mjs",
+    "gen-lua": "node bin/gen-lua-data.mjs",
     "gen-fixtures": "node bin/gen-fixtures.mjs",
     "test:lua": "lua test/lua/eval_parity.lua"
   },

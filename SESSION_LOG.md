@@ -69,8 +69,33 @@ zip extracts as `AddOns/TankadinGearSim/` with `.toc` + `engine/` + the `.lua` f
   `.pkgmeta` ignore/move recipe if the packager includes stray top-level dirs.
 - **Decision pending — Ace3 timing.** Deferred here to protect folder-copy testing. When we do port the
   UI, that's when the WeakAura reskin lands and the `.pkgmeta` externals get uncommented.
-- **Phase C leftover:** `bin/gen-lua-data.mjs` to generate `Constants.lua` from `src/constants.js`
-  (gen-fixtures + eval_parity already exist).
+
+---
+
+## 2026-07-02 (end of day) — Phase C part 1: constants generator + drift guard
+
+Did the next non-blocking plan item while the user was away (they didn't answer the Ace3-vs-Phase-C
+sequencing question, so I took the no-risk path that keeps folder-copy testing intact).
+- **`bin/gen-lua-data.mjs`** (`npm run gen-lua`) imports `src/constants.js` and regenerates
+  `addon/TankadinGearSim/engine/Constants.lua` — JS is now the single source of truth for the addon's
+  DATA. Verified **idempotent** (two runs byte-identical) and that it reproduces the old hand-stub's
+  values exactly (only cosmetic diffs: comment alignment, `1.10`→`1.1`, `2.0`→`2`, multiline CRIT_MULT).
+- The two helper **formulas** (`ARMOR_CONST`/`RESIST_DENOM`) are emitted from a fixed template (logic,
+  not data) — guarded by the existing Lua parity harness, not the import. A `COMMENTS` map in the
+  generator carries the guide-reference comments (cosmetic; values always come from the import).
+- **Drift guard:** extended `scripts/githooks/pre-commit` (live via `core.hooksPath`) to re-run the
+  generator and stage `Constants.lua` whenever `src/constants.js` or the generator is committed — same
+  pattern as the asset-stamp step. Added the `gen-lua` npm script.
+
+Couldn't run the Lua parity harness locally (no `lua` binary on this box), but values are unchanged so
+`test/lua/eval_parity.lua` (69/69) is unaffected. JS suite untouched.
+
+### Pick up here (updated)
+- Still owed: the **Ace3 UI + WeakAura reskin** (needs the user's go-ahead — it ends the bare
+  folder-copy dev loop) and the **CurseForge dry run + account setup** (user-only, above).
+- **Phase D / later Phase C generators:** when the optimizer port starts, extend `gen-lua-data.mjs`
+  with `GemsData.lua`/`EnchantsData.lua`/`BisItemsData.lua` (the generator is structured so that's an
+  additive change), and run the optimizer in a frame-yielding coroutine.
 
 ---
 
