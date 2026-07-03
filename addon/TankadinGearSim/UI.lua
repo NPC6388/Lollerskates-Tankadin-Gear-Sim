@@ -121,7 +121,8 @@ function UI.Refresh()
   R.heroCrit:SetText((e.heroicCritImmune and color(GOOD, "YES") or color(BAD, "NO")) ..
     "  (" .. signed(e.heroicCritSurplus) .. ")")
   R.avoid:SetText(string.format("%s / %s / %s / %s",
-    pct(snap.input.missPct), pct(snap.input.dodgePct), pct(snap.input.parryPct), pct(snap.input.blockPct)))
+    pct(snap.input.missPct), pct(snap.input.dodgePct), pct(snap.input.parryPct),
+    pct(snap.input.blockPctEffective or snap.input.blockPct)))
   R.noHS:SetText(pct(e.totalAvoidanceNoHS))
   R.withHS:SetText(pct(e.totalAvoidanceWithHS))
   R.crush:SetText((e.uncrushable and color(GOOD, "YES") or color(BAD, "NO")) ..

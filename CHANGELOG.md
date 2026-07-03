@@ -648,3 +648,21 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   value column right so long avoidance labels no longer overlap their numbers. Everything else in the
   screenshot reconciled: miss/dodge/parry/block, armor, block value, health all matched the Tankadin
   II WeakAura; the DR/EHP difference is expected (TGS mitigates vs a level-73 raid boss, the WA does not).
+- **Addon v0.8.2 — resilience off gear (real crit fix) + Holy Shield / block-libram accuracy.** Two
+  live-readout bugs the v0.8.1 fix hadn't closed, both in `Core.lua`:
+  - **Still crittable.** v0.8.1's `GetCombatRating`/`GetCombatRatingBonus` reads *both* return 0 on the
+    Anniversary client, so resilience was still dropped (5.20% shown vs a real 5.88% → "CRITTABLE").
+    Now resilience is summed straight off equipped gear via `GetItemStats` per slot (the reliable path,
+    mirroring how the website reads it off tooltips — gems in the item link are included); the broken
+    combat-rating reads remain only as a fallback when that API is unavailable.
+  - **Holy Shield double-counted (and the block libram).** `GetBlockChance()` already reflects a *live*
+    Holy Shield aura (+30% block) and a block libram's HS-conditional block, so adding the +30 again
+    inflated the crush table — with HS actually up in-game the Live tab read **134.07% / "+31.67%"**
+    when reality (and the WA) is **104.07% / +1.67%**. `Core.lua` now detects the live HS aura and the
+    equipped block libram (Libram of Repentance, +42 block rating → `BLOCK_LIBRAMS`), strips them back
+    out to a Holy-Shield-free base block, and re-adds the assumption once (`hsBonusFull` = 30 + libram)
+    — so the with/without-HS numbers are consistent whether or not HS happens to be up, and the "assume
+    Holy Shield up" toggle now also credits the block libram when HS is down. The avoidance row shows the
+    effective (HS-inclusive) block so it matches the WeakAura's live figure. `/tgs debug` extended to
+    print the gear-scanned resilience, live-HS state, block-libram rating, and base-vs-effective block.
+    (`engine/{Evaluate,Combat,Constants}.lua` unchanged, so the 69/69 parity harness is unaffected.)

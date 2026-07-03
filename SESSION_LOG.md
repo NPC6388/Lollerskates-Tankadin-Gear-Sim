@@ -4,6 +4,45 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-02 (later) — Addon v0.8.2: real crit fix + Holy Shield/libram accuracy
+
+Second in-game test of the Live tab (user, Libram of Repentance equipped, two screenshots: HS
+off/inactive and HS on/active — `...\wow-tbc\screencaps for testing\tgs in-game discrepancy {no hs,with hs}.png`).
+Two bugs, both in `Core.lua`; `engine/*.lua` untouched so the 69/69 parity harness is unaffected.
+Bumped `.toc` → **0.8.2**. CHANGELOG updated.
+
+1. **Still crittable** (5.20% shown vs the WA's 5.88% → the exact ~0.68% = ~27 resilience gap). The
+   v0.8.1 fix read resilience via `GetCombatRating(CR_CRIT_TAKEN_*)` with a `GetCombatRatingBonus`
+   fallback — but on Anniversary **both return 0**, so resilience was still dropped. Fix: sum resilience
+   off equipped gear with `GetItemStats` per slot (slots 1–18, keys `ITEM_MOD_RESILIENCE_RATING[_SHORT]`;
+   the item link carries socketed gems). Combat-rating reads kept only as a fallback when that API is
+   missing.
+2. **Holy Shield double-counted + block libram.** `GetBlockChance()` already reflects a *live* HS aura
+   (+30%) **and** the Libram of Repentance's HS-conditional +42 block rating. Confirmed by arithmetic on
+   the screenshots: base 24.79 + 30 (HS) + 5.33 (libram) = 60.11 = the live block. The addon then added
+   another +30 → **134.07% / "+31.67%"** uncrushable when reality (and the WA) is **104.07% / +1.67%**.
+   Fix: detect the live HS aura (`AuraUtil.FindAuraByName`/`UnitBuff` scan) and the equipped block libram
+   (`BLOCK_LIBRAMS = {[29388]=42}`, relic slot 18), strip both out to a HS-free `baseBlock`, and re-add
+   the assumption once (`hsBonusFull = 30 + libram/blockPer1`). Now the with/without-HS numbers are
+   **state-independent** (same result whether HS is up in-game or only assumed), and the "assume HS up"
+   toggle credits the libram even when HS is down. Avoidance row shows the effective (HS-inclusive) block
+   so it matches the WA's 60.11. `/tgs debug` now also prints gear-scanned resilience, live-HS state,
+   libram rating, and base-vs-effective block.
+
+### Verified in-game (user, 2026-07-02)
+- **Confirmed correct.** User re-tested the Live tab and the stats now read right — crit reads
+  uncrittable and the crush table no longer double-counts Holy Shield. Both v0.8.2 fixes are good
+  in-game; the `GetItemStats` resilience path works on the Anniversary client (the earlier risk about
+  the resilience key is resolved — no tooltip-scan fallback needed).
+
+### New feature backlog (user request)
+- **Skin the Live readout like the Tankadin II WeakAura** shown beside TGS (that compact stat-stack
+  look — colored labels, tight rows), but keep TGS's current **black background**. Cosmetic reskin of
+  the Live pane in `UI.lua`; fold into the Phase B Ace3 UI work rather than polishing the native frames
+  twice.
+
+---
+
 ## 2026-06-30 (later still) — Socket-bonus free-forfeit fix (post-crash resume)
 
 Resumed after a PC crash; working tree was clean (nothing lost — batch 7 committed at `191e677`).

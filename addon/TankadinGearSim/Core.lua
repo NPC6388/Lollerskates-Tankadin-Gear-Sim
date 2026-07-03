@@ -28,17 +28,49 @@ local function critTakenIndices()
   return out
 end
 
--- Resilience as an equivalent rating for evaluateSet. GetCombatRating(CR_CRIT_TAKEN_MELEE) returns
--- the rating, but on the Anniversary client that read can come back 0 — so if it does, fall back to
--- the % the game actually reports (GetCombatRatingBonus) and convert it to the rating that yields it.
--- (The website avoids this entirely by parsing resilience off item tooltips.)
+-- Combined stat table for an equipped item link (includes its socketed gems — the link carries them).
+local function itemStats(link)
+  local getter = (C_Item and C_Item.GetItemStats) or GetItemStats
+  if type(getter) ~= "function" then return nil end
+  local ok, res = pcall(getter, link)
+  if ok and type(res) == "table" then return res end
+  return nil
+end
+
+-- Resilience summed straight off equipped gear — the reliable path. The Anniversary client's
+-- GetCombatRating(CR_CRIT_TAKEN_*) reads come back 0 (so does the % fallback), which silently dropped
+-- resilience and made a genuinely uncrittable tank read as crittable. GetItemStats on each equipped
+-- link mirrors what the website does off tooltips. Returns nil only when the API is missing on this
+-- build (so the caller can fall back); a scanned 0 is a valid "no resilience gear" answer.
+local RESIL_KEYS = { "ITEM_MOD_RESILIENCE_RATING", "ITEM_MOD_RESILIENCE_RATING_SHORT" }
+local function equippedResilienceRating()
+  if type((C_Item and C_Item.GetItemStats) or GetItemStats) ~= "function" then return nil end
+  local total = 0
+  for slot = 1, 18 do
+    local link = safe(GetInventoryItemLink, "player", slot)
+    if link then
+      local stats = itemStats(link)
+      if stats then
+        for _, k in ipairs(RESIL_KEYS) do
+          if stats[k] then total = total + stats[k] end
+        end
+      end
+    end
+  end
+  return total
+end
+
+-- Resilience as an equivalent rating for evaluateSet. Prefer the equipped-gear scan; fall back to
+-- the combat-rating API (unreliable on Anniversary — returns 0 — but harmless) only if the scan API
+-- is unavailable on this build.
 local function liveResilienceRating()
-  local idx = critTakenIndices()
-  for _, i in ipairs(idx) do
+  local scanned = equippedResilienceRating()
+  if scanned ~= nil then return scanned end
+  for _, i in ipairs(critTakenIndices()) do
     local rating = safe(GetCombatRating, i)
     if rating and rating > 0 then return rating end
   end
-  for _, i in ipairs(idx) do
+  for _, i in ipairs(critTakenIndices()) do
     local pct = safe(GetCombatRatingBonus, i) -- % crit-avoidance from resilience
     if pct and pct > 0 then return pct * RATING.resiliencePer1 end
   end
@@ -56,8 +88,35 @@ local function liveDefenseSkill()
   return level * 5 + defBonus
 end
 
+-- Is Holy Shield currently up? When it is, GetBlockChance() already includes its +30% block (and a
+-- block libram's HS-conditional block), so we must NOT add the bonus again — doing so double-counted
+-- the crush table live (134% instead of 104%). When HS is down, GetBlockChance() is the base and the
+-- toggle previews HS up.
+local function holyShieldAuraActive()
+  if AuraUtil and AuraUtil.FindAuraByName then
+    return AuraUtil.FindAuraByName("Holy Shield", "player", "HELPFUL") ~= nil
+  end
+  for i = 1, 40 do
+    local name = safe(UnitBuff, "player", i)
+    if not name then break end
+    if name == "Holy Shield" then return true end
+  end
+  return false
+end
+
+-- Block rating granted by an equipped block libram (relic slot) while Holy Shield is up. Mirrors
+-- src/librams.js. Libram of Repentance = +42 block rating; it's HS-conditional, so it rides with the
+-- Holy Shield bonus rather than the base block (a live HS aura folds it into GetBlockChance).
+local BLOCK_LIBRAMS = { [29388] = 42 } -- Libram of Repentance
+local function blockLibramRating()
+  local link = safe(GetInventoryItemLink, "player", 18) -- INVSLOT_RANGED = relic/libram slot in TBC
+  if not link then return 0 end
+  local id = tonumber(link:match("item:(%d+)"))
+  return (id and BLOCK_LIBRAMS[id]) or 0
+end
+
 -- Read the final sheet values evaluateSet() consumes. `opts.holyShield` (default true) toggles
--- the +30% block the Holy Shield uptime assumption adds to the crush table.
+-- the Holy Shield uptime assumption (+30% block, plus a block libram's HS-conditional block).
 function Core.readSheet(opts)
   opts = opts or {}
   local holyShield = opts.holyShield
@@ -65,6 +124,17 @@ function Core.readSheet(opts)
 
   local defenseSkill = liveDefenseSkill()
   local resilience = liveResilienceRating()
+
+  -- Normalize block to a Holy-Shield-free base so the with/without-HS numbers are consistent whether
+  -- or not HS happens to be up right now. GetBlockChance() reflects the live HS aura (+30%) and a
+  -- block libram's HS-conditional block; strip them back out and re-add the assumption ourselves
+  -- (hsBonusFull) — otherwise a live HS aura double-counts the crush table.
+  local blockRaw = safe(GetBlockChance) or 0
+  local hsActive = holyShieldAuraActive()
+  local libramRating = blockLibramRating()
+  local hsBonusFull = Const.THREAT.holyShieldActive + libramRating / RATING.blockPer1 -- +30% HS + libram
+  local baseBlock = hsActive and math.max(0, blockRaw - hsBonusFull) or blockRaw
+  local hsBlockBonus = holyShield and hsBonusFull or 0
 
   return {
     defenseSkill = defenseSkill,
@@ -74,10 +144,13 @@ function Core.readSheet(opts)
     missPct = Combat.missChance(defenseSkill),
     dodgePct = safe(GetDodgeChance) or 0,
     parryPct = safe(GetParryChance) or 0,
-    blockPct = safe(GetBlockChance) or 0,
-    -- Holy Shield block bonus: 30% when assumed up, 0 when toggled off. (Block-libram 35.32 is a
-    -- later refinement — needs relic-slot detection.)
-    hsBlockBonus = holyShield and Const.THREAT.holyShieldActive or 0,
+    -- HS-free base block feeds the avoidance totals; blockPctEffective (base + assumed HS/libram) is
+    -- what the avoidance row shows so it matches the WeakAura's live block figure.
+    blockPct = baseBlock,
+    blockPctEffective = baseBlock + hsBlockBonus,
+    hsBlockBonus = hsBlockBonus,
+    holyShieldLive = hsActive,
+    blockLibramRating = libramRating,
     armor = select(2, safe(UnitArmor, "player")) or 0,
     health = safe(UnitHealthMax, "player") or 0,
     spellPower = safe(GetSpellBonusDamage, 2) or 0, -- holy school
@@ -104,6 +177,9 @@ function Core.debug()
   p(string.format("resilienceRating=%.2f (crit red %.2f%%)  armor=%d  hp=%d  sp=%d  bv=%d",
     input.resilienceRating, Combat.critReduction(input.defenseSkill, input.resilienceRating),
     input.armor, input.health, input.spellPower, input.blockValue))
+  p(string.format("resil scan (gear)=%s  |  HS live=%s  blockLibram=%d rating  blockBase=%.2f  blockEff=%.2f",
+    tostring(equippedResilienceRating()), tostring(input.holyShieldLive), input.blockLibramRating or 0,
+    input.blockPct, input.blockPctEffective))
   -- Raw resilience reads per combat-rating index, so we can see which one the client fills.
   local names = { [CR_CRIT_TAKEN_MELEE or -1] = "MELEE", [CR_CRIT_TAKEN_SPELL or -2] = "SPELL",
     [CR_CRIT_TAKEN_RANGED or -3] = "RANGED" }
