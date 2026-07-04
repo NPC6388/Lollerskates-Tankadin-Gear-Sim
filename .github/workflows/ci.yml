@@ -62,7 +62,7 @@ jobs:
       - name: Syntax-check every addon Lua file
         run: find addon/TankadinGearSim -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
 
-      - name: Lua parity harnesses (engine / scoring / forward model / items / solver / optimizer / runner)
+      - name: Lua parity harnesses (engine / scoring / forward model / items / solver / optimizer / runner / async)
         run: |
           lua5.1 test/lua/eval_parity.lua
           lua5.1 test/lua/scoring_parity.lua
@@ -71,3 +71,4 @@ jobs:
           lua5.1 test/lua/solver_parity.lua
           lua5.1 test/lua/optimizer_parity.lua
           lua5.1 test/lua/runner_parity.lua
+          lua5.1 test/lua/async_parity.lua

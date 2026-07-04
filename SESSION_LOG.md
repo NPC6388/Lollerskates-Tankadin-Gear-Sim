@@ -4,6 +4,38 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-03 (D5c) — In-game optimizer, D5c: frame-yielding search (addon v0.8.13)
+
+Continued (user: "keep going"). **D5c landed** — the search now runs across frames so a full solve doesn't
+hitch the client.
+- **Cooperative-yield hook** `ns.engine.onTick` (no-op unless set) called at heavy-loop boundaries in
+  `Optimizer.lua` (repair/climb iters, exhaustive top candidates) + `Runner.lua` (each `runGoal`, the
+  reclaim + meta-repair loops, each goal in `optimizeSets`). Plus `ns.engine.onProgress(done,total)` per
+  goal. Because the hook is nil in the sync path, all 7 existing parity harnesses are UNAFFECTED (re-ran
+  green).
+- **`AsyncSearch.lua`** (impure): `ns.Async.optimizeSets(items, options, onDone, onProgress, onError)` runs
+  `Runner.optimizeSets` in a coroutine driven by an `OnUpdate` ticker with a 12ms/frame budget
+  (`debugprofilestop`); the hook yields when the budget is spent, resumes next frame; returns `:cancel()`.
+  Compile-checked only (WoW APIs).
+- **Soundness proof without WoW:** `test/lua/async_parity.lua` drives `optimizeSets` in a coroutine
+  yielding on EVERY tick (maximal churn) and asserts selection/SP/HP/legality == the sync run across all 4
+  option sets. Green under wasmoon (8 harnesses total). JS 149/149. `.toc` → 0.8.13; zip rebuilt (31 entries).
+- Coroutine yield is safe under Lua 5.1: the whole search stack is pure Lua (no C boundary; we never yield
+  inside a `table.sort` comparator — onTick only fires in explicit loops).
+
+### Pick up here (D6 — the first user-visible payoff)
+- **D6 — Optimize tab:** wire `ItemPool.scan()` (owned gear → engine/Items objects, already the shape
+  `Runner` expects) → `ns.Async.optimizeSets(...)` → render the four goal sets in a new UI tab (reuse the
+  Live tab's frame style). Show per-goal: selection (paper-doll-ish), gems/metas/enchant per slot, legal
+  gate chips, SP/EHP/HP, buffImpact; a progress bar off `onProgress`. Options UI (professions/buff/faction/
+  phase/keep-mode) can start minimal (sensible defaults) and grow.
+- **In-game smoke test (do it here):** open bank, `/tgs`, confirm `ItemPool.scan()` sees the same gear the
+  exporter does, and an async optimize completes without a client hitch and matches the website for the
+  same gear/options.
+- Everything still loads on a bare folder-copy (no Ace3) — keep it that way until CurseForge.
+
+---
+
 ## 2026-07-03 (D5b) — In-game optimizer, D5b: four-set orchestration (addon v0.8.12)
 
 Continued (user: "push/commit, then continue"). Pushed D4+D5a, then ported the big one:

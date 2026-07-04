@@ -20,6 +20,11 @@ local BASE, CAPS = C.BASE, C.CAPS
 local Optimizer = {}
 ns.engine.Optimizer = Optimizer
 
+-- Cooperative-yield hook: when ns.engine.onTick is set (by the async frame driver, AsyncSearch.lua) it's
+-- called at heavy-loop boundaries so a long search can yield across frames. nil in the sync/parity path
+-- (a no-op), so it can't change results — only WHEN they're produced.
+local function tick() local f = ns.engine.onTick; if f then f() end end
+
 local PAIRS = { ring = { "ring1", "ring2" }, trinket = { "trinket1", "trinket2" } }
 
 -- Build a slot pool from a flat item list: group by slot (first-seen order), expand paired ring/trinket
@@ -166,7 +171,10 @@ function Optimizer.optimizeExhaustive(pool, order, goal, opts)
       return
     end
     local s = order[i]
-    for _, it in ipairs(pool[s]) do rec(i + 1, copySel(sel, s, it)) end
+    for _, it in ipairs(pool[s]) do
+      if i == 1 then tick() end
+      rec(i + 1, copySel(sel, s, it))
+    end
   end
   rec(1, {})
   return best -- nil if no legal set exists
@@ -224,6 +232,7 @@ function Optimizer.optimizeHeuristic(pool, order, goal, opts)
   local cur = build(sel, goal)
 
   for _ = 1, 300 do
+    tick()
     local curDef = gateDeficit(cur.evald, goal.gates)
     if curDef <= 1e-9 then break end
     local curObj = objFn(cur.evald, cur.agg, cur.items)
@@ -256,6 +265,7 @@ function Optimizer.optimizeHeuristic(pool, order, goal, opts)
   -- Climb: once legal, convert surplus (avoidance over the cap) into the objective, staying legal.
   if gatesPass(cur.evald, goal.gates).all then
     for _ = 1, 300 do
+      tick()
       local curObj = objFn(cur.evald, cur.agg, cur.items)
       local bestSwap = nil
       for _, s in ipairs(order) do

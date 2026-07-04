@@ -34,6 +34,9 @@ local FITS = Gems.FITS
 local Runner = {}
 ns.engine.Runner = Runner
 
+-- Cooperative-yield hook (see engine/Optimizer.lua): no-op unless the async frame driver sets it.
+local function tick() local f = ns.engine.onTick; if f then f() end end
+
 local HS = 30                              -- Holy Shield +30% block in the uncrushable check
 local CAP_SCALE = SCALES.survivalUncrushable -- gems that most cheaply buy avoidance/defense
 local ALT_EPS = 0.01                       -- a slot alternative is "near-identical" within 1% of the whole-set objective
@@ -342,6 +345,7 @@ local function resolveMetas(plans, objScale, ctx)
 end
 
 local function runGoal(goal, items, ctx, seed)
+  tick()
   seed = seed or {}
   local perks, buff, maxPhase, faction, locks, talents = ctx.perks, ctx.buff, ctx.maxPhase, ctx.faction, ctx.locks, ctx.talents
   local aggOpts = { hsBlockBonus = HS }
@@ -456,6 +460,7 @@ local function runGoal(goal, items, ctx, seed)
   -- RECLAIM the gate overshoot
   if finalLegal(g.evald) then
     for _ = 1, #res.items do
+      tick()
       local best = nil
       for _, v in ipairs(res.items) do
         if scaleOf[v] == CAP_SCALE then
@@ -527,6 +532,7 @@ local function runGoal(goal, items, ctx, seed)
     local best = nil
     local curObj = objOf(g)
     for _, slotKey in ipairs(order) do
+      tick()
       local cur = res.selection[slotKey]
       if cur and cur._gem ~= "locked" and not locked[slotKey] then
         local seen = { [cur.itemId] = true }
@@ -722,6 +728,7 @@ function Runner.optimizeSets(items, options)
 
   local results = {}
   for _, g in ipairs(goals) do
+    tick()
     local gseed = (options.seeds and options.seeds[g.id]) or {}
     local res
     local endId = nil
@@ -748,6 +755,8 @@ function Runner.optimizeSets(items, options)
     end
     byId[g.id] = res
     results[#results + 1] = res
+    local pf = ns.engine.onProgress
+    if pf then pf(#results, #goals) end
   end
   return results
 end

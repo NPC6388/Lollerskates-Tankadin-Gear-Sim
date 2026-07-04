@@ -70,7 +70,7 @@ const PATHS = [
   'test/lua/optimizer_fixtures.lua',
   'test/lua/runner_fixtures.lua',
 ];
-const HARNESSES = ['test/lua/eval_parity.lua', 'test/lua/scoring_parity.lua', 'test/lua/model_parity.lua', 'test/lua/items_parity.lua', 'test/lua/solver_parity.lua', 'test/lua/optimizer_parity.lua', 'test/lua/runner_parity.lua'];
+const HARNESSES = ['test/lua/eval_parity.lua', 'test/lua/scoring_parity.lua', 'test/lua/model_parity.lua', 'test/lua/items_parity.lua', 'test/lua/solver_parity.lua', 'test/lua/optimizer_parity.lua', 'test/lua/runner_parity.lua', 'test/lua/async_parity.lua'];
 
 let anyFail = false;
 

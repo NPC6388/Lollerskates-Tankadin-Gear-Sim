@@ -2,7 +2,7 @@
 ## Title: Tankadin Gear Sim
 ## Notes: Live tank readout (uncrittable/uncrushable/EHP) + gear export for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.8.12
+## Version: 0.8.13
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB
 ## X-Category: Combat
@@ -56,6 +56,10 @@ Core.lua
 
 # Live optimizer input: owned gear -> engine/Items objects (needs Exporter + engine.Items).
 ItemPool.lua
+
+# Async search driver (Phase D5c): runs engine.Runner.optimizeSets across frames via a coroutine +
+# time-budgeted ticker, so a full solve doesn't hitch the client. Impure (CreateFrame/OnUpdate).
+AsyncSearch.lua
 
 # UI last (consumes ns.Core + ns.Exporter).
 UI.lua

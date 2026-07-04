@@ -824,6 +824,21 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   alternatives / buffImpact** (**15 goal results**, all fields). All green under wasmoon; CI + pre-commit
   drift guard + `run-lua-parity` + a `gen-runner-fixtures` script wired. JS 149/149. `.toc` → 0.8.12.
   **D5 logic complete** — remaining: D5c (run the search in a frame-yielding coroutine) then D6 (Optimize tab).
+- **Addon v0.8.13 — in-game optimizer, D5c: frame-yielding search (internal, no UI yet).** So a full
+  solve never hitches the client, the search now runs across frames. Added a cooperative-yield hook
+  (`ns.engine.onTick`, a **no-op unless set** — sync/parity path unchanged) called at the heavy-loop
+  boundaries in `engine/Optimizer.lua` (repair/climb iterations, exhaustive top candidates) and
+  `engine/Runner.lua` (each `runGoal`, the reclaim + meta-repair loops, each goal in `optimizeSets`), plus
+  an `ns.engine.onProgress(done,total)` hook per solved goal. New impure **`AsyncSearch.lua`**
+  (`ns.Async.optimizeSets(items, options, onDone, onProgress, onError)`) drives `Runner.optimizeSets` in a
+  **coroutine** from an `OnUpdate` ticker with a per-frame time budget (`debugprofilestop`, 12ms): the hook
+  yields once the budget is spent, the ticker resumes next frame; returns a `:cancel()` handle. Impure, so
+  compile-checked only — but the RESULT is provably identical to the sync path: new
+  `test/lua/async_parity.lua` drives `optimizeSets` in a coroutine yielding on EVERY tick (maximal
+  suspend/resume churn) and asserts the selection/SP/HP/legality match the synchronous run across all
+  option sets. Full Lua suite now **8 harnesses**, all green under wasmoon (30 addon files syntax-checked).
+  JS 149/149. `.toc` → 0.8.13. **D5 complete** — next is **D6** (`ItemPool.scan()` → async search → the
+  Optimize tab; first user-visible in-game payoff).
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from
