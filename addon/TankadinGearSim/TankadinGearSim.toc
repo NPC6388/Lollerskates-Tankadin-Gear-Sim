@@ -2,7 +2,7 @@
 ## Title: Tankadin Gear Sim
 ## Notes: Live tank readout (uncrittable/uncrushable/EHP) + gear export for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.8.11
+## Version: 0.8.12
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB
 ## X-Category: Combat
@@ -45,6 +45,10 @@ engine\GemSolver.lua
 engine\SetsData.lua
 engine\Sets.lua
 engine\Optimizer.lua
+
+# Four-set orchestration (Phase D5b): item variants -> search -> gemming -> gate recovery / reclaim /
+# meta-repair / near-alts. Ties together Optimizer + GemSolver + Gems/Enchants + Model/Evaluate + the rest.
+engine\Runner.lua
 
 # Website exporter (reads ns.VERSION) and the live-sheet reader.
 Exporter.lua

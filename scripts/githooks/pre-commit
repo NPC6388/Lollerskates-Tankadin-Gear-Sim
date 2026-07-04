@@ -51,3 +51,10 @@ if git diff --cached --name-only | grep -qE '^(src/(optimizer|sets|weights|scori
   node bin/gen-optimizer-fixtures.mjs || exit 1
   git add test/lua/optimizer_fixtures.lua
 fi
+
+# Keep the Lua runner (four-set orchestration) parity goldens fresh. It ties together almost the whole
+# engine, so regenerate on any of its sources — or its generator — changing.
+if git diff --cached --name-only | grep -qE '^(src/(runner|optimizer|sets|gems|enchants|professions|librams|scrolls|gemsolver|weights|scoring|model|character|constants|combat)\.js|bin/gen-runner-fixtures\.mjs)$'; then
+  node bin/gen-runner-fixtures.mjs || exit 1
+  git add test/lua/runner_fixtures.lua
+fi

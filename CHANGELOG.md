@@ -806,6 +806,24 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   wasmoon; CI + pre-commit drift guards + `run-lua-parity` + a `gen-optimizer-fixtures` script wired.
   JS 149/149. `.toc` → 0.8.11. Next: D5b (`runner.js` orchestration — runGoal/optimizeSets, gate-aware
   re-gem, reclaim, floor recovery, meta-repair, near-alts) then D5c (frame-yielding coroutine) → D6 (UI).
+- **Addon v0.8.12 — in-game optimizer, D5b: four-set orchestration (internal, no UI yet).** Ported the
+  whole `src/runner.js` → **`engine/Runner.lua`** — the piece that ties everything together into the four
+  tuned sets (raid threat / survival / AOE trash / balanced). `runGoal`: builds each owned item's focus
+  + cap gem variants (`itemVariants`/`buildVariant`), runs the `Optimizer` search, gems the selection
+  socket-bonus-aware (`gemSet` → `GemSolver.planItemGems` + `resolveMetas` meta-aware gemming with cheap-
+  socket recolor), then the GATE RECOVERY (re-gem gate-aware when a gate is missed), RECLAIM (flip def
+  gems back to threat while legal), FINAL META repair (swap to restore a dropped meta color), and
+  `nearAlternatives`. `optimizeSets`: buff/scroll merge, ctx, `solveGoal` Min-HP floor recovery (max-HP
+  seed + EHP-lean sweep), and the Balanced end-copy / dual-seed. Threads the D5a slot `order` through so
+  gemChoices/plan order + swap tie-breaks match JS exactly; JS-stable sorts (`enableMeta`,
+  `nearAlternatives`) carry an explicit original-index tie-break. Anti-drift: `bin/gen-runner-fixtures.mjs`
+  runs the JS `optimizeSets` over a synthetic pool (socketed pieces + a meta socket, a Justicar 2pc, a
+  libram, the trinket-lock ids, a keep-lockable neck) × 4 option sets (buff/professions/faction/meta-
+  exclude/keep-mode/phase/custom Min-HP goals) → `runner_fixtures.lua`; `test/lua/runner_parity.lua`
+  deep-compares each goal's **selection / agg / evald / gemChoices / metas / per-slot gems+enchant+
+  alternatives / buffImpact** (**15 goal results**, all fields). All green under wasmoon; CI + pre-commit
+  drift guard + `run-lua-parity` + a `gen-runner-fixtures` script wired. JS 149/149. `.toc` → 0.8.12.
+  **D5 logic complete** — remaining: D5c (run the search in a frame-yielding coroutine) then D6 (Optimize tab).
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

@@ -4,6 +4,41 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-03 (D5b) — In-game optimizer, D5b: four-set orchestration (addon v0.8.12)
+
+Continued (user: "push/commit, then continue"). Pushed D4+D5a, then ported the big one:
+**`src/runner.js` → `engine/Runner.lua`** — the four-set orchestration.
+- `runGoal`: focus/cap gem variants per item → `Optimizer` search → `gemSet` (socket-bonus-aware gemming
+  via `GemSolver.planItemGems` + `resolveMetas` meta-aware recolor) → GATE RECOVERY / RECLAIM overshoot /
+  FINAL META repair / `nearAlternatives` / libram spellPower-equiv split. `optimizeSets`: buff+scroll
+  merge, ctx, `solveGoal` Min-HP floor recovery (max-HP seed + EHP-lean sweep), Balanced end-copy/dual-seed.
+- **Determinism:** threaded the D5a `order` array through `gemSet`/meta-pass/near-alts (Lua has no table
+  key order), and gave the two JS-stable sorts (`enableMeta`, `nearAlternatives`) an explicit original-
+  index tie-break. Result: byte-for-byte selection + gem/plan order parity.
+- **Parity:** `bin/gen-runner-fixtures.mjs` runs JS `optimizeSets` over a 25-item synthetic pool (socketed
+  pieces incl. a meta socket, Justicar 2pc, a libram, the trinket-lock ids, a keep-lockable neck) × 4
+  option sets (raid/kings buffs, professions, faction, useImbuedMeta=false, keepGemsEnchants, maxPhase,
+  custom Min-HP goals) → `runner_fixtures.lua`; `runner_parity.lua` deep-compares selection / agg / evald /
+  gemChoices / metas / per-slot (gems + enchant + alternatives) / buffImpact. **15 goal results, all
+  matched on the FIRST run.** Full Lua suite green under wasmoon (7 harnesses). JS 149/149.
+- Wired CI, pre-commit drift guard, `run-lua-parity`, `gen-runner-fixtures` script. `.toc` → 0.8.12; zip
+  rebuilt (30 entries).
+
+### Pick up here (D5c → D6)
+- **D5c — frame-yielding coroutine:** the search (`Runner.optimizeSets` → `runGoal` → the many `gemSet`/
+  `runGoal` recovery calls) is synchronous and can be heavy; wrap it so it yields across frames (e.g. a
+  coroutine driven by an `OnUpdate` ticker) so it doesn't hitch the client. `runGoal` is the natural yield
+  boundary (4 goals + recovery leans = a handful of heavy calls); a per-candidate yield inside the
+  Optimizer heuristic loops is the finer-grained option if 1 goal/frame still stutters. Keep a pure
+  (synchronous) `optimizeSets` for the parity harness; the coroutine is an addon-only wrapper.
+- **D6 — runner + Optimize tab:** `ItemPool.scan()` → `Runner.optimizeSets` → render the four goal sets in
+  a new UI tab (first user-visible payoff). In-game smoke test: confirm `ItemPool.scan()` reads the same
+  gear the exporter does (open bank first). ItemPool items already match the shape Runner expects
+  (`slot/itemId/equipLoc/stats/baseStats/sockets/socketBonus/gems/enchantId/name`).
+- Everything still loads on a bare folder-copy (no Ace3) — keep it that way until CurseForge.
+
+---
+
 ## 2026-07-03 (D5a) — In-game optimizer, D5a: optimizer core (addon v0.8.11)
 
 Continued (user: "commit and continue"). Committed D4 (`852d939`), then split the big D5 into bricks and
