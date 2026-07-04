@@ -839,6 +839,20 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   option sets. Full Lua suite now **8 harnesses**, all green under wasmoon (30 addon files syntax-checked).
   JS 149/149. `.toc` → 0.8.13. **D5 complete** — next is **D6** (`ItemPool.scan()` → async search → the
   Optimize tab; first user-visible in-game payoff).
+- **Addon v0.8.14 — in-game optimizer, D6: Optimize tab (first user-visible payoff — needs in-game
+  verification).** Wired the whole ported engine to a UI. New **Optimize** tab in `UI.lua`: an Optimize
+  button scans owned gear (`ItemPool.scan()` → the same `engine/Items` objects `Runner` consumes),
+  auto-detects the player's **professions** (`GetProfessions`/`GetProfessionInfo` → our perk names) and
+  **faction** (`Enchants.detectFaction` off the worn shoulder inscription), then runs
+  `ns.Async.optimizeSets` (Kings+MotW buffs) across frames — a live "Solving N/M…" status off the
+  `onProgress` hook, then renders the four goal sets as compact cards (name + gate chip, SP / Uncrush% /
+  Crit%, EHP / HP / Avoid / Block). Re-clicking cancels the prior run. All glue over code the parity
+  harnesses already prove (the item shape flows `ItemPool` → `Runner` unchanged), so the engine result
+  matches the website for the same gear/options; the UI layer itself is native-frame glue that compiles
+  clean (30-file syntax pass) but is **not yet eyeballed in-game**. `.toc` → 0.8.14. **Phase D optimizer
+  is feature-complete pending the in-game smoke test** (open bank, `/tgs`, Optimize — confirm the scan
+  sees the same gear as the export and a solve completes without a client hitch). Follow-ups: per-slot
+  gem/enchant/alternative detail in the cards, and an options row (keep-mode / phase / manual professions).
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

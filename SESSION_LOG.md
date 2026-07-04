@@ -4,6 +4,37 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-03 (D6) — In-game optimizer, D6: Optimize tab (addon v0.8.14)
+
+Continued (user: "continue"). **D6 landed (v1, needs in-game verification).** Added the **Optimize** tab
+to `UI.lua` — the first user-visible payoff of the whole port.
+- Optimize button → `ItemPool.scan()` (owned gear as engine/Items objects, the exact shape `Runner`
+  eats) → auto-detect **professions** (`GetProfessions`/`GetProfessionInfo` mapped to our perk names) +
+  **faction** (`Enchants.detectFaction` off the worn shoulder) → `ns.Async.optimizeSets({ buff="raid",
+  professions, faction })` across frames. Live "Solving N/M…" status from the `onProgress` hook; on done,
+  renders the four goal sets as compact cards (name + gate chip; SP / Uncrush% / Crit%; EHP / HP / Avoid /
+  Block). Re-clicking cancels the prior run (`optRun.cancel()`).
+- Frame widens to 440×366 on the Optimize tab (Live stays 300×404, Export 600×440). Native frames, no
+  Ace3 — still loads on a bare folder-copy.
+- **Verification status:** all glue over parity-proven code — the item shape flows ItemPool → Runner
+  unchanged (validated by runner_parity), so the *engine result* matches the website. The UI layer
+  compiles clean (30-file syntax pass) but is **NOT yet eyeballed in-game** (no WoW here). `.toc` → 0.8.14;
+  zip rebuilt.
+
+### Pick up here — IN-GAME SMOKE TEST (the important next step)
+- Re-copy `addon/TankadinGearSim/` into the live AddOns folder (see [[savedvars-disk-path]]), `/reload`,
+  `/tgs`, click the **Optimize** tab → **Optimize**. Confirm: (1) item count looks right (open the bank
+  first for banked gear), (2) professions/faction auto-detected correctly, (3) the solve finishes with no
+  client hitch, (4) the four cards' SP/EHP/Uncrush/Crit match the website for the same gear + options
+  (buff Kings+MotW, same professions/faction, current phase). If a number's off, reconcile against a
+  website run with identical options.
+- **Then polish D6:** per-slot gem/enchant/alternative detail in the cards (the data is all in
+  `result.perSlot`), and an options row (keep-mode / phase / manual profession + faction override). The
+  `/tgs` slash could also gain an `optimize` subcommand to open straight to the tab.
+- CurseForge remains the final phase (see addon/PUBLISHING.md; user-only account setup + a dry-run tag).
+
+---
+
 ## 2026-07-03 (D5c) — In-game optimizer, D5c: frame-yielding search (addon v0.8.13)
 
 Continued (user: "keep going"). **D5c landed** — the search now runs across frames so a full solve doesn't
