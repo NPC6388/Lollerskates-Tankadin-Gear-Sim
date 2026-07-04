@@ -22,6 +22,7 @@ import { ENCHANTS } from '../src/enchants.js';
 import { PROFESSIONS, PROFESSION_NAMES } from '../src/professions.js';
 import { LIBRAMS } from '../src/librams.js';
 import { SCROLLS } from '../src/scrolls.js';
+import { SET_DB, SET_BONUS_STATS } from '../src/sets.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const engineDir = resolve(here, '../addon/TankadinGearSim/engine');
@@ -34,6 +35,7 @@ const enchantsFile = resolve(engineDir, 'EnchantsData.lua');
 const professionsFile = resolve(engineDir, 'ProfessionsData.lua');
 const libramsFile = resolve(engineDir, 'LibramsData.lua');
 const scrollsFile = resolve(engineDir, 'ScrollsData.lua');
+const setsFile = resolve(engineDir, 'SetsData.lua');
 
 // Guide-reference comments, keyed by "TABLE.field". Cosmetic only — the VALUES come from the import
 // above, so a value edit in src/constants.js flows through regardless of what's written here.
@@ -306,3 +308,14 @@ writeFileSync(scrollsFile,
   nsHeader('D', 'ScrollsData') + '\n' +
   `-- key -> { name, stat, value, flat? }. flat armor bypasses Toughness; primaries ride the buff block.\nD.SCROLLS = ${luaValue(SCROLLS)}\n\nreturn D\n`);
 console.log(`Wrote ${scrollsFile}`);
+
+// engine/SetsData.lua — tier set membership + equivalent-stat bonus bundles (src/sets.js), for the
+// optimizer's 'scale' objective (setBonusStats values completing a 2pc/4pc).
+const setsBody = [
+  `-- itemId -> tier set name (Justicar = T4, Crystalforge = T5).\nD.SET_DB = ${luaValue(SET_DB)}`,
+  `-- Set bonus -> equivalent flat-stat bundle (scored by the goal weights like any stat).\nD.SET_BONUS_STATS = ${luaValue(SET_BONUS_STATS)}`,
+].join('\n\n');
+writeFileSync(setsFile,
+  dataBanner('src/sets.js', 'Tier set data (engine/Sets.lua); setCounts/setBonusStats logic is hand-ported there.') +
+  nsHeader('D', 'SetsData') + '\n' + setsBody + '\n\nreturn D\n');
+console.log(`Wrote ${setsFile}`);

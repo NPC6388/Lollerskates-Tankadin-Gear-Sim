@@ -58,13 +58,17 @@ const PATHS = [
   'addon/TankadinGearSim/engine/ScrollsData.lua',
   'addon/TankadinGearSim/engine/Scrolls.lua',
   'addon/TankadinGearSim/engine/GemSolver.lua',
+  'addon/TankadinGearSim/engine/SetsData.lua',
+  'addon/TankadinGearSim/engine/Sets.lua',
+  'addon/TankadinGearSim/engine/Optimizer.lua',
   'test/lua/fixtures.lua',
   'test/lua/scoring_fixtures.lua',
   'test/lua/model_fixtures.lua',
   'test/lua/items_fixtures.lua',
   'test/lua/solver_fixtures.lua',
+  'test/lua/optimizer_fixtures.lua',
 ];
-const HARNESSES = ['test/lua/eval_parity.lua', 'test/lua/scoring_parity.lua', 'test/lua/model_parity.lua', 'test/lua/items_parity.lua', 'test/lua/solver_parity.lua'];
+const HARNESSES = ['test/lua/eval_parity.lua', 'test/lua/scoring_parity.lua', 'test/lua/model_parity.lua', 'test/lua/items_parity.lua', 'test/lua/solver_parity.lua', 'test/lua/optimizer_parity.lua'];
 
 let anyFail = false;
 

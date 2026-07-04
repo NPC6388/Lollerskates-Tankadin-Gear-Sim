@@ -4,6 +4,42 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-03 (D5a) — In-game optimizer, D5a: optimizer core (addon v0.8.11)
+
+Continued (user: "commit and continue"). Committed D4 (`852d939`), then split the big D5 into bricks and
+landed the first: **D5a — the search core** (`src/optimizer.js` → `engine/Optimizer.lua`).
+- `buildPool` (slot grouping, paired ring/trinket distinct groups, 2H exclusion, locks), `distinctOk`,
+  gate helpers (`gatesPass`/`gateDeficit` — crit + uncrushable + Min-HP), `objectiveFn` (spellPower/ehp/
+  'scale' blend), the greedy **repair→climb heuristic**, and the exhaustive solver.
+- **Ordering fix for parity:** Lua tables have no key order but the JS search relies on
+  `Object.keys(pool)` insertion order (swap tie-breaks) — so `buildPool` returns an explicit `order`
+  array every search iterates, and seed picks use a first-max scan (== JS stable-sort `[0]`). Deterministic.
+- The `'scale'` objective needs tier set bonuses → ported `src/sets.js`: generated `engine/SetsData.lua`
+  (SET_DB / SET_BONUS_STATS) + hand-ported `engine/Sets.lua` (`setCounts`/`setBonusStats`). (Display-only
+  `setBonuses` combat-modifier readout deferred to the UI phase.)
+- **Parity:** `bin/gen-optimizer-fixtures.mjs` (synthetic pool with strong defensive variants so LEGAL
+  sets exist → climb branch + non-nil exhaustive exercised) → `optimizer_fixtures.lua`;
+  `optimizer_parity.lua` compares selection / objectiveValue / legality. **52 checks.** Full Lua suite
+  **1556 checks** (69+118+126+440+751+52) + 28-file syntax, all green under wasmoon. JS 149/149.
+- Wired CI, pre-commit drift guards, `run-lua-parity` PATHS/HARNESSES, `gen-optimizer-fixtures` script.
+  `.toc` → 0.8.11; zip rebuilt (29 entries).
+
+### Pick up here (D5b → D5c → D6)
+- **D5b — runner orchestration:** port `src/runner.js` (the hard part): `runGoal` (item focus/cap
+  variants, `buildPool` + heuristic, gem a SELECTION via `gemSet`/`resolveMetas`, GATE recovery, RECLAIM
+  overshoot, FINAL META repair pass, `nearAlternatives`) and `optimizeSets` (buff/scroll merge, ctx,
+  `solveGoal` Min-HP floor recovery, Balanced end-copy/dual-seed). Needs GemSolver + Gems/Enchants +
+  Model/Evaluate/Scoring + Optimizer + Professions/Scrolls/Librams — everything ported so far ties
+  together here. Parity-test the four-set result (selection + gems/metas/enchants + legal) against JS.
+  Note `runGoal` uses `optimizeHeuristic(pool, goal, …)` — thread the D5a `order` through (buildPool
+  returns it). `resolveMetas`/`reassignForBonus` MUTATE plan choices — port that carefully.
+- **D5c — frame-yielding coroutine:** wrap the search so it yields across frames (don't hitch the client).
+- **D6 — runner + Optimize tab:** `ItemPool.scan()` → the search → render four goal sets in a new UI tab.
+  In-game smoke test: confirm `ItemPool.scan()` reads the same gear the exporter does (open bank first).
+- Everything still loads on a bare folder-copy (no Ace3) — keep it that way until CurseForge.
+
+---
+
 ## 2026-07-03 (D4) — In-game optimizer, D4: gem/enchant solver (addon v0.8.10)
 
 Continued Phase D (user: "proceed"). **D4 landed** — the gem/enchant recommendation half of the

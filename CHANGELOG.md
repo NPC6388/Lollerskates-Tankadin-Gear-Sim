@@ -789,6 +789,23 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Lua suite now **1504 parity checks** (69+118+126+440+751) + a 25-file syntax pass, all green under
   wasmoon; CI + the pre-commit drift guards + `run-lua-parity` wired for the new files. JS suite 149/149.
   `.toc` → 0.8.10. **D4 done** — next is D5 (search in a frame-yielding coroutine) then D6 (Optimize tab).
+- **Addon v0.8.11 — in-game optimizer, D5a: optimizer core (internal, no UI yet).** Ported the search
+  itself — `src/optimizer.js` → **`engine/Optimizer.lua`**: `buildPool` (group by slot, expand paired
+  ring/trinket distinct groups, 2H exclusion, locks), `distinctOk`, the gate helpers (`gatesPass`/
+  `gateDeficit`, crit + uncrushable + Min-HP floor), `objectiveFn` (builtin spellPower/ehp + the 'scale'
+  weight-blend), the greedy **repair→climb heuristic**, and the exhaustive solver. Since Lua tables have
+  no key order (and the JS relies on `Object.keys(pool)` insertion order for swap tie-breaks), buildPool
+  returns an explicit **`order`** array every search iterates, and seed picks use a first-max scan (==
+  JS's stable-sort `[0]`) — so the port is deterministic and matches JS. Its `'scale'` objective needs
+  tier set bonuses, so `src/sets.js` was ported too: generated **`engine/SetsData.lua`** (SET_DB /
+  SET_BONUS_STATS) + hand-ported **`engine/Sets.lua`** (`setCounts`/`setBonusStats`). Anti-drift:
+  `bin/gen-optimizer-fixtures.mjs` runs the JS over a synthetic pool × goals → `optimizer_fixtures.lua`
+  (with legal sets so the climb branch + a non-nil exhaustive result are exercised);
+  `test/lua/optimizer_parity.lua` asserts the ports pick the same selection / objective value / legality
+  (**52 checks**). Full Lua suite now **1556 parity checks** + a 28-file syntax pass, all green under
+  wasmoon; CI + pre-commit drift guards + `run-lua-parity` + a `gen-optimizer-fixtures` script wired.
+  JS 149/149. `.toc` → 0.8.11. Next: D5b (`runner.js` orchestration — runGoal/optimizeSets, gate-aware
+  re-gem, reclaim, floor recovery, meta-repair, near-alts) then D5c (frame-yielding coroutine) → D6 (UI).
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

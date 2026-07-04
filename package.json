@@ -15,6 +15,7 @@
     "gen-model-fixtures": "node bin/gen-model-fixtures.mjs",
     "gen-items-fixtures": "node bin/gen-items-fixtures.mjs",
     "gen-solver-fixtures": "node bin/gen-solver-fixtures.mjs",
+    "gen-optimizer-fixtures": "node bin/gen-optimizer-fixtures.mjs",
     "test:lua": "lua test/lua/eval_parity.lua"
   },
   "license": "MIT",

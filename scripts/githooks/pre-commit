@@ -12,13 +12,13 @@ fi
 # Gems/Enchants/Professions/Librams/Scrolls) in lockstep with the JS source of truth. Re-run the
 # generator whenever any source it reads — or the generator itself — is part of this commit, and stage
 # the result. Same spirit as the asset stamp.
-if git diff --cached --name-only | grep -qE '^(src/(constants|weights|model|import|gems|enchants|professions|librams|scrolls)\.js|bin/gen-lua-data\.mjs)$'; then
+if git diff --cached --name-only | grep -qE '^(src/(constants|weights|model|import|gems|enchants|professions|librams|scrolls|sets)\.js|bin/gen-lua-data\.mjs)$'; then
   node bin/gen-lua-data.mjs || exit 1
   git add addon/TankadinGearSim/engine/Constants.lua addon/TankadinGearSim/engine/Weights.lua \
     addon/TankadinGearSim/engine/CharacterData.lua addon/TankadinGearSim/engine/ItemsData.lua \
     addon/TankadinGearSim/engine/GemsData.lua addon/TankadinGearSim/engine/EnchantsData.lua \
     addon/TankadinGearSim/engine/ProfessionsData.lua addon/TankadinGearSim/engine/LibramsData.lua \
-    addon/TankadinGearSim/engine/ScrollsData.lua
+    addon/TankadinGearSim/engine/ScrollsData.lua addon/TankadinGearSim/engine/SetsData.lua
 fi
 
 # Keep the Lua scoring parity goldens fresh when the scoring core (or its generator) changes.
@@ -44,4 +44,10 @@ fi
 if git diff --cached --name-only | grep -qE '^(src/(gems|enchants|professions|librams|scrolls|gemsolver|weights|scoring|model|character)\.js|bin/gen-solver-fixtures\.mjs)$'; then
   node bin/gen-solver-fixtures.mjs || exit 1
   git add test/lua/solver_fixtures.lua
+fi
+
+# Keep the Lua optimizer parity goldens fresh when the search or anything it scores through changes.
+if git diff --cached --name-only | grep -qE '^(src/(optimizer|sets|weights|scoring|model|character|constants|combat)\.js|bin/gen-optimizer-fixtures\.mjs)$'; then
+  node bin/gen-optimizer-fixtures.mjs || exit 1
+  git add test/lua/optimizer_fixtures.lua
 fi
