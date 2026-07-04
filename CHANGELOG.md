@@ -853,6 +853,7 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   is feature-complete pending the in-game smoke test** (open bank, `/tgs`, Optimize — confirm the scan
   sees the same gear as the export and a solve completes without a client hitch). Follow-ups: per-slot
   gem/enchant/alternative detail in the cards, and an options row (keep-mode / phase / manual professions).
+  **Status: committed but not yet verified in-game — the user will run the smoke test next session.**
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

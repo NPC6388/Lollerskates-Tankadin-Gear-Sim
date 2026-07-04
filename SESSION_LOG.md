@@ -21,7 +21,10 @@ to `UI.lua` — the first user-visible payoff of the whole port.
   compiles clean (30-file syntax pass) but is **NOT yet eyeballed in-game** (no WoW here). `.toc` → 0.8.14;
   zip rebuilt.
 
-### Pick up here — IN-GAME SMOKE TEST (the important next step)
+### Pick up here — IN-GAME SMOKE TEST (deferred to next session by the user; do this FIRST)
+> Status at end of this session: D6 is committed + pushed but UNVERIFIED in-game. The user said they'll
+> test it next session. On resume, start by asking how the in-game Optimize test went (numbers vs the
+> website, any Lua errors, layout) before polishing — the UI layer has never run in WoW yet.
 - Re-copy `addon/TankadinGearSim/` into the live AddOns folder (see [[savedvars-disk-path]]), `/reload`,
   `/tgs`, click the **Optimize** tab → **Optimize**. Confirm: (1) item count looks right (open the bank
   first for banked gear), (2) professions/faction auto-detected correctly, (3) the solve finishes with no
