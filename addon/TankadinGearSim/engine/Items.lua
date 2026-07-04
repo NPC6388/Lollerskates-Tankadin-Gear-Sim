@@ -104,7 +104,19 @@ function Items.build(raw)
   -- sockets: prefer the base layout (every socket); fall back to resolved (currently-empty only).
   item.sockets = Items.socketsFromStats(item.baseStats or stats)
   item.socketBonus = Items.parseSocketBonus(raw.socketBonus)
-  -- NOTE: libram effective-stat override (import.js libramStats) lands with the D4 gem/enchant solver.
+  -- Librams score through a special equip effect the tooltip parser misses (e.g. +Consecration
+  -- damage). Override with the modeled effective stats so the libram is valued correctly (mirrors
+  -- import.js's final per-item step). Referenced lazily so Items stays loadable without the solver.
+  local Librams = ns.engine.Librams
+  if Librams then
+    local lib = Librams.libramStats(item)
+    if lib then
+      item.stats = lib
+      local base = {}
+      for k, v in pairs(lib) do base[k] = v end
+      item.baseStats = base
+    end
+  end
   return item
 end
 

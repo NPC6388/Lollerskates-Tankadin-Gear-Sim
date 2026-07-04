@@ -52,6 +52,20 @@ items.push({
   itemLevel: 110, resolved: { ITEM_MOD_STAMINA_SHORT: 10 }, base: { ITEM_MOD_STAMINA_SHORT: 15, EMPTY_SOCKET_YELLOW: 2 }, socketBonus: '',
 });
 
+// Libram by ID (Repentance, 29388): its parsed stats are OVERRIDDEN with the modeled effective stat
+// block (blockRating 42) — stats AND baseStats. Exercises the libramStats wiring in Items.build.
+items.push({
+  itemString: 'item:29388:0:0:0:0:0:0', equipLoc: 'INVTYPE_RELIC', name: 'Some Relic', equipped: true,
+  itemLevel: 100, resolved: { ITEM_MOD_SPELL_POWER: 22 }, base: { ITEM_MOD_SPELL_POWER: 22 }, socketBonus: '',
+});
+
+// Libram by NAME (Eternal Rest) — id doesn't match, so the name substring drives the override
+// (spellDamage 35).
+items.push({
+  itemString: 'item:40000:0:0:0:0:0:0', equipLoc: 'INVTYPE_RELIC', name: 'Libram of the Eternal Rest', equipped: false,
+  itemLevel: 100, resolved: { ITEM_MOD_BLOCK_VALUE: 12 }, base: { ITEM_MOD_BLOCK_VALUE: 12 }, socketBonus: '',
+});
+
 // Build the synthetic export and get the golden item objects.
 const seg = (t) => Object.entries(t).map(([k, val]) => `${k}=${val}`).join(';');
 const lines = ['TGS11', 'C:'];

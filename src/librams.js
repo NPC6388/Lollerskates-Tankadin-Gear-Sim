@@ -14,14 +14,17 @@
 //
 // Conditionality note: Libram of Repentance's block bonus needs Holy Shield ACTIVE — ~always up
 // single-target, but consumed early in AOE, so it's weakest exactly where the Consecration libram shines.
+// `nameMatch` carries the SAME literal, lowercase substrings the `match` regex tests for (each is
+// OR-ed, matched anywhere in the lowercased name). It's the regex-free form the generated Lua port
+// (engine/LibramsData.lua) uses, since Lua has no JS regex. Keep the two in sync.
 export const LIBRAMS = [
-  { ids: [29388], match: /libram of repentance/i, stats: { blockRating: 42 } },        // +42 block rating while Holy Shield up
+  { ids: [29388], match: /libram of repentance/i, nameMatch: ['libram of repentance'], stats: { blockRating: 42 } },        // +42 block rating while Holy Shield up
   // +47 Consecration damage. Raw coefficient inversion (÷~0.95) ≈ 49 SP of Consecration OUTPUT, but
   // that over-credits: real spell damage feeds the whole rotation, this only feeds Consecration. Modeled
   // at ~35 effective spell damage — enough that it wins the threat-leaning sets (and especially AOE,
   // where the scale weights spell damage higher because Consecration hits every target) while the block
   // libram still wins survival. A single spell-damage number can't make it AOE-ONLY; tune here.
-  { ids: [32368], match: /libram of (the )?eternal rest/i, stats: { spellDamage: 35 } },
+  { ids: [32368], match: /libram of (the )?eternal rest/i, nameMatch: ['libram of eternal rest', 'libram of the eternal rest'], stats: { spellDamage: 35 } },
 ];
 
 // Modeled stats for an item if it's a known libram, else null.

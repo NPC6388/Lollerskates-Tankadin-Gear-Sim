@@ -47,12 +47,24 @@ const PATHS = [
   'addon/TankadinGearSim/engine/Model.lua',
   'addon/TankadinGearSim/engine/ItemsData.lua',
   'addon/TankadinGearSim/engine/Items.lua',
+  'addon/TankadinGearSim/engine/GemsData.lua',
+  'addon/TankadinGearSim/engine/Gems.lua',
+  'addon/TankadinGearSim/engine/EnchantsData.lua',
+  'addon/TankadinGearSim/engine/Enchants.lua',
+  'addon/TankadinGearSim/engine/ProfessionsData.lua',
+  'addon/TankadinGearSim/engine/Professions.lua',
+  'addon/TankadinGearSim/engine/LibramsData.lua',
+  'addon/TankadinGearSim/engine/Librams.lua',
+  'addon/TankadinGearSim/engine/ScrollsData.lua',
+  'addon/TankadinGearSim/engine/Scrolls.lua',
+  'addon/TankadinGearSim/engine/GemSolver.lua',
   'test/lua/fixtures.lua',
   'test/lua/scoring_fixtures.lua',
   'test/lua/model_fixtures.lua',
   'test/lua/items_fixtures.lua',
+  'test/lua/solver_fixtures.lua',
 ];
-const HARNESSES = ['test/lua/eval_parity.lua', 'test/lua/scoring_parity.lua', 'test/lua/model_parity.lua', 'test/lua/items_parity.lua'];
+const HARNESSES = ['test/lua/eval_parity.lua', 'test/lua/scoring_parity.lua', 'test/lua/model_parity.lua', 'test/lua/items_parity.lua', 'test/lua/solver_parity.lua'];
 
 let anyFail = false;
 

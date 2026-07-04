@@ -771,6 +771,24 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   for the website's export-string round-trip (`import.js`), producing the same item objects read
   straight from the game. Impure (inventory APIs), so it's syntax-checked (compile pass, 14 files) but
   not parity-tested; the real check is in-game. Not wired to any UI yet (D6). `.toc` → 0.8.9.
+- **Addon v0.8.10 — in-game optimizer, D4: gem/enchant solver (internal, no UI yet).** Ported the gem
+  and enchant recommendation half of the optimizer. `bin/gen-lua-data.mjs` now also emits five data
+  tables — **`engine/{GemsData,EnchantsData,ProfessionsData,LibramsData,ScrollsData}.lua`** — from
+  `src/{gems,enchants,professions,librams,scrolls}.js` (via a general nested Lua-literal serializer; a
+  `luaKey` tweak emits integer keys as `[n]` so id-keyed maps like the shoulder-faction table look up by
+  number). Hand-ported logic in **`engine/{Gems,Enchants,Professions,Librams,Scrolls,GemSolver}.lua`**:
+  `bestGem`/`bestMeta`/`metaActivated`/`metaConditionHolds`, `bestEnchant`/`detectFaction`/
+  `factionFromEnchant`, `professionPerks`, `libramStats`, `scrollStats`, and the full `gemsolver.js`
+  (`gemWeights`, `reassignForBonus` (Kuhn's bipartite matching), `bonusEarnedAsTagged`, `recommendGems`,
+  `recommendEnchants`, `planItemGems` per-item socket-bonus worth-it, `solveLoadout`). The **libram
+  effective-stat override deferred in D3a now lands in `engine/Items.build`** (mirrors `import.js`),
+  referenced lazily so Items stays loadable without the solver. Anti-drift: `bin/gen-solver-fixtures.mjs`
+  runs the JS functions over ~600 representative inputs → `test/lua/solver_fixtures.lua`;
+  `test/lua/solver_parity.lua` asserts the ports reproduce them (**751 checks**). Libram cases added to
+  the items fixtures (items parity 412 → **440**), so the override is parity-tested where it lives. Full
+  Lua suite now **1504 parity checks** (69+118+126+440+751) + a 25-file syntax pass, all green under
+  wasmoon; CI + the pre-commit drift guards + `run-lua-parity` wired for the new files. JS suite 149/149.
+  `.toc` → 0.8.10. **D4 done** — next is D5 (search in a frame-yielding coroutine) then D6 (Optimize tab).
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from

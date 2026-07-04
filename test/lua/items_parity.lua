@@ -12,6 +12,8 @@ local ns = { engine = {} }
 local function loadEngine(file) return assert(loadfile(ENGINE .. file))("TankadinGearSim", ns) end
 loadEngine("CharacterData.lua") -- Items needs STAT_KEYS
 loadEngine("ItemsData.lua")
+loadEngine("LibramsData.lua") -- Items.build applies the libram effective-stat override
+loadEngine("Librams.lua")
 loadEngine("Items.lua")
 local Items = ns.engine.Items
 

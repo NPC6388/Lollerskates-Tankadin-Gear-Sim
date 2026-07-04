@@ -2,7 +2,7 @@
 ## Title: Tankadin Gear Sim
 ## Notes: Live tank readout (uncrittable/uncrushable/EHP) + gear export for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.8.9
+## Version: 0.8.10
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB
 ## X-Category: Combat
@@ -25,6 +25,20 @@ engine\CharacterData.lua
 engine\Model.lua
 engine\ItemsData.lua
 engine\Items.lua
+
+# Gem/enchant solver (Phase D4): data tables then hand-ported logic. GemSolver needs Gems + Enchants
+# (picks) and Model + Evaluate + Scoring (the at-cap weight switch); Items.build uses Librams lazily.
+engine\GemsData.lua
+engine\Gems.lua
+engine\EnchantsData.lua
+engine\Enchants.lua
+engine\ProfessionsData.lua
+engine\Professions.lua
+engine\LibramsData.lua
+engine\Librams.lua
+engine\ScrollsData.lua
+engine\Scrolls.lua
+engine\GemSolver.lua
 
 # Website exporter (reads ns.VERSION) and the live-sheet reader.
 Exporter.lua

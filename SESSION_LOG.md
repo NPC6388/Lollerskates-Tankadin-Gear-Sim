@@ -4,6 +4,41 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-03 (D4) — In-game optimizer, D4: gem/enchant solver (addon v0.8.10)
+
+Continued Phase D (user: "proceed"). **D4 landed** — the gem/enchant recommendation half of the
+in-game optimizer, ported from JS and parity-tested.
+- **Data (generated):** `gen-lua-data.mjs` now also emits `engine/{GemsData,EnchantsData,
+  ProfessionsData,LibramsData,ScrollsData}.lua` from `src/{gems,enchants,professions,librams,scrolls}.js`.
+  Added a general nested Lua-literal serializer (`luaValue`) + made `luaKey` emit integer keys as `[n]`
+  (so the id-keyed shoulder-faction map looks up by number). Added `nameMatch` (literal lowercase
+  substrings) to `src/librams.js` so the port matches libram names without JS regex.
+- **Logic (hand-ported):** `engine/{Gems,Enchants,Professions,Librams,Scrolls,GemSolver}.lua`.
+  GemSolver is the full `gemsolver.js` (gemWeights, reassignForBonus = Kuhn's bipartite matching,
+  bonusEarnedAsTagged, recommendGems/Enchants, planItemGems per-item socket-bonus worth-it, solveLoadout
+  incl. the at-cap weight switch through Model/Evaluate).
+- **Libram override deferred in D3a now lands** in `engine/Items.build` (mirrors import.js) — referenced
+  lazily via `ns.engine.Librams` so Items still loads without the solver. Added libram cases to the items
+  fixtures + loaded Librams in `items_parity` so the override is parity-tested where it lives.
+- **Parity:** `bin/gen-solver-fixtures.mjs` drives the JS over ~600 inputs → `solver_fixtures.lua`;
+  `solver_parity.lua` deep-compares. **751 solver checks**; items 412 → **440**. Full Lua suite now
+  **1504 parity checks** (69+118+126+440+751) + 25-file syntax, all green under wasmoon. JS 149/149.
+- Wired CI (gen + in-sync diff + `lua5.1 solver_parity`), pre-commit drift guards, `run-lua-parity`
+  PATHS/HARNESSES, `gen-solver-fixtures` npm script. `.toc` → 0.8.10; zip rebuilt (26 entries).
+
+### Pick up here (D5 → D6)
+- **D5 — optimizer search** in a frame-yielding coroutine (the hard one): port `src/optimizer.js`
+  (exhaustive + greedy/repair heuristic, gate checks) and `src/runner.js`'s `runGoal`/`optimizeSets`
+  orchestration (goal ratios, gate-aware re-gem, reclaim pass, floor recovery, meta-repair, near-alts).
+  It ties together everything ported so far (Model → Evaluate + Scoring + GemSolver). Must yield across
+  frames so it doesn't hitch the client. Parity-test the selection against the JS goldens.
+- **D6 — runner + Optimize tab** (first user-visible payoff): feed `ItemPool.scan()` → the search →
+  render the four goal sets in a new UI tab. **In-game smoke test worth doing here:** confirm
+  `ItemPool.scan()` reads the same gear the exporter does (open the bank first).
+- Everything still loads on a bare folder-copy (no Ace3) — keep it that way until CurseForge.
+
+---
+
 ## 2026-07-03 (later still) — In-game optimizer, D3a: item-object builder (addon v0.8.8)
 
 Continued (user: "keep going"). **D3a landed** — the PURE half of the live item pool: raw
