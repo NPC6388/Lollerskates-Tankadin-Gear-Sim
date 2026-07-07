@@ -955,3 +955,55 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   hook block** that rebuilds+stages the zip whenever addon source is committed, a **CI guard** that fails if the
   committed zip is stale (`git diff --exit-code`), and `*.zip binary` in `.gitattributes`. The committed zip now
   always matches the addon source (or CI/commit fails). JS 150/150; 30-file Lua syntax pass; zip byte-reproducible.
+- **Upload-only: dropped the copy-paste box entirely (addon + site) / Addon v0.8.21.** In-game the full
+  ~200-item / ~40KB export won't render OR copy from a WoW EditBox (Ctrl+A/Ctrl+C came back empty) — a hard
+  client limit on that much text. Rather than keep fighting it, the copy box is gone: **the addon Export tab**
+  now just runs the export (writes SavedVariables) and shows upload instructions (type `/reload`, then upload
+  the `.lua`), with the window shrunk (470×260) and `/tgs debug` repurposed to print to chat + show its (small)
+  lines in the pane. **The website** drops the paste `<textarea>` — upload the SavedVariables `.lua` is the only
+  path. `app.js` now keeps the raw export in a module variable (`exportRaw`) instead of the DOM field; the paste/
+  input listeners are gone; dead `textarea` CSS removed; taglines/how-to reworded to "upload". JS 150/150;
+  30-file Lua syntax pass. (The `.lua` upload always worked and is unaffected by the EditBox limit.)
+- **Addon v0.8.22 — resizable frame, no text overlap, ItemRack-style minimap button.** Three UI asks.
+  (1) **Resize:** a bottom-right grip (`StartSizing`) resizes the window freely in both dimensions; the
+  chosen size persists in a new `TankadinGearSimUI` SavedVariable and is reused across tabs. (2) **No
+  overlap:** the Optimize tab's four goal cards used to collide when a long line (e.g. the AOE focus text)
+  wrapped — now they span the frame width and `SetWordWrap(false)` (long lines clip instead of wrapping),
+  and each tab enforces a **minimum size** (`SetMinResize`/`SetResizeBounds`) big enough that its text
+  can't be squeezed into overlap. (3) **Minimap button** (`Minimap.lua`): left-click opens a flyout of the
+  optimizer's last sets, mousing over a set shows its full per-slot contents (like ItemRack), and clicking
+  equips it best-effort (`EquipItemByName` per slot; skips bank items / blocks in combat); right-click opens
+  the Optimize tab; drag repositions it round the minimap. Sets are stashed in `TankadinGearSimUI.sets`, so
+  the button survives `/reload`. 31-file Lua syntax pass.
+- **Web — guided step arrow through the flow.** An animated left arrow (`setStep` in `app.js`, `.step-active`
+  CSS) marks the panel to act on next: **1 · Your gear** → **2 · Setup** (the moment a `.lua` is uploaded) →
+  **3 · results** (after Optimize); the active panel also gets an accent border. Purely a cue — every panel
+  stays usable. Respects `prefers-reduced-motion`. (Trinket note: the own-gear upload path already locks no
+  trinket by default — only the sample pre-locks Icon + Eye; verified.) JS 150/150.
+- **Addon v0.8.23 — equip-set pulls banked pieces into bags first.** Clicking a set on the minimap flyout
+  now, for any piece not already in your bags, locates it in the bank (readable only while the bank window
+  is open) and moves it to a free bag slot (`PickupContainerItem` bank→bag), waits a tick, then equips
+  everything (`EquipItemByName`). Reports how many it pulled, and — if the bank's closed or bags are full —
+  which pieces it couldn't reach. (Confirmed by user: equip + the resize grip work.) 31-file Lua syntax pass.
+- **Addon v0.8.24 — "Keep my equipped trinkets" toggle in the Optimize tab.** The in-game optimizer was
+  silently forcing the engine's hardcoded `DEFAULT_TRINKET_LOCKS` (Icon of the Silver Crescent + Eye of
+  Magtheridon), since `UI.Optimize` never passed its own — so anyone using different proc/on-use trinkets
+  got them swapped out (the model can't score procs/on-use). Added a checkbox (default on): when checked it
+  passes `trinketLocks = { icon = eq1, eye = eq2 }` from your two **equipped** trinkets (icon kept in every
+  set, eye in every set but Survival); unchecked passes `{}` so the optimizer picks trinkets freely. Cards
+  shifted down for the new row; Optimize min height 432→458. Likely also narrows the "optimized set vs
+  in-game stats" gap the user hit (the set now keeps your actual trinkets). 31-file Lua syntax pass.
+- **Addon v0.8.25 — in-game optimizer keeps your completed gems/enchants (no re-gem) + "more options on the
+  site" note.** The addon was re-gemming every set (its default), so its numbers assumed gems you hadn't
+  applied — hence the "sim says X, in-game says Y" gap. `UI.Optimize` now passes
+  `keepGemsEnchants = { itemIds = <all owned ids>, ignoreCompleteness = true }` — "keep every item's gems/
+  enchants exactly as-is, even empty sockets" (the engine has no plain "keep everything" flag, but all-ids
+  does it) — so the sets keep your existing gems/enchants and the numbers match what you'll actually have on
+  equip. The Optimize footer now reads that it keeps your gems, and points to the full sim
+  (`npc6388.github.io/Lollerskates-Tankadin-Gear-Sim`) for the options the addon doesn't expose — re-gem
+  everything, content phase, and the goal sliders. 31-file Lua syntax pass.
+- **Addon v0.8.26 — the footer's sim URL is now click-to-copy.** The Optimize footer showed the full sim's
+  web address as a plain FontString, which can't be selected or Ctrl+C'd in-game (the same WoW EditBox/text
+  limit that killed the export copy box). A transparent button now overlays the footer: clicking it pops a
+  `StaticPopup` (`TGS_COPY_URL`) with the URL pre-selected and focused, ready for Ctrl+C to paste into a
+  browser (WoW can't launch one from an addon). Hover shows a "click to copy" tooltip. 31-file Lua syntax pass.

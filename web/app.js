@@ -77,6 +77,7 @@ function updateBalMinHP() {
 
 let items = null;        // equippable items from the export
 let parsed = null;       // full parse (character + items)
+let exportRaw = '';      // raw TGS export text (from the uploaded .lua) — kept here, not in a DOM field
 let activeTab = 0;
 let lastResults = null;  // last optimize results (for the per-set lock button)
 let loadedSample = false; // true while the displayed results are the demo character (drives the "use your own gear" CTA)
@@ -192,10 +193,6 @@ function init() {
     return `<label class="check"><input type="checkbox" class="scroll-cb" value="${key}" /> ${s.name} <span class="muted">(${amt})</span></label>`;
   }).join('');
 
-  $('exportText').addEventListener('input', () => { loadedSample = false; tryParse($('exportText').value); });
-  // A paste is a discrete "I just loaded my gear" action — once it parses, nudge them to pick trinkets.
-  // (input fires right after paste and runs tryParse, so defer a tick to read the result.)
-  $('exportText').addEventListener('paste', () => setTimeout(() => { if (items && items.length) promptTrinketChoice(); }, 0));
   $('exportFile').addEventListener('change', handleFile);
   $('loadSample').addEventListener('click', loadSample);
   // CTA under the results: open the "use your own gear" section and jump to it.
@@ -218,7 +215,16 @@ function init() {
   });
   renderWeights();
   renderLogic();
+  setStep(1); // guide arrow starts on "1 · Your gear"
   restoreFromHash(); // if opened via a share link, rebuild the gear + settings and optimize
+}
+
+// Guide the eye through the flow: a left-side arrow marks the panel to act on next — gear (1) → setup
+// (2, after you load a file) → results (3, after Optimize). Purely a cue; every panel stays usable.
+function setStep(n) {
+  for (const [id, s] of [['input-panel', 1], ['config-panel', 2], ['results-panel', 3]]) {
+    const el = $(id); if (el) el.classList.toggle('step-active', s === n);
+  }
 }
 
 // ---- shareable link ---------------------------------------------------------
@@ -265,7 +271,7 @@ function captureState() {
     goalState[g.id] = { v: rs ? +rs.value : 0, ...(ms ? { hp: +ms.value } : {}) };
   }
   return {
-    v: 1, x: slimExport($('exportText').value),
+    v: 1, x: slimExport(exportRaw),
     p: [$('prof1').value, $('prof2').value], b: $('statBuff').value, ph: $('phase').value,
     k: $('keepScope').value, im: $('imbuedMeta').checked ? 1 : 0,
     sc: [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value),
@@ -278,7 +284,7 @@ function captureState() {
 // Rebuild the UI from a captured state and re-optimize.
 function applyState(s) {
   if (!s || !s.x) return;
-  $('exportText').value = s.x;
+  exportRaw = s.x;
   loadedSample = false;
   tryParse(s.x); // parses gear, populates trinket options + faction, auto-fills talents
   if (!items) return;
@@ -474,12 +480,12 @@ function tryParse(text) {
 async function handleFile(e) {
   const file = e.target.files[0]; if (!file) return;
   const text = await file.text();
-  $('exportText').value = text;
-  $('ownGear').open = true; // keep the export box visible so the paste/upload is in view
+  exportRaw = text;
+  $('ownGear').open = true; // keep the upload section in view
   loadedSample = false; // user's own gear — hide the sample CTA
   tryParse(text);
   // Don't auto-optimize: the player picks their locked (proc/on-use) trinkets first, THEN hits Optimize.
-  if (items && items.length) promptTrinketChoice();
+  if (items && items.length) { setStep(2); promptTrinketChoice(); } // move the guide arrow to Setup
 }
 
 async function loadSample() {
@@ -487,7 +493,7 @@ async function loadSample() {
     const res = await fetch('web/sample-export.txt');
     if (!res.ok) throw new Error('sample not found');
     const text = await res.text();
-    $('exportText').value = text;
+    exportRaw = text;
     tryParse(text);
     loadedSample = true; // showing the demo character — surface the "use your own gear" CTA under the results
     if (items && items.length) {
@@ -700,6 +706,7 @@ function whRefresh() {
 
 function render(results) {
   $('results-panel').hidden = false;
+  setStep(3); // guide arrow moves to the results
   $('useOwnCta').hidden = !loadedSample; // only nudge the addon when they're looking at the demo
   const sh = (r) => spellHitPct(r.agg);
 

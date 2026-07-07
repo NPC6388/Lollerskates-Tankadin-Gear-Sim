@@ -4,6 +4,65 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-07 (latest) — Match the addon's numbers to reality: keep trinkets + keep gems + click-to-copy site link (addon v0.8.23–v0.8.26)
+
+Catch-up handoff for the four version bumps after v0.8.22 (they landed but the SESSION_LOG top entry hadn't
+been extended past v0.8.22). All still **uncommitted**; CHANGELOG carries the per-version detail.
+- **v0.8.23 — equip-from-bank.** Minimap flyout's click-to-equip now pulls any set piece that's in the bank
+  into a free bag slot first (`PickupContainerItem` bank→bag, needs the bank window open), waits a tick, then
+  equips; reports how many it pulled and what couldn't fit. (User confirmed equip + resize grip work.)
+- **v0.8.24 — "Keep my equipped trinkets" toggle.** `UI.Optimize` was silently forcing the engine's hardcoded
+  trinket locks (Icon + Eye); now a default-on checkbox passes your two **equipped** trinkets as the locks
+  (unchecked → `{}` = free pick). Closes part of the "sim vs in-game" stat gap.
+- **v0.8.25 — keep completed gems/enchants (no re-gem).** The optimizer defaulted to re-gemming, so its numbers
+  assumed gems you hadn't applied. Now passes `keepGemsEnchants = { itemIds = <all owned ids>, ignoreCompleteness
+  = true }` (engine has no plain "keep everything" flag; all-ids does it). Footer reworded + points to the full sim.
+- **v0.8.26 — footer sim URL is click-to-copy (THIS session's finish).** Picking up mid-edit: the previous session
+  had *defined* `StaticPopupDialogs["TGS_COPY_URL"]` (copyable-URL dialog) but never wired it — the footer was a
+  plain FontString you can't Ctrl+C in-game. Added a transparent button over the footer → `StaticPopup_Show` +
+  a "click to copy" tooltip. `.toc`→0.8.26.
+- Verified this session: JS 150/150, Lua wasm parity + 31-file syntax PASS, **zip rebuilt** (the working-tree zip
+  was stale — didn't match source; `npm run build-addon` refreshed it), installed addon re-synced (UI.lua had
+  lagged the repo). NOT yet eyeballed in-game — user to `/reload` and click the footer link + re-check the
+  Optimize numbers now that trinkets/gems are kept.
+
+## 2026-07-07 (later still) — Resizable frame + minimap sets button + guided site arrow (addon v0.8.22)
+
+Batch of 5 (2 site, 3 addon):
+- **Site — no default trinket on own upload:** already true (`tryParse`→`populateTrinketLocks()` no args;
+  only `loadSample` passes `true`). Verified, no change needed.
+- **Site — guided step arrow:** `setStep(1|2|3)` toggles `.step-active` on `#input-panel`/`#config-panel`/
+  `#results-panel`; an animated `➜` (CSS `::before`) + accent border marks the next panel. Fires: init→1,
+  file upload→2, `render()`→3. Reduced-motion respected.
+- **Addon — resize:** bottom-right grip (`StartSizing("BOTTOMRIGHT")`), `frame:SetResizable(true)`, size
+  persisted in new `TankadinGearSimUI` SV, reused across tabs (clamped up to each tab's min).
+- **Addon — no overlap:** Optimize cards now span the pane (`TOPLEFT`+`TOPRIGHT`) with `SetWordWrap(false)`
+  (clip, don't wrap) + per-tab `TAB_MIN` via `SetMinResize`/`SetResizeBounds`. Optimize min 470×432.
+- **Addon — minimap button (`Minimap.lua`, new, in .toc after UI.lua):** custom draggable minimap button;
+  left-click flyout of the optimizer's sets; hover → GameTooltip of per-slot items; click → `equipSet`
+  (EquipItemByName per SLOT_INV, pcall'd, combat-guarded, bank items skipped); right-click → Optimize tab.
+  `UI.Optimize` onDone calls `ns.Minimap.SetSets(results)`; sets persist in `TankadinGearSimUI.sets`.
+- Verified: 31-file Lua syntax PASS, JS 150/150, zip rebuilt (v0.8.22, 32 files), installed == repo.
+  **NOT eyeballed in-game/browser yet** — user to `/reload` (resize grip, no overlap, minimap button) and
+  reload the site (guided arrow). Equip-from-bank and the minimap drag are the least-tested paths.
+
+## 2026-07-07 (later) — Scrapped the copy box: upload-only (addon v0.8.21)
+
+In-game the Export box showed "Exported 200 items" in the info line but a blank box, and **Ctrl+A/Ctrl+C
+copied nothing** — the full ~40KB / 200-line export exceeds what a WoW EditBox will store/render. Confirmed
+the exporter itself works (SavedVariables has the full export; small `/tgs debug` text renders fine). User
+decision: **drop the copy-paste box entirely, go upload-only.**
+- **Addon (`UI.lua`):** removed the ScrollFrame + EditBox + `setExportText`. Export tab now runs the export
+  (writes SavedVariables) and shows `/reload`-then-upload instructions (exportInfo status + exportSteps
+  FontString). Window 470×260. `/tgs debug` prints to chat and shows its lines in the pane (small = renders).
+  `.toc` → 0.8.21.
+- **Site (`index.html` / `web/app.js` / `style.css`):** removed the paste `<textarea id="exportText">`; upload
+  the SavedVariables `.lua` is the only path (it always worked). `app.js` holds the raw export in a module var
+  `exportRaw` (not a DOM field) — captureState/applyState/handleFile/loadSample updated; paste/input listeners
+  removed; dead textarea CSS removed; meta/tagline/how-to reworded to "upload".
+- Verified: no dangling `exportEdit`/`setExportText`/`exportText` refs, JS 150/150, 30-file Lua syntax pass,
+  zip rebuilt (v0.8.21), installed == repo. NOT yet eyeballed in-game/browser — user to reload both.
+
 ## 2026-07-07 — Export box STILL blank in-game; real fix + stale-install catch (addon v0.8.19)
 
 User tested in-game: **export box still renders no text.** My v0.8.15 `SetHeight` fix was incomplete and

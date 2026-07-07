@@ -11,7 +11,16 @@ local Core, Exporter = ns.Core, ns.Exporter
 
 UI.holyShield = true
 
-local frame, tabs, panes, liveRows, exportEdit, exportInfo
+-- Per-tab MINIMUM frame size (w, h) — sized so each tab's text never overlaps. The user can drag the
+-- bottom-right grip to grow the frame; that chosen size (persisted in TankadinGearSimUI) is reused
+-- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
+local TAB_MIN = {
+  live     = { 300, 404 },
+  optimize = { 470, 458 },
+  export   = { 470, 260 },
+}
+
+local frame, tabs, panes, liveRows, exportInfo, exportSteps
 local optCards, optStatus, optButton, optSubs
 local optRun -- active async handle (so re-clicking cancels the prior run)
 
@@ -25,6 +34,22 @@ local function color(hex, s) return hex .. s .. "|r" end
 local function pct(x) return string.format("%.2f%%", x or 0) end
 local function num(x) return tostring(math.floor((x or 0) + 0.5)) end
 local function mark(ok) return ok and TICK or CROSS end
+
+-- Full sim site. WoW can't open a browser from an addon, so the footer link pops a small dialog with
+-- the URL pre-selected for Ctrl+C.
+local SITE_URL = "https://npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"
+StaticPopupDialogs["TGS_COPY_URL"] = {
+  text = "Full Tankadin Gear Sim — Ctrl+C to copy, then paste into your browser:",
+  button1 = OKAY or "Close",
+  hasEditBox = true, editBoxWidth = 260,
+  OnShow = function(self)
+    local eb = self.editBox or (self.GetName and _G[(self:GetName() or "") .. "EditBox"])
+    if eb then eb:SetText(SITE_URL); eb:HighlightText(); eb:SetFocus() end
+  end,
+  EditBoxOnEnterPressed = function(self) self:GetParent():Hide() end,
+  EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
+  timeout = 0, whileDead = true, hideOnEscape = true,
+}
 
 -- Build one compact "Label   value" row (WeakAura-style stat stack): gold label at the left, the
 -- value column just to its right. Returns the value fontstring to update in Refresh.
@@ -56,6 +81,21 @@ local function buildFrame()
   title:SetPoint("TOP", 0, -10); title:SetText("Tankadin Gear Sim")
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", 2, 2)
+
+  -- ---- resize: bottom-right grip, per-tab minimum (see TAB_MIN) so text can't be squeezed to overlap ----
+  frame:SetResizable(true)
+  local grip = CreateFrame("Button", nil, frame)
+  grip:SetSize(16, 16); grip:SetPoint("BOTTOMRIGHT", -3, 3)
+  grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+  grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+  grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+  grip:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMRIGHT") end)
+  grip:SetScript("OnMouseUp", function()
+    frame:StopMovingOrSizing()
+    local w, h = frame:GetSize()
+    TankadinGearSimUI = TankadinGearSimUI or {}
+    TankadinGearSimUI.w, TankadinGearSimUI.h = math.floor(w + 0.5), math.floor(h + 0.5)
+  end)
 
   -- ---- tab buttons ----
   tabs, panes = {}, {}
@@ -112,39 +152,61 @@ local function buildFrame()
   optStatus = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   optStatus:SetPoint("LEFT", optButton, "RIGHT", 8, 0); optStatus:SetJustifyH("LEFT"); optStatus:SetWidth(300)
   optStatus:SetText(color(DIM, "Reads your worn + bag + (open) bank gear."))
+  -- Force YOUR equipped trinkets into every set (Survival drops the 2nd for a defensive pick). The model
+  -- can't score proc/on-use trinkets, so without this the optimizer swaps them out for scoreable ones. On
+  -- by default; uncheck to let the optimizer pick trinkets freely.
+  UI.lockTrinkets = (UI.lockTrinkets ~= false)
+  local lockTr = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
+  lockTr:SetPoint("TOPLEFT", 8, -28); lockTr:SetSize(20, 20); lockTr:SetChecked(UI.lockTrinkets)
+  local lockLabel = lockTr:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  lockLabel:SetPoint("LEFT", lockTr, "RIGHT", 2, 0)
+  lockLabel:SetText("Keep my equipped trinkets in the sets")
+  lockTr:SetScript("OnClick", function(self) UI.lockTrinkets = self:GetChecked() and true or false end)
   -- Four goal cards (name + gate chip, then two stat lines each).
+  -- Cards span the pane width (so a wider frame shows more) and NEVER wrap — long lines clip at the
+  -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
+  -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
   optCards = {}
-  local cy = -34
+  local cy = -56
   for i = 1, 4 do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    head:SetPoint("TOPLEFT", 10, cy); head:SetJustifyH("LEFT"); head:SetWidth(410)
+    head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)
+    head:SetJustifyH("LEFT"); head:SetWordWrap(false)
     local l2 = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    l2:SetPoint("TOPLEFT", 16, cy - 18); l2:SetJustifyH("LEFT"); l2:SetWidth(404)
+    l2:SetPoint("TOPLEFT", opt, "TOPLEFT", 16, cy - 18); l2:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy - 18)
+    l2:SetJustifyH("LEFT"); l2:SetWordWrap(false)
     local l3 = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    l3:SetPoint("TOPLEFT", 16, cy - 34); l3:SetJustifyH("LEFT"); l3:SetWidth(404)
+    l3:SetPoint("TOPLEFT", opt, "TOPLEFT", 16, cy - 34); l3:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy - 34)
+    l3:SetJustifyH("LEFT"); l3:SetWordWrap(false)
     optCards[i] = { head = head, l2 = l2, l3 = l3 }
     cy = cy - 62
   end
   optSubs = opt:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  optSubs:SetPoint("BOTTOMLEFT", 10, 6); optSubs:SetPoint("BOTTOMRIGHT", -8, 6); optSubs:SetJustifyH("LEFT")
-  optSubs:SetText("Buffs: Kings + Mark of the Wild. Professions & faction auto-detected. Re-gems for each goal.")
+  optSubs:SetPoint("BOTTOMLEFT", 10, 6); optSubs:SetPoint("BOTTOMRIGHT", -22, 6); optSubs:SetJustifyH("LEFT")
+  optSubs:SetText("Keeps your completed gems/enchants (no re-gem); Kings+MotW; professions & faction auto-detected.\n"
+    .. color(CYAN, "More options (re-gem, content phase, goal tuning) at the full sim: npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"))
+  -- The footer's a plain FontString (can't be Ctrl+C'd in-game), so a transparent button over it pops a
+  -- dialog with the URL pre-selected to copy — WoW can't open a browser from an addon.
+  local siteLink = CreateFrame("Button", nil, opt)
+  siteLink:SetAllPoints(optSubs)
+  siteLink:SetScript("OnClick", function() StaticPopup_Show("TGS_COPY_URL") end)
+  siteLink:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:AddLine("Click to copy the full sim's web address")
+    GameTooltip:Show()
+  end)
+  siteLink:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-  -- ---- Export pane ----
+  -- ---- Export pane (upload-only) ----
+  -- No copy box: a full 200-item export is far too large for a WoW EditBox to store or render (it just
+  -- came up blank). Opening this tab writes the export to SavedVariables; the website ingests the .lua
+  -- file. exportInfo = status line, exportSteps = the upload instructions (also reused by /tgs debug).
   local ex = makeTab("export", "Export", 108)
   exportInfo = ex:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  exportInfo:SetPoint("TOPLEFT", 8, -4); exportInfo:SetJustifyH("LEFT"); exportInfo:SetWidth(560)
-  exportInfo:SetText("Ctrl+A, Ctrl+C, then paste into the website sim. Open your bank first for banked gear.")
-  local scroll = CreateFrame("ScrollFrame", "TGSExportScroll", ex, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 8, -28); scroll:SetPoint("BOTTOMRIGHT", -28, 8)
-  exportEdit = CreateFrame("EditBox", nil, scroll)
-  exportEdit:SetMultiLine(true); exportEdit:SetFontObject(ChatFontNormal)
-  exportEdit:SetWidth(530); exportEdit:SetAutoFocus(false); exportEdit:SetMaxLetters(0)
-  -- Explicit non-zero height is mandatory: on the _anniversary_ client an EditBox child of a
-  -- ScrollFrame renders BLANK when its height is 0, even though the text is set (this is the
-  -- v0.5.0 copy-box fix that the v0.8.0 tab rewrite dropped). setExportText grows it to content.
-  exportEdit:SetHeight(330)
-  exportEdit:SetScript("OnEscapePressed", function() frame:Hide() end)
-  scroll:SetScrollChild(exportEdit)
+  exportInfo:SetPoint("TOPLEFT", 10, -6); exportInfo:SetPoint("TOPRIGHT", -10, -6); exportInfo:SetJustifyH("LEFT")
+  exportSteps = ex:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  exportSteps:SetPoint("TOPLEFT", 12, -30); exportSteps:SetPoint("BOTTOMRIGHT", -12, 10)
+  exportSteps:SetJustifyH("LEFT"); exportSteps:SetJustifyV("TOP"); exportSteps:SetSpacing(6)
 end
 
 -- Populate the Live pane from a fresh snapshot.
@@ -177,40 +239,31 @@ function UI.Refresh()
   R.sp:SetText(color(CYAN, num(e.spellPower)))
 end
 
--- Set the copy box's text and size the (multiline) EditBox to fit it. On the _anniversary_ client an
--- EditBox child of a ScrollFrame renders BLANK unless it's given a non-zero height AND is focused +
--- highlighted AFTER the frame is shown (this is the full v0.5.0 fix; the v0.8.0 tab rewrite kept the
--- height but dropped the SetFocus/HighlightText, which is what actually triggers the text to render).
--- Callers (refreshExport / ShowDebug) run this only once the window + Export pane are already shown.
-local function setExportText(text)
-  text = text or ""
-  exportEdit:SetText(text)
-  local _, lines = text:gsub("\n", "")
-  exportEdit:SetHeight(math.max(330, (lines + 2) * 14))
-  exportEdit:SetCursorPosition(0)
-  exportEdit:SetFocus()
-  exportEdit:HighlightText()
-end
+-- The upload workflow shown on the Export tab (also restored after a /tgs debug view). No copy box —
+-- the full export is too large for a WoW EditBox, so the website ingests the SavedVariables .lua file.
+local EXPORT_STEPS =
+  "To load your gear into the website:\n\n" ..
+  color(GOLD, "1.") .. "  Type " .. color(CYAN, "/reload") .. "   (writes the export to disk)\n\n" ..
+  color(GOLD, "2.") .. "  On the website, open " .. color(CYAN, "Use your own gear") .. " and click\n" ..
+  "      " .. color(CYAN, "Upload SavedVariables (.lua)") .. "\n\n" ..
+  color(GOLD, "3.") .. "  Pick this file:\n" ..
+  "      " .. color(DIM, "World of Warcraft\\_anniversary_\\WTF\\Account\\") .. "\n" ..
+  "      " .. color(DIM, "<your account>\\SavedVariables\\TankadinGearSim.lua")
 
--- Fill the Export pane's copy box (and flush SavedVariables) on demand. Self-diagnosing: rather than
--- silently leaving the box blank, any failure (exporter not loaded, or Exporter.run erroring on some
--- item scan) is written INTO the box so it's visible without needing BugSack / Lua errors enabled.
+-- Run the export (writes SavedVariables) and show the upload instructions.
 local function refreshExport()
+  exportSteps:SetText(EXPORT_STEPS)
   if not Exporter or not Exporter.run then
-    setExportText("TGS: exporter not loaded (ns.Exporter is missing) — a Lua error during login likely " ..
-      "aborted Exporter.lua before /reload. Enable Lua errors or install BugSack and send the error.")
-    exportInfo:SetText("Export unavailable — see the box.")
+    exportInfo:SetText(color(BAD, "Exporter not loaded (ns.Exporter missing) — check for a Lua error on login."))
     return
   end
   local ok, text, count = pcall(Exporter.run)
   if not ok then
-    setExportText("TGS: export failed with a Lua error — please send this to the dev:\n\n" .. tostring(text))
-    exportInfo:SetText("Export errored — see the box.")
+    exportInfo:SetText(color(BAD, "Export failed: " .. tostring(text)))
     return
   end
-  setExportText(text)
-  exportInfo:SetText(string.format("Exported %d items + character. Ctrl+A, Ctrl+C, paste into the " ..
-    "website. Type /reload to flush it to SavedVariables on disk.", count or 0))
+  exportInfo:SetText(color(GOOD, string.format("Exported %d items + character.", count or 0)) ..
+    color(DIM, "  Open your bank first for banked gear."))
 end
 
 -- Read the player's two professions, mapped to our names (for jcGems / ring-enchant / enchant gating).
@@ -267,15 +320,33 @@ function UI.Optimize()
   local faction = ns.engine.Enchants and ns.engine.Enchants.detectFaction(items) or nil
   local professions = detectProfessions()
   local profTxt = (#professions > 0) and table.concat(professions, "+") or "none"
+  -- Passing trinketLocks (even empty) overrides the engine's hardcoded default. On -> force the player's
+  -- two equipped trinkets in (icon = kept in every set; eye = every set but Survival). Off -> {} = free pick.
+  local trinketLocks = {}
+  if UI.lockTrinkets then
+    local eq = {}
+    for _, it in ipairs(items) do
+      if it.slot == "trinket" and it.equipped then eq[#eq + 1] = it.itemId end
+    end
+    trinketLocks.icon, trinketLocks.eye = eq[1], eq[2]
+  end
   optStatus:SetText(color(DIM, string.format("%d items · %s · %s · solving...",
     #items, profTxt, faction or "both factions")))
 
   optButton:SetEnabled(false)
+  -- Keep EVERY item's gems/enchants exactly as they are (never re-gem or fill an empty socket), so the
+  -- addon's numbers match what you'll have on equip. Expressed as "keep all these item ids, ignoring
+  -- completeness" — the engine has no plain "keep everything as-is" flag, but all-ids does it. Re-gem /
+  -- phase / goal-slider options live on the full sim site (footer link).
+  local keepAll = {}
+  for _, it in ipairs(items) do keepAll[#keepAll + 1] = it.itemId end
   optRun = ns.Async.optimizeSets(items,
-    { buff = "raid", professions = professions, faction = faction },
+    { buff = "raid", professions = professions, faction = faction, trinketLocks = trinketLocks,
+      keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } },
     function(results) -- onDone
       optButton:SetEnabled(true)
       renderOptimize(results)
+      if ns.Minimap and ns.Minimap.SetSets then ns.Minimap.SetSets(results) end -- feed the minimap flyout
       optStatus:SetText(color(GOOD, string.format("Done · %d items · %s · %s",
         #items, profTxt, faction or "both factions")))
     end,
@@ -290,10 +361,14 @@ end
 
 function UI.Select(key)
   if not frame then buildFrame() end
-  -- Live is a compact WeakAura-style column; Export + Optimize need more room.
-  if key == "export" then frame:SetSize(600, 440)
-  elseif key == "optimize" then frame:SetSize(440, 366)
-  else frame:SetSize(300, 404) end
+  -- Each tab has a MINIMUM size (so its text can't be squeezed into overlap); the user's dragged size
+  -- (TankadinGearSimUI) is reused across tabs, clamped up to the current tab's minimum. SetMinResize
+  -- keeps the grip from dragging below it.
+  local mn = TAB_MIN[key] or TAB_MIN.live
+  if frame.SetResizeBounds then frame:SetResizeBounds(mn[1], mn[2])
+  elseif frame.SetMinResize then frame:SetMinResize(mn[1], mn[2]) end
+  TankadinGearSimUI = TankadinGearSimUI or {}
+  frame:SetSize(math.max(TankadinGearSimUI.w or 0, mn[1]), math.max(TankadinGearSimUI.h or 0, mn[2]))
   for k, p in pairs(panes) do
     p:SetShown(k == key)
     tabs[k]:SetEnabled(k ~= key)
@@ -307,18 +382,18 @@ function UI.Show(key)
   UI.Select(key or "live")
 end
 
--- Drop arbitrary text (e.g. /tgs debug output) into the Export copy box for Ctrl+C, without the
--- gear-string refresh that selecting the Export tab normally triggers.
+-- /tgs debug — Core.debug() also prints to chat; show the same lines on the Export pane (small enough
+-- to render, unlike the full export). Click the Export tab to restore the upload instructions.
 function UI.ShowDebug(text)
   if not frame then buildFrame() end
   frame:Show()
-  frame:SetSize(600, 440)
+  frame:SetSize(470, 320)
   for k, p in pairs(panes) do
     p:SetShown(k == "export")
     tabs[k]:SetEnabled(k ~= "export")
   end
-  setExportText(text)
-  exportInfo:SetText("/tgs debug output — Ctrl+A, Ctrl+C to copy. Click the Export tab to regenerate the gear string.")
+  exportInfo:SetText("/tgs debug — also printed to chat.")
+  exportSteps:SetText(text or "")
 end
 
 function UI.Toggle(key)
