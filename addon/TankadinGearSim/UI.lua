@@ -139,6 +139,10 @@ local function buildFrame()
   exportEdit = CreateFrame("EditBox", nil, scroll)
   exportEdit:SetMultiLine(true); exportEdit:SetFontObject(ChatFontNormal)
   exportEdit:SetWidth(530); exportEdit:SetAutoFocus(false); exportEdit:SetMaxLetters(0)
+  -- Explicit non-zero height is mandatory: on the _anniversary_ client an EditBox child of a
+  -- ScrollFrame renders BLANK when its height is 0, even though the text is set (this is the
+  -- v0.5.0 copy-box fix that the v0.8.0 tab rewrite dropped). setExportText grows it to content.
+  exportEdit:SetHeight(330)
   exportEdit:SetScript("OnEscapePressed", function() frame:Hide() end)
   scroll:SetScrollChild(exportEdit)
 end
@@ -173,12 +177,38 @@ function UI.Refresh()
   R.sp:SetText(color(CYAN, num(e.spellPower)))
 end
 
--- Fill the Export pane's copy box (and flush SavedVariables) on demand.
-local function refreshExport()
-  if not Exporter or not Exporter.run then return end
-  local text, count = Exporter.run()
-  exportEdit:SetText(text or "")
+-- Set the copy box's text and size the (multiline) EditBox to fit it. On the _anniversary_ client an
+-- EditBox child of a ScrollFrame renders BLANK unless it's given a non-zero height AND is focused +
+-- highlighted AFTER the frame is shown (this is the full v0.5.0 fix; the v0.8.0 tab rewrite kept the
+-- height but dropped the SetFocus/HighlightText, which is what actually triggers the text to render).
+-- Callers (refreshExport / ShowDebug) run this only once the window + Export pane are already shown.
+local function setExportText(text)
+  text = text or ""
+  exportEdit:SetText(text)
+  local _, lines = text:gsub("\n", "")
+  exportEdit:SetHeight(math.max(330, (lines + 2) * 14))
   exportEdit:SetCursorPosition(0)
+  exportEdit:SetFocus()
+  exportEdit:HighlightText()
+end
+
+-- Fill the Export pane's copy box (and flush SavedVariables) on demand. Self-diagnosing: rather than
+-- silently leaving the box blank, any failure (exporter not loaded, or Exporter.run erroring on some
+-- item scan) is written INTO the box so it's visible without needing BugSack / Lua errors enabled.
+local function refreshExport()
+  if not Exporter or not Exporter.run then
+    setExportText("TGS: exporter not loaded (ns.Exporter is missing) — a Lua error during login likely " ..
+      "aborted Exporter.lua before /reload. Enable Lua errors or install BugSack and send the error.")
+    exportInfo:SetText("Export unavailable — see the box.")
+    return
+  end
+  local ok, text, count = pcall(Exporter.run)
+  if not ok then
+    setExportText("TGS: export failed with a Lua error — please send this to the dev:\n\n" .. tostring(text))
+    exportInfo:SetText("Export errored — see the box.")
+    return
+  end
+  setExportText(text)
   exportInfo:SetText(string.format("Exported %d items + character. Ctrl+A, Ctrl+C, paste into the " ..
     "website. Type /reload to flush it to SavedVariables on disk.", count or 0))
 end
@@ -287,8 +317,7 @@ function UI.ShowDebug(text)
     p:SetShown(k == "export")
     tabs[k]:SetEnabled(k ~= "export")
   end
-  exportEdit:SetText(text or "")
-  exportEdit:SetCursorPosition(0)
+  setExportText(text)
   exportInfo:SetText("/tgs debug output — Ctrl+A, Ctrl+C to copy. Click the Export tab to regenerate the gear string.")
 end
 

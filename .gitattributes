@@ -2,3 +2,8 @@
 # shebang/commands). Keep hooks and shell scripts LF regardless of core.autocrlf.
 scripts/githooks/** text eol=lf
 *.sh text eol=lf
+
+# The addon zip is a deterministic build artifact (bin/build-addon-zip.mjs) served by the website —
+# treat it as binary so Git never applies line-ending conversion (which would corrupt it and break the
+# CI "diff the zip" freshness guard).
+*.zip binary

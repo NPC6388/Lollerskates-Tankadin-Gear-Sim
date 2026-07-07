@@ -264,6 +264,22 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
 /* Actionable tip (e.g. surplus avoidance locked by kept gems — re-gem to convert to threat). */
 .tipnote { margin: 8px 0; padding: 7px 10px; border-radius: 6px; font-size: 12px; background: rgba(240,198,116,.10); border: 1px solid rgba(240,198,116,.35); color: var(--text); }
 .tipnote b { color: var(--gold); }
+/* Footer nudge under a set: a prominent callout pointing back up to the collapsed Advanced settings. */
+.set-foot { margin: 22px 0 6px; padding: 20px 22px; border: 1px solid var(--accent); border-radius: 12px;
+  background: rgba(90,169,230,.10); text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.set-foot-text { font-size: 19px; font-weight: 700; color: var(--text); }
+.set-foot .adv-link { display: inline-block; font-size: 17px; font-weight: 700; padding: 12px 26px; border-radius: 9px;
+  background: var(--accent); color: #0e0f13; text-decoration: none; box-shadow: 0 2px 10px rgba(90,169,230,.35); transition: transform .08s ease, filter .12s ease; }
+.set-foot .adv-link:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.set-foot-sub { font-size: 14px; color: var(--muted); }
+
+/* Flash a Setup field to draw the eye — used to point new users at the Locked-trinkets picker
+   right after they load their own gear (nothing is locked by default). */
+@keyframes fieldflash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(90,169,230,0); }
+  25% { box-shadow: 0 0 0 3px rgba(90,169,230,.6); }
+}
+.field.flash { animation: fieldflash 1s ease 2; border-radius: 8px; }
 
 /* Sixty Upgrades / Pawn stat-weight reference cards. */
 #weights { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }

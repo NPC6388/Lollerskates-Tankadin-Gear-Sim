@@ -183,6 +183,12 @@ export function parseExport(text) {
           // (and shields take no armor enchant in TBC), so copying resolved -> base is exact,
           // not a double-count. Only fill when base is missing it (i.e. the shield case).
           if (!item.baseStats.armor && stats.armor) item.baseStats.armor = stats.armor;
+          // Same omission for SHIELD BLOCK VALUE: GetItemStats doesn't report a shield's innate block
+          // value (it's not in the stats table), so base reads 0 while the tooltip (resolved) has it.
+          // Backfill from resolved so re-gemming a shield doesn't silently drop ~150 block value —
+          // otherwise "re-gem everything" scores the shield far below a keep-mode set. Only fill when
+          // base is missing it (the shield case); block-value gems are re-added by the solver on top.
+          if (!item.baseStats.blockValue && stats.blockValue) item.baseStats.blockValue = stats.blockValue;
           // The tooltip scan (resolved) can MISS an innate equip line — e.g. "Increases damage and
           // healing done by magical spells and effects by up to N" (the +spell-damage plate) — that
           // GetItemStats (base) captures. resolved should always be >= base for innate stats (it's

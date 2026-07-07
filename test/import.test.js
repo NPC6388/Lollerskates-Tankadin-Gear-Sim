@@ -86,6 +86,20 @@ test('shield base armor is backfilled from resolved (GetItemStats omits it)', ()
   assert.equal(shield.baseStats.armor, 5727); // backfilled into base (was absent)
 });
 
+test('shield base block value is backfilled from resolved (GetItemStats omits it)', () => {
+  // GetItemStats doesn't report a shield's innate block value, so the base field has none while the
+  // resolved (tooltip) field carries it (152). Without the backfill, re-gemming from base drops the
+  // shield's block value entirely — the "re-gem everything vs keep" regression this guards against.
+  const sv = [
+    'TGS9',
+    'C:name=Lollerskate;level=70',
+    'E:item:34185::::::::70::::::::::|INVTYPE_SHIELD|ilvl=136;ITEM_MOD_STAMINA_SHORT=27;ITEM_MOD_BLOCK_VALUE=152;RESISTANCE0_NAME=5727|ITEM_MOD_STAMINA_SHORT=27;RESISTANCE0_NAME=5727||Merciless Gladiator\'s Barrier',
+  ].join('\n');
+  const shield = parseExport(sv).items[0];
+  assert.equal(shield.stats.blockValue, 152);     // resolved had it
+  assert.equal(shield.baseStats.blockValue, 152); // backfilled into base (was absent)
+});
+
 test('non-shield base armor is NOT overwritten (no double-count with armor enchants)', () => {
   // Head with a cloak-style armor bump baked into resolved (1347) over a base 1227: base armor
   // is present, so the backfill must leave it alone (else re-applying an armor enchant double-counts).

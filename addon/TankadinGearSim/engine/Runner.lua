@@ -371,7 +371,7 @@ local function runGoal(goal, items, ctx, seed)
   local res = Optimizer.optimizeHeuristic(pool, order, oGoal, { distinct = distinct, locked = locked, seed = seed })
 
   local gateAware = false
-  local function gemSet(scaleOfFn, sel)
+  local function gemSet(scaleOfFn, sel, uniqueOverrides)
     sel = sel or res.selection
     local itemList = {}
     for _, slot in ipairs(order) do local v = sel[slot]; if v then itemList[#itemList + 1] = v end end
@@ -385,6 +385,25 @@ local function runGoal(goal, items, ctx, seed)
       else
         local sc = scaleOfFn(v)
         plans[#plans + 1] = { v = v, scale = sc, plan = GemSolver.planItemGems(v, sc, perks, maxPhase, gemOpts) }
+      end
+    end
+    -- UNIQUE-GEM overrides (see src/runner.js): swap specific focus sockets to a one-per-character
+    -- unique/epic gem, then recompute that item's gem stats (gems + socket bonus if still earned).
+    if uniqueOverrides then
+      for _, p in ipairs(plans) do
+        local ov = (not p.locked) and uniqueOverrides[p.v.itemId] or nil
+        if ov then
+          for idx, U in pairs(ov) do
+            local c = p.plan.choices[idx]
+            if c then p.plan.choices[idx] = { socket = c.socket, name = U.name, id = U.id or nil, color = U.color, stats = U.stats } end
+          end
+          local s = {}
+          for _, c in ipairs(p.plan.choices) do sumInto(s, c.stats or {}) end
+          if p.v.socketBonus and GemSolver.bonusEarnedAsTagged(p.plan.choices) then
+            sumInto(s, { [p.v.socketBonus.stat] = p.v.socketBonus.value })
+          end
+          p.plan.stats = s
+        end
       end
     end
     local metas = resolveMetas(plans, objScale, ctx)
@@ -457,6 +476,10 @@ local function runGoal(goal, items, ctx, seed)
     if improved then g = gg else gateAware = false end
   end
 
+  -- Goal-objective score of a gemmed set (buffed aggregate's raw stats — the exact metric the candidate
+  -- ranking uses), to judge trades where one slot gains threat and another loses it.
+  local function objScoreOf(gs) return Scoring.score(gs.agg._raw, objScale) end
+
   -- RECLAIM the gate overshoot
   if finalLegal(g.evald) then
     for _ = 1, #res.items do
@@ -473,6 +496,38 @@ local function runGoal(goal, items, ctx, seed)
       end
       if not best then break end
       scaleOf[best.v] = objScale
+      g = best.trial
+    end
+  end
+
+  -- PAIRWISE RELOCATION (mirrors src/runner.js). A single flip above can be blocked because a def piece
+  -- is load-bearing for a thin gate margin (e.g. a leg's +8 defense gem holding crit immunity), leaving
+  -- a high-threat slot def-gemmed while the set sits over the crush cap. Try 2-opt moves: flip a def
+  -- piece TO threat AND a threat piece TO def, relocating the gate stat where threat is worth less. Keep
+  -- the pair only if it stays legal AND raises the goal objective; repeat until none improves.
+  if finalLegal(g.evald) then
+    for _ = 1, #res.items do
+      tick()
+      local curObj = objScoreOf(g)
+      local best = nil
+      for _, d in ipairs(res.items) do
+        if scaleOf[d] == CAP_SCALE then
+          for _, t in ipairs(res.items) do
+            if t ~= d and t._gem ~= "locked" and scaleOf[t] ~= CAP_SCALE then
+              local trial = gemSet(function(x)
+                if x == d then return objScale elseif x == t then return CAP_SCALE else return scaleOf[x] end
+              end)
+              if finalLegal(trial.evald) then
+                local o = objScoreOf(trial)
+                if o > curObj + 1e-6 and (not best or o > best.o) then best = { d = d, t = t, trial = trial, o = o } end
+              end
+            end
+          end
+        end
+      end
+      if not best then break end
+      scaleOf[best.d] = objScale
+      scaleOf[best.t] = CAP_SCALE
       g = best.trial
     end
   end
@@ -560,6 +615,57 @@ local function runGoal(goal, items, ctx, seed)
       res.items = {}
       for _, slot in ipairs(order) do local it = res.selection[slot]; if it then res.items[#res.items + 1] = it end end
       g = best.trial
+    end
+  end
+
+  -- UNIQUE-GEM PLACEMENT (mirrors src/runner.js). The bulk picker uses only repeatable cuts, so a
+  -- unique/epic gem (one per character) is excluded there; but the player can slot ONE of each, and the
+  -- best (e.g. Runed Ornate Ruby) is a real upgrade. Greedily place each unique in the focus socket that
+  -- most raises the objective, re-gemming per trial (bonuses + metas recompute), kept only if legal AND
+  -- the objective strictly rises. Each unique used once, each socket once. Monotonic.
+  do
+    local phase = maxPhase or CURRENT_PHASE
+    local uniques = {}
+    for _, u in ipairs(GEMS) do
+      if (u.unique or u.epic) and u.phase <= phase and ((not u.jcOnly) or perks.jcGems) then
+        uniques[#uniques + 1] = { u = u, s = Scoring.score(u.stats, objScale), i = #uniques + 1 }
+      end
+    end
+    table.sort(uniques, function(a, b) if a.s ~= b.s then return a.s > b.s end return a.i < b.i end)
+    local overrides = {}   -- itemId -> { idx -> gem }
+    local usedSocket = {}  -- ["itemId:idx"] = true
+    for _, uu in ipairs(uniques) do
+      local U, us = uu.u, uu.s
+      tick()
+      local best = nil
+      local curObj = objScoreOf(g)
+      for _, p in ipairs(g.plans) do
+        if not p.locked and p.v._gem ~= "cap" then
+          for i = 1, #p.plan.choices do
+            local c = p.plan.choices[i]
+            local key = p.v.itemId .. ":" .. i
+            if c.color and not usedSocket[key] and us > Scoring.score(c.stats or {}, objScale) then
+              local trialOv = {}
+              for iid, m in pairs(overrides) do local mm = {}; for k, v in pairs(m) do mm[k] = v end; trialOv[iid] = mm end
+              trialOv[p.v.itemId] = trialOv[p.v.itemId] or {}
+              trialOv[p.v.itemId][i] = U
+              local trial = gemSet(scFn, res.selection, trialOv)
+              if finalLegal(trial.evald) then
+                local o = objScoreOf(trial)
+                if o > curObj + 1e-6 and (not best or o > best.o) then
+                  best = { itemId = p.v.itemId, idx = i, trial = trial, o = o }
+                end
+              end
+            end
+          end
+        end
+      end
+      if best then
+        overrides[best.itemId] = overrides[best.itemId] or {}
+        overrides[best.itemId][best.idx] = U
+        usedSocket[best.itemId .. ":" .. best.idx] = true
+        g = best.trial
+      end
     end
   end
 

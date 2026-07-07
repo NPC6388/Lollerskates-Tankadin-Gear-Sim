@@ -94,6 +94,10 @@ function Items.build(raw)
     -- GetItemStats omits SHIELD armor (reports 0); backfill from resolved so a re-gem from base doesn't
     -- undercount armor. Armor is never gem/enchant-added, so this is exact, not a double-count.
     if not baseStats.armor and stats.armor then baseStats.armor = stats.armor end
+    -- Same omission for SHIELD BLOCK VALUE: GetItemStats doesn't report a shield's innate block value,
+    -- so base reads 0 while the tooltip (resolved) has it. Backfill so a re-gem from base doesn't drop
+    -- ~150 block value (which made "re-gem everything" score a shield far below a keep-mode set).
+    if not baseStats.blockValue and stats.blockValue then baseStats.blockValue = stats.blockValue end
     -- The tooltip scan can miss an innate equip line GetItemStats captures; resolved should be >= base
     -- for innate stats, so lift any stat the scan came up short on.
     for _, k in ipairs(STAT_KEYS) do

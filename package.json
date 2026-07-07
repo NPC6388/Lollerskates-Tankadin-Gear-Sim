@@ -9,6 +9,7 @@
     "optimize": "node bin/optimize.mjs",
     "serve": "node bin/serve.mjs",
     "stamp": "node bin/stamp.mjs",
+    "build-addon": "node bin/build-addon-zip.mjs",
     "gen-lua": "node bin/gen-lua-data.mjs",
     "gen-fixtures": "node bin/gen-fixtures.mjs",
     "gen-scoring-fixtures": "node bin/gen-scoring-fixtures.mjs",

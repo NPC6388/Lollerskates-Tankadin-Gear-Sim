@@ -193,6 +193,9 @@ function init() {
   }).join('');
 
   $('exportText').addEventListener('input', () => { loadedSample = false; tryParse($('exportText').value); });
+  // A paste is a discrete "I just loaded my gear" action — once it parses, nudge them to pick trinkets.
+  // (input fires right after paste and runs tryParse, so defer a tick to read the result.)
+  $('exportText').addEventListener('paste', () => setTimeout(() => { if (items && items.length) promptTrinketChoice(); }, 0));
   $('exportFile').addEventListener('change', handleFile);
   $('loadSample').addEventListener('click', loadSample);
   // CTA under the results: open the "use your own gear" section and jump to it.
@@ -475,7 +478,8 @@ async function handleFile(e) {
   $('ownGear').open = true; // keep the export box visible so the paste/upload is in view
   loadedSample = false; // user's own gear — hide the sample CTA
   tryParse(text);
-  if (items && items.length) runOptimize(true); // a discrete upload is intent to run — show results
+  // Don't auto-optimize: the player picks their locked (proc/on-use) trinkets first, THEN hits Optimize.
+  if (items && items.length) promptTrinketChoice();
 }
 
 async function loadSample() {
@@ -486,20 +490,36 @@ async function loadSample() {
     $('exportText').value = text;
     tryParse(text);
     loadedSample = true; // showing the demo character — surface the "use your own gear" CTA under the results
-    if (items && items.length) runOptimize(true); // land on results immediately — the whole point of the demo
+    if (items && items.length) {
+      populateTrinketLocks(true); // demo keeps Icon + Eye of Magtheridon locked so it shows the intended behaviour
+      runOptimize(true); // land on results immediately — the whole point of the demo
+    }
   } catch { setStatus('Could not load the example file.', 'err'); }
 }
 
-function populateTrinketLocks() {
+// Fill the two trinket-lock dropdowns from the loaded gear. Nothing is locked by default — the player
+// picks their own proc/on-use trinkets after loading (see promptTrinketChoice). Only the sample
+// character passes applyDefaults=true, so the demo still shows the intended Icon + Eye-of-Mag locks.
+function populateTrinketLocks(applyDefaults = false) {
   const trinkets = items.filter((it) => it.slot === 'trinket');
   const opts = '<option value="">— none —</option>' +
     trinkets.map((t) => `<option value="${t.itemId}">${t.name || t.itemId}</option>`).join('');
   const set = (sel, defId) => {
     const el = $(sel); el.innerHTML = opts; el.disabled = false; // enable now that real trinkets exist
-    if (trinkets.some((t) => t.itemId === defId)) el.value = String(defId);
+    el.value = (applyDefaults && trinkets.some((t) => t.itemId === defId)) ? String(defId) : '';
   };
   set('lockIcon', DEFAULT_TRINKET_LOCKS.icon);
   set('lockEye', DEFAULT_TRINKET_LOCKS.eye);
+}
+
+// After a player loads THEIR OWN gear, make picking the locked trinkets the immediate next step:
+// scroll to the top of the Setup box and flash the Locked-trinkets field. (The model can't score
+// proc/on-use trinkets, so they must be chosen by hand — nothing is pre-locked.)
+function promptTrinketChoice() {
+  $('config-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const wrap = $('lockIcon').closest('.field');
+  if (wrap) { wrap.classList.remove('flash'); void wrap.offsetWidth; wrap.classList.add('flash'); }
+  $('lockIcon').focus({ preventScroll: true });
 }
 
 // ---- run --------------------------------------------------------------------
@@ -699,6 +719,15 @@ function render(results) {
   $('sets').innerHTML = lockedBanner() + excludedBanner() + plannedBanner() + setCard(results[activeTab]);
   const eb = $('sets').querySelector('.export-btn');
   if (eb) eb.addEventListener('click', () => exportSet(results[activeTab], eb));
+  // Footer nudge: open the (collapsed-by-default) Advanced settings and scroll up to them, so people
+  // who don't like a result can find the knobs (phase / keep-gems / scrolls / talents).
+  const av = $('sets').querySelector('.adv-link');
+  if (av) av.addEventListener('click', (e) => {
+    e.preventDefault();
+    const adv = document.querySelector('details.advanced');
+    if (adv) adv.open = true;   // expand the options...
+    $('config-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); // ...but land at the top of the whole Setup box
+  });
   // Lock this set's items: add every selected item-id to the kept list, then re-optimize so the
   // other sets keep those gems/enchants too (don't undo a set you've committed to).
   const lb = $('sets').querySelector('.lock-set-btn');
@@ -1019,6 +1048,11 @@ function setCard(r) {
     ${metaWarn ? `<div class="metawarn">${metaWarn}</div>` : ''}
     ${exportNote}
     ${panels}
+    <div class="set-foot">
+      <span class="set-foot-text">Not what you expected?</span>
+      <a href="#" class="adv-link">⚙ Change the options ↑</a>
+      <span class="set-foot-sub">content phase · keep gems/enchants · scrolls · talents &amp; more under <em>Advanced settings</em></span>
+    </div>
   </div>`;
 }
 

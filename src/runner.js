@@ -301,7 +301,7 @@ function runGoal(goal, items, ctx, seed = {}) {
   // socket-bonus worth-it test priced on the cap scale, so focus pieces KEEP gate-stat bonuses they'd
   // otherwise forfeit for a sliver of threat — the cheapest avoidance back toward the cap.
   let gateAware = false;
-  const gemSet = (scaleOf, sel = res.selection) => {
+  const gemSet = (scaleOf, sel = res.selection, uniqueOverrides = null) => {
     const itemList = Object.values(sel).filter(Boolean);
     const baseStatsList = itemList.map((v) => ({ stats: baseOf(v) }));
     const gemOpts = gateAware ? { gateScale: CAP_SCALE } : {};
@@ -309,6 +309,24 @@ function runGoal(goal, items, ctx, seed = {}) {
     const plans = itemList.map((v) => v._gem === 'locked'
       ? { v, scale: null, locked: true, plan: { choices: [], stats: lockedDelta(v), metaCount: 0 } }
       : { v, scale: scaleOf(v), plan: planItemGems(v, scaleOf(v), perks, maxPhase, gemOpts) });
+    // UNIQUE-GEM overrides (from the placement pass below): swap specific focus sockets to a
+    // one-per-character unique/epic gem, then recompute that item's gem stats from scratch (all gems +
+    // its socket bonus IF the new colors still earn it). Applied before resolveMetas so meta activation
+    // and the socket-bonus reassignment downstream both recompute around the swap.
+    if (uniqueOverrides) {
+      for (const p of plans) {
+        const ov = p.locked ? null : uniqueOverrides.get(p.v.itemId);
+        if (!ov) continue;
+        for (const [idx, U] of ov) {
+          const c = p.plan.choices[idx];
+          if (c) p.plan.choices[idx] = { socket: c.socket, name: U.name, id: U.id || null, color: U.color, stats: U.stats };
+        }
+        const s = {};
+        for (const c of p.plan.choices) sumInto(s, c.stats || {});
+        if (p.v.socketBonus && bonusEarnedAsTagged(p.plan.choices)) sumInto(s, { [p.v.socketBonus.stat]: p.v.socketBonus.value });
+        p.plan.stats = s;
+      }
+    }
     const metas = resolveMetas(plans, objScale, ctx);
     const added = {};
     const gemChoices = [];
@@ -368,6 +386,7 @@ function runGoal(goal, items, ctx, seed = {}) {
 
   // Start from the optimizer's variant choice (its cap variants -> def gems).
   const scaleOf = new Map(res.items.map((v) => [v, v._gem === 'cap' ? CAP_SCALE : objScale]));
+  const scFn = (v) => scaleOf.get(v) || objScale; // gems a swapped-in item on the goal (focus) scale
   let g = gemSet((v) => scaleOf.get(v));
 
   // GATE RECOVERY. If the socket-bonus-aware set misses a hard gate (crush/crit/min-HP), the
@@ -383,6 +402,12 @@ function runGoal(goal, items, ctx, seed = {}) {
       || gg.evald.critReduction > g.evald.critReduction;
     if (improved) g = gg; else gateAware = false;
   }
+
+  // Goal-objective score of a gemmed set, used to judge trades where one slot gains threat and another
+  // loses it (the SP proxy alone can't — it ignores the cost). Scores the BUFFED aggregate's raw stats
+  // (`agg._raw`), the exact metric the candidate ranking uses below — so a relocation that the raw
+  // base+delta scale thinks is even can't quietly trade away Kings-multiplied stamina for a net loss.
+  const objScoreOf = (gs) => score(gs.agg._raw, objScale);
 
   // RECLAIM the gate overshoot. The optimizer picks cap (def-gem) variants from APPROXIMATE raw-gem
   // stats during the search, but the socket-bonus-aware final set often clears the gates without
@@ -405,6 +430,34 @@ function runGoal(goal, items, ctx, seed = {}) {
     }
   }
 
+  // PAIRWISE RELOCATION. A single flip above can be blocked because a def piece is load-bearing for a
+  // thin gate margin — e.g. a leg's +8 defense gem holding crit immunity at 5.70% vs the 5.6% floor —
+  // so a high-threat slot (legs, where the threat enchant is worth ~3x a def one) stays def-gemmed even
+  // while the set sits >1% over the crush cap. Try 2-opt moves: flip a def piece TO threat AND a threat
+  // piece TO def, relocating the gate stat to a slot where threat is worth less. Keep the pair only if
+  // it stays legal AND raises the goal objective; repeat until none improves. (Runs after the greedy
+  // single-flip pass so it only handles the genuinely stuck pieces.)
+  if (finalLegal(g.evald)) {
+    for (let guard = 0; guard < res.items.length; guard++) {
+      const curObj = objScoreOf(g);
+      let best = null;
+      for (const d of res.items) {
+        if (scaleOf.get(d) !== CAP_SCALE) continue; // d: currently def-gemmed
+        for (const t of res.items) {
+          if (t === d || t._gem === 'locked' || scaleOf.get(t) === CAP_SCALE) continue; // t: a non-locked threat piece
+          const trial = gemSet((x) => (x === d ? objScale : x === t ? CAP_SCALE : scaleOf.get(x)));
+          if (!finalLegal(trial.evald)) continue;
+          const o = objScoreOf(trial);
+          if (o > curObj + 1e-6 && (!best || o > best.o)) best = { d, t, trial, o };
+        }
+      }
+      if (!best) break;
+      scaleOf.set(best.d, objScale);
+      scaleOf.set(best.t, CAP_SCALE);
+      g = best.trial;
+    }
+  }
+
   // FINAL META PASS — verify every meta's color requirement actually holds, and repair when a
   // threat-driven item swap dropped a color a meta needs (selection isn't meta-color-aware, and a
   // kept meta's own sockets can't be recolored). If a meta is inactive, search non-locked slots for
@@ -412,7 +465,6 @@ function runGoal(goal, items, ctx, seed = {}) {
   // and scores best (the dead meta's stats are now honestly counted, so the trade is fair — if the
   // threat truly outweighs the meta, no swap beats the current set and it's left as-is, still flagged).
   if (g.metas.some((m) => !m.active)) {
-    const scFn = (v) => scaleOf.get(v) || objScale; // a swapped-in item gems on the goal (focus) scale
     const objOf = (gs) => { const t = {}; for (const it of gs.items) sumInto(t, baseOf(it)); sumInto(t, gs.added); return score(t, objScale); };
     let best = null;
     const curObj = objOf(g);
@@ -435,6 +487,48 @@ function runGoal(goal, items, ctx, seed = {}) {
     if (best) {
       res.selection[best.slotKey] = best.cand;
       res.items = Object.values(res.selection).filter(Boolean);
+      g = best.trial;
+    }
+  }
+
+  // UNIQUE-GEM PLACEMENT. The per-socket bulk picker only uses repeatable (rare) cuts — a unique/epic
+  // gem (one per character) can't fill every socket, so it's excluded there (gems.js). But the player
+  // can slot ONE of each, and the best (e.g. Runed Ornate Ruby, +12 SP vs the +9 workhorse) is a real
+  // upgrade. Greedily place each unique in the focus socket that most raises the objective, re-gemming
+  // the whole set per trial (so socket bonuses + meta activation recompute), keeping it only if the set
+  // stays legal AND the objective strictly rises. Each unique used once, each socket upgraded once —
+  // monotonic. A cheap gem-level gain pre-check keeps it to the few (unique, socket) pairs worth trying.
+  {
+    const phase = maxPhase || CURRENT_PHASE;
+    const uniques = GEMS
+      .filter((u) => (u.unique || u.epic) && u.phase <= phase && (!u.jcOnly || perks.jcGems))
+      .map((u, i) => ({ u, s: score(u.stats, objScale), i }))
+      .sort((a, b) => b.s - a.s || a.i - b.i); // explicit tiebreak by pool order (parity with Lua)
+    const overrides = new Map(); // itemId -> Map(choiceIndex -> gem)
+    const usedSocket = new Set(); // "itemId:idx"
+    const withOverride = (itemId, idx, U) => {
+      const out = new Map(); for (const [k, v] of overrides) out.set(k, new Map(v));
+      out.set(itemId, (out.get(itemId) || new Map()).set(idx, U));
+      return out;
+    };
+    for (const { u: U, s: us } of uniques) {
+      let best = null;
+      const curObj = objScoreOf(g);
+      for (const p of g.plans) {
+        if (p.locked || p.v._gem === 'cap') continue; // upgrade only non-locked THREAT (focus) sockets
+        for (let i = 0; i < p.plan.choices.length; i++) {
+          const c = p.plan.choices[i];
+          if (!c.color || usedSocket.has(p.v.itemId + ':' + i)) continue;
+          if (us <= score(c.stats || {}, objScale)) continue; // no gem-level gain possible → skip the trial
+          const trial = gemSet(scFn, res.selection, withOverride(p.v.itemId, i, U));
+          if (!finalLegal(trial.evald)) continue;
+          const o = objScoreOf(trial);
+          if (o > curObj + 1e-6 && (!best || o > best.o)) best = { itemId: p.v.itemId, idx: i, trial, o };
+        }
+      }
+      if (!best) continue;
+      overrides.set(best.itemId, (overrides.get(best.itemId) || new Map()).set(best.idx, U));
+      usedSocket.add(best.itemId + ':' + best.idx);
       g = best.trial;
     }
   }

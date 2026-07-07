@@ -58,3 +58,14 @@ if git diff --cached --name-only | grep -qE '^(src/(runner|optimizer|sets|gems|e
   node bin/gen-runner-fixtures.mjs || exit 1
   git add test/lua/runner_fixtures.lua
 fi
+
+# Keep the downloadable addon zip in lockstep with the addon source. The website's "Download the addon"
+# link serves the COMMITTED addon/TankadinGearSim.zip (GitHub Pages, static), so it goes stale the moment
+# addon source is committed without a rebuild. Rebuild + stage it whenever any file under
+# addon/TankadinGearSim/ (or the builder itself) is part of this commit. Runs AFTER the gen-* blocks
+# above so a regenerated engine/*Data.lua is captured in the same zip. (build-addon-zip is deterministic,
+# so a no-op change re-stages identical bytes.)
+if git diff --cached --name-only | grep -qE '^(addon/TankadinGearSim/|bin/build-addon-zip\.mjs)'; then
+  node bin/build-addon-zip.mjs || exit 1
+  git add addon/TankadinGearSim.zip
+fi

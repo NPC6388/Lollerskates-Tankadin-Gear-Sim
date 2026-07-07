@@ -56,6 +56,12 @@ jobs:
             test/lua/runner_fixtures.lua \
           || { echo "::error::Generated files are stale — run the gen-* npm scripts and commit."; exit 1; }
 
+      - name: Downloadable addon zip is in sync with the addon source
+        run: |
+          npm run build-addon
+          git diff --exit-code -- addon/TankadinGearSim.zip \
+          || { echo "::error::addon/TankadinGearSim.zip is stale — run 'npm run build-addon' and commit (the site serves the committed zip)."; exit 1; }
+
       - name: Install Lua 5.1 (WoW's Lua version)
         run: sudo apt-get update && sudo apt-get install -y lua5.1
 

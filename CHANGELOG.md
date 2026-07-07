@@ -854,6 +854,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   sees the same gear as the export and a solve completes without a client hitch). Follow-ups: per-slot
   gem/enchant/alternative detail in the cards, and an options row (keep-mode / phase / manual professions).
   **Status: committed but not yet verified in-game — the user will run the smoke test next session.**
+- **Addon v0.8.15 — fix: Export copy box rendered blank (`/tgs export`).** The multiline `EditBox`
+  child of the Export tab's `ScrollFrame` had no height set, so on the `_anniversary_` client it
+  rendered **blank even though the text was correctly set** (the export string still reached
+  SavedVariables fine — which is why we'd been reading it off disk rather than the box). This is a
+  regression of the **v0.5.0** fix (`d4d7cce`), which had given the box an explicit height; the
+  v0.8.0 WeakAura/tab rewrite of `UI.lua` kept the show-before-`SetText` ordering but dropped the
+  `SetHeight`. Restored it: the box gets a non-zero default height at build, and a new `setExportText`
+  helper grows the `EditBox` to its line count on every fill (so the scrollbar now reaches the whole
+  200-item export, not a fixed window). Both fill paths — the Export tab (`refreshExport`) and
+  `/tgs debug` (`UI.ShowDebug`) — route through it. 30-file syntax pass + 8 Lua parity harnesses green.
 - **Addon v0.8.4 — in-game optimizer, D1: scoring core (internal, no UI yet).** First brick of porting
   the website's optimizer in-game (plan `snappy-forging-knuth`, Phase D). `bin/gen-lua-data.mjs` now
   also generates **`engine/Weights.lua`** — the stat-weight scales (`ZERO`/`SCALES`/`PARTS`) from
@@ -865,3 +875,83 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   regenerate `Weights.lua` (on `src/weights.js` changes) and the scoring goldens. These files load in
   the `.toc` but aren't wired to any UI yet — they're the foundation the D2+ forward-model / search
   sub-phases score through. JS suite still 149/149.
+- **Web UI — Locked trinkets promoted out of Advanced; "change the options" nudge under each set.**
+  Two discoverability fixes. (1) The **Locked trinkets** control moved from the collapsed *Advanced
+  settings* `<details>` into the always-visible **Setup** grid (next to Professions / Stat buff) —
+  it's not really optional (procs/on-use trinkets the model can't score are *forced in*, so getting
+  the right ones matters for most characters), so it shouldn't be hidden by default. Selects are
+  referenced by `id`, so the move is DOM-only. (2) Added a prominent **callout box** under the
+  displayed set — a bordered, accent-tinted panel with a bold "Not what you expected?" headline and a
+  button-style "⚙ **Change the options ↑**" CTA — that opens the Advanced `<details>` and scrolls up to
+  it, so people who don't like a result can find the knobs (phase / keep-gems / scrolls / talents).
+  New `.set-foot` / `.set-foot-text` / `.adv-link` / `.set-foot-sub` styles. No engine change; JS suite 149/149.
+- **Web UI — no trinkets locked by default; the player picks them right after loading gear.** Loading
+  your OWN gear (paste or file upload) no longer pre-locks `DEFAULT_TRINKET_LOCKS` (Icon of the Silver
+  Crescent + Eye of Magtheridon) — a wrong auto-guess silently forced trinkets you might not own/want
+  into every set. Now both lock dropdowns start at *— none —*, and a successful paste/upload scrolls to
+  the top of the **Setup** box and **flashes** the Locked-trinkets field (`promptTrinketChoice`) so
+  choosing them is the obvious next step before you hit Optimize (upload no longer auto-optimizes for
+  this reason; paste never did). `populateTrinketLocks(applyDefaults=false)` gates the old behaviour:
+  only the **sample character** passes `true`, so the demo still shows Icon + Eye locked. Share-link
+  restore is unaffected (it re-applies the saved locks after parse). New `.field.flash` keyframe;
+  helper copy updated. No engine change; JS suite 149/149.
+- **Fix (engine) — "re-gem everything" dropped a shield's block value / Addon v0.8.16.** A user's
+  "re-gem everything" threat set came out worse than their equipped gear. Traced it: re-optimizing gems
+  rebuilds each item from its `baseStats` (WoW's `GetItemStats`), which — like shield *armor*, already
+  backfilled — **omits a shield's innate block value** (it isn't in the stats table). So re-gemming a
+  shield silently lost ~150 block value (the repro showed block value **9 vs 277** vs keep-mode), while
+  keep-mode preserved it via the tooltip-scanned `resolved` stats. Fixed by backfilling
+  `baseStats.blockValue` from `resolved` when base lacks it (the shield case), mirroring the armor guard
+  — in both `src/import.js` (website) and `engine/Items.lua` (in-game optimizer). Added a JS regression
+  test + regenerated `items_fixtures.lua`. JS 150/150; 8 Lua harnesses green. (A *further* ~35-SP gap
+  after this fix turned out to be a real search-suboptimality — fixed next in v0.8.17.)
+- **Fix (engine) — pairwise gate-stat relocation recovers stuck threat / Addon v0.8.17.** Follow-up to
+  the block-value fix: "re-gem everything" still under-delivered ~35 SP vs the player's manual gems, all
+  on one slot. The re-gem set sat >1% **over** the crush cap yet kept a defensive leg gemming (Nethercleft
+  Leg Armor + a +8-defense gem) because that gem was *load-bearing* for a razor-thin crit-immunity margin
+  (5.70% vs the 5.6% floor) — flipping legs to the +35-SP *Runic Spellthread* alone made the set crittable,
+  so the existing greedy one-piece "reclaim the overshoot" pass couldn't free it. Added a **pairwise (2-opt)
+  relocation** after the greedy reclaim: flip a def piece TO threat AND a threat piece TO def, relocating
+  the gate stat to a slot where threat is worth less — kept only if the set stays legal AND the goal
+  objective (`score(agg._raw)`) strictly rises, so it's **monotonic** (can never worsen the set). On the
+  reported gear it recovered **+35 SP** (747→782) and gave legs Runic Spellthread with crit landing exactly
+  at the 5.6% floor. Mirrored in `src/runner.js` + `engine/Runner.lua`; regenerated `runner_fixtures.lua`;
+  JS 150/150, all 8 Lua parity harnesses green (JS==Lua), full 4-set solve ~95 ms. A residual ~24-SP gap to
+  keep-mode remains (deeper heuristic-search limit — keep retains more socket bonuses); tracked, not a gate.
+- **Fix (engine) — unique/epic gem placement / Addon v0.8.18.** Chasing the residual re-gem↔keep gap:
+  the per-socket bulk picker only uses *repeatable* (rare) cuts, so a unique/epic gem (one per character —
+  e.g. Runed Ornate Ruby, +12 SP) was excluded entirely (a documented `gems.js` TODO). The player can slot
+  one of each, though. Added a greedy placement pass after the meta pass: for each unique (best-first),
+  find the focus socket that most raises the objective, re-gemming the whole set per trial via a new
+  `gemSet` unique-override arg (so socket bonuses + meta activation recompute), keeping a placement only
+  if the set stays legal AND `score(agg._raw)` strictly rises — **monotonic**, each unique used once, each
+  socket once. A cheap gem-level gain pre-check bounds the trials. On the reported gear: **+8 SP** (782→790),
+  placing Runed Ornate Ruby / Glowing Tanzanite / Vivid Chrysoprase. (Honest note: an earlier "~24 SP"
+  estimate was a bad ceiling — it double-counted duplicate uniques; the legal one-each value is ~8 SP.)
+  Mirrored in `src/runner.js` + `engine/Runner.lua`; regenerated `runner_fixtures.lua`; JS 150/150, all 8
+  Lua harnesses green (JS==Lua), 4-set solve ~104 ms. Remaining ~16-SP gap is socket-bonus allocation
+  (keep earns e.g. a chest +4-def bonus with gems that are also high-threat — locking only the chest
+  recovers 13 of the 16 SP). Diagnosed but **deliberately deferred**: closing it needs a large gemming-core
+  refactor (bonus-chase + re-runnable gate-conversion, mirrored in Lua) for ~1.6% on one set — poor
+  risk/reward now that re-gem sits within 2% of keep. Tracked in SESSION_LOG as a TODO.
+- **Fix (addon) — Export copy box STILL rendered blank; restored the full v0.5.0 sequence / Addon v0.8.19.**
+  The v0.8.15 "fix" (explicit `SetHeight`) was incomplete and never eyeballed in-game — the box was still
+  blank. The original working v0.5.0 fix (`d4d7cce`) had TWO parts, and the v0.8.0 tab rewrite dropped the
+  second: on the `_anniversary_` client an `EditBox` child of a `ScrollFrame` only renders once it's given
+  a non-zero height **AND** is `SetFocus()`'d + `HighlightText()`'d **after the frame is shown**. `setExportText`
+  now does all of it (both callers — the Export tab and `/tgs debug` — already show the window + pane first),
+  which also auto-selects the text so it's ready for Ctrl+C. 30-file Lua syntax pass clean. Also re-synced the
+  full installed addon folder — a user addon-update had reverted `engine/Items.lua` + `engine/Runner.lua` to
+  older copies (so earlier in-game tests were partly on stale engine code); installed == repo again.
+- **Fix (addon) — self-diagnosing Export box + deterministic zip so the site download is never stale / v0.8.20.**
+  In-game the Export box was *still* blank while `/tgs debug` (same `setExportText`) rendered fine — proof the
+  failure is in the export path, not the EditBox. Root cause of the *staleness*: the site's "Download the addon"
+  link serves the **committed** `addon/TankadinGearSim.zip` (GitHub Pages, static), which was last committed at
+  **v0.8.14** — every local rebuild since was never committed/deployed, so the user kept installing old files.
+  Two fixes: (1) **`refreshExport` is now self-diagnosing** — instead of silently returning blank when
+  `ns.Exporter` is missing or `Exporter.run()` errors, it writes the reason (incl. the Lua error text) INTO the
+  box, so the cause is visible without BugSack. (2) **`bin/build-addon-zip.mjs`** — a pure-Node, *deterministic*
+  ZIP builder (fixed timestamps, sorted entries, LF-normalized text) — plus `npm run build-addon`, a **pre-commit
+  hook block** that rebuilds+stages the zip whenever addon source is committed, a **CI guard** that fails if the
+  committed zip is stale (`git diff --exit-code`), and `*.zip binary` in `.gitattributes`. The committed zip now
+  always matches the addon source (or CI/commit fails). JS 150/150; 30-file Lua syntax pass; zip byte-reproducible.

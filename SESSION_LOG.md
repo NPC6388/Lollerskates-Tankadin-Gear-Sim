@@ -4,6 +4,125 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-07 — Export box STILL blank in-game; real fix + stale-install catch (addon v0.8.19)
+
+User tested in-game: **export box still renders no text.** My v0.8.15 `SetHeight` fix was incomplete and
+never eyeballed in-game. Pulled the actual working v0.5.0 code (`git show d4d7cce`) and compared: the v0.5.0
+fix had TWO parts and the tab rewrite kept only the height. On the `_anniversary_` client an EditBox child
+of a ScrollFrame renders only when given a non-zero height **AND** `SetFocus()` + `HighlightText()` **after
+the frame is shown**. Restored both in `setExportText` (both callers already show window + Export pane first;
+bonus: auto-selects the text for Ctrl+C). `.toc`→0.8.19; 30-file syntax pass clean.
+- **Stale-install catch:** after syncing, `diff -rq` showed the installed `engine/Items.lua` + `Runner.lua`
+  DIFFERED from repo — the user's own addon-update had reverted them to older copies, so earlier in-game
+  tests ran partly on **stale engine code**. Re-synced the whole folder (`cp -rf`), installed == repo again.
+  **Heads-up for next time:** the user's update mechanism lags this repo — after I sync, just `/reload`
+  (don't re-run the addon updater), or update from the freshly-built `addon/TankadinGearSim.zip`.
+- **Still blank after that (v0.8.20).** In-game `/tgs export` still blank BUT `/tgs debug` shows text — and
+  both call the same `setExportText`, so the EditBox renders fine; the export PATH fails before setting text
+  (`refreshExport` early-returns on nil `ns.Exporter`, or `Exporter.run()` errors). Made `refreshExport`
+  **self-diagnosing**: writes the failure reason (incl. pcall'd Lua error text) INTO the box. Next: user
+  `/reload`, open `/tgs export`, and report what the box now says — that pinpoints nil-Exporter vs a run error.
+- **Site download was stale — the real "old files" cause.** The site's addon link serves the COMMITTED
+  `addon/TankadinGearSim.zip` (GitHub Pages static), last committed at **v0.8.14**; local rebuilds were never
+  committed. Fixed for good: `bin/build-addon-zip.mjs` (pure-Node **deterministic** zip — fixed mtimes, sorted
+  entries, LF-normalized so Windows/Linux builds match byte-for-byte), `npm run build-addon`, a **pre-commit**
+  block (rebuild+stage on any `addon/TankadinGearSim/**` commit), a **CI guard** (`git diff --exit-code` the zip),
+  and `*.zip binary` in `.gitattributes`. Committed zip can no longer drift from source. **`release.yml`** (v* tag →
+  BigWigsMods packager → CurseForge/GitHub Release) is a separate path and untouched.
+
+## 2026-07-06 — Fix: Export copy box rendered blank (addon v0.8.15)
+
+User picked the addon back up: **`/tgs` gives a blank copy box.** Traced it, and it's a **regression of
+the v0.5.0 fix.**
+
+- Bare `/tgs` opens the **Live** tab (no copy box); the blank box is the **Export** tab's `EditBox`.
+  Ruled out a data problem: SavedVariables on disk had a healthy 200-item TGS11 export written today
+  (`exportedAt = 2026-07-06 21:41:50`), so `Exporter.run()` builds + writes the string fine — the box was
+  just not *rendering* it. Also confirmed the installed AddOns copy is **byte-identical** to the repo
+  (`diff -rq` clean), so this is live in the current code, not a stale install.
+- Root cause: the Export tab's multiline `EditBox` (child of a `ScrollFrame`) had **no height set**. On
+  the `_anniversary_` client a 0-height `EditBox`-in-`ScrollFrame` renders **blank** even with text set —
+  the exact failure `SESSION_LOG` line ~1354 records being fixed in **v0.5.0** (`d4d7cce`) with an explicit
+  `SetHeight`. The **v0.8.0** WeakAura/tab rewrite of `UI.lua` kept the show-before-`SetText` ordering but
+  dropped the `SetHeight`. (This is also why we'd been reading exports off the SavedVariables file rather
+  than the box — the box never rendered.)
+- Fix (`UI.lua`): non-zero default `exportEdit:SetHeight(330)` at build, plus a `setExportText(text)`
+  helper that sets text + cursor and grows the `EditBox` to `max(330, (lines+2)*14)` so the scrollbar
+  reaches the whole export. Both fill paths route through it: `refreshExport` (Export tab) and
+  `UI.ShowDebug` (`/tgs debug`). `.toc` → 0.8.15. 30-file syntax pass + 8 Lua parity harnesses green.
+
+### Web UI discoverability (same session)
+Two small website fixes after the addon one:
+- **Locked trinkets out of Advanced.** The control sat inside the collapsed *Advanced settings*
+  `<details>`, so it was hidden by default — but it's not optional (proc/on-use trinkets the model
+  can't score are *forced in*). Moved it into the always-visible **Setup** grid next to Professions /
+  Stat buff (`index.html`). DOM-only move; JS still finds `#lockIcon` / `#lockEye` by id.
+- **"Change the options ↑" nudge under each set.** Added a `.set-foot` footer link at the end of the
+  displayed set (`setCard` in `web/app.js`) that opens the Advanced `<details>` and scrolls up to it,
+  so people who don't like a result can find the knobs. New `.set-foot` / `.adv-link` CSS.
+- **Bigger "Change the options" callout + scroll target.** Turned the footer link into a prominent
+  accent-bordered callout box (bold headline + button-style CTA, `.set-foot*` styles); the CTA now
+  expands Advanced **and** scrolls to the top of the whole Setup box (`#config-panel`), not just the
+  Advanced block.
+- **No trinkets locked by default.** Loading your own gear used to auto-lock `DEFAULT_TRINKET_LOCKS`
+  (Icon + Eye of Mag) — a wrong guess forces trinkets you may not own into every set. Now both lock
+  dropdowns start at *— none —*; a successful paste/upload scrolls to Setup and **flashes** the
+  Locked-trinkets field (`promptTrinketChoice`) so the player chooses first (upload no longer
+  auto-optimizes). `populateTrinketLocks(applyDefaults)` — only the **sample** passes `true`, so the
+  demo keeps Icon + Eye locked. Share-link restore re-applies saved locks after parse (unaffected).
+- Verified: `node --check web/app.js` clean, `<details>` balanced 5/5, **JS 149/149**, stamps
+  regenerated. Not yet eyeballed in a browser.
+
+### "Re-gem everything" worse than equipped — shield block-value bug (addon v0.8.16)
+User shared two links (same gear/goals, only `keepScope` differs: `off` vs `all`) — "re-gem everything"
+gave a worse threat set. Decoded the `#s=` share hashes (gzip+b64url), reproduced both raid sets through
+`optimizeSets`. Both pick the **identical 17 items**; the difference is purely gems/enchants:
+- **Root cause (fixed):** re-gem rebuilds items from `baseStats` (= `GetItemStats`), which omits a
+  **shield's innate block value** (not in the stats table) — same quirk as shield *armor*, which was
+  already backfilled. So re-gem lost ~150 block value: repro showed **bv 9 vs 277** vs keep. Fixed by
+  backfilling `baseStats.blockValue` from `resolved` in `src/import.js` **and** `engine/Items.lua`
+  (parity). New JS test + regenerated `items_fixtures.lua`. JS **150/150**, Lua parity green. `.toc`→0.8.16.
+- **Then a real search-suboptimality (fixed, v0.8.17).** After the block-value fix a ~35-SP gap remained,
+  all on **legs**: re-gem sat >1% over the crush cap but kept Nethercleft + a +8-def gem because that gem
+  held a razor-thin crit margin (5.70% vs 5.6%); flipping legs to Runic Spellthread (+35 SP) alone made
+  the set crittable, so the greedy one-piece reclaim couldn't free it. Added a **pairwise (2-opt) relocation**
+  after the greedy reclaim (`src/runner.js` + `engine/Runner.lua`): flip a def piece→threat AND a threat
+  piece→def, kept only if legal AND `score(agg._raw)` strictly rises (monotonic — can't worsen a set).
+  Recovered **+35 SP** (747→782), legs now Runic Spellthread, crit at the 5.6% floor. Regenerated
+  `runner_fixtures.lua`; JS **150/150**, all 8 Lua harnesses green (JS==Lua), full solve ~95 ms.
+  Gotcha caught mid-fix: first version scored the raw base+delta stats and *lowered* the true objective
+  (Kings ×1.10 stamina undervalued) — switched to `agg._raw`, the exact metric the candidate ranking uses.
+  Residual ~24-SP gap to keep-mode remains (keep retains more socket bonuses — deeper heuristic limit).
+  The ratio slider still maxes at **1:4** (`max="3"`) — extending it is a separate possible lever.
+- **Then unique-gem placement (shipped, v0.8.18, +8 SP).** The bulk picker excludes unique/epic gems (can't
+  fill every socket), so it never used e.g. Runed Ornate Ruby (+12 SP). Added a greedy, monotonic placement
+  pass after the meta pass: `gemSet` gained a `uniqueOverrides` arg (swap a socket's gem, recompute the
+  item's gem stats + socket bonus before resolveMetas); the pass places each unique once in the focus socket
+  that most raises `score(agg._raw)`, kept only if legal + strictly better. On the user's set: 782→**790**
+  (Runed Ornate Ruby on feet, Glowing Tanzanite shoulder, Vivid Chrysoprase chest). Mirrored in Runner.lua
+  (tiebreak by pool index for JS↔Lua determinism); regen runner fixtures; JS 150/150, Lua parity green, solve
+  ~104 ms. **Correction:** my "~24 SP" for uniques was a bad ceiling (it double-counted duplicate uniques,
+  which are illegal — one per character); real legal value is ~8 SP.
+- **Remaining ~16 SP = socket-bonus allocation (DIAGNOSED, deliberately DEFERRED).** keep earns the chest
+  **+4 defense** socket bonus using Runed Ornate Ruby + Glowing Nightseye + Veiled Noble Topaz (all in-pool,
+  color-matched red/yellow/blue) while keeping 22 SD on the item; re-gem's greedy per-socket picker forfeits
+  that bonus (3 off-color threat gems, Option A 112.8 > Option B 103.6 locally). Proof it's the lever:
+  locking ONLY the chest (keep its gems) jumps re-gem **790 → 803** (of the 16-SP gap, 13 is the chest).
+  All keep gems are in-pool, so keep IS reachable — but the +4 def is a *gate stat* whose global payoff
+  (free crit margin → threat elsewhere) is invisible to the local Option-A/B decision.
+  **Decision (2026-07-07): STOP.** re-gem 790 vs keep 806 is within 2%; the fix is the biggest/riskiest
+  change of the session (a `preferBonus` flag + `chaseBonus` set + refactoring reclaim/pairwise/unique into a
+  re-runnable `refineGemming()` + a monotonic bonus-chase pass, all mirrored in Runner.lua + fixtures) for
+  ~1.6% on one gear set. Left as a tracked TODO — pick up here if socket-bonus retention becomes a priority.
+
+### Pick up here — verify in-game (user)
+Re-copy `addon/TankadinGearSim/` into the live AddOns folder (see [[savedvars-disk-path]]), `/reload`,
+then `/tgs export` → the box should show the full `TGS11…` string (Ctrl+A, Ctrl+C to copy); `/tgs debug`
+should likewise fill. **The D6 Optimize-tab in-game smoke test below is still outstanding** — do it in the
+same session.
+
+---
+
 ## 2026-07-03 (D6) — In-game optimizer, D6: Optimize tab (addon v0.8.14)
 
 Continued (user: "continue"). **D6 landed (v1, needs in-game verification).** Added the **Optimize** tab
