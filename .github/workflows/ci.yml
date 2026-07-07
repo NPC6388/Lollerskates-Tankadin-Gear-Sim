@@ -57,10 +57,13 @@ jobs:
           || { echo "::error::Generated files are stale — run the gen-* npm scripts and commit."; exit 1; }
 
       - name: Downloadable addon zip is in sync with the addon source
+        # Compare the committed zip's CONTENTS (not its bytes) against the addon source — deflate output
+        # isn't byte-stable across zlib/Node versions, so a byte diff would false-fail on a runner bump.
         run: |
-          npm run build-addon
-          git diff --exit-code -- addon/TankadinGearSim.zip \
-          || { echo "::error::addon/TankadinGearSim.zip is stale — run 'npm run build-addon' and commit (the site serves the committed zip)."; exit 1; }
+          tmp="$(mktemp -d)"
+          unzip -q addon/TankadinGearSim.zip -d "$tmp"
+          diff -r --strip-trailing-cr "$tmp/TankadinGearSim" addon/TankadinGearSim \
+          || { echo "::error::addon/TankadinGearSim.zip is out of sync with addon/TankadinGearSim/ — run 'npm run build-addon' and commit (the site serves the committed zip)."; exit 1; }
 
       - name: Install Lua 5.1 (WoW's Lua version)
         run: sudo apt-get update && sudo apt-get install -y lua5.1
