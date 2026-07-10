@@ -4,7 +4,103 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-07 (latest) — Match the addon's numbers to reality: keep trinkets + keep gems + click-to-copy site link (addon v0.8.23–v0.8.26)
+## 2026-07-10 (latest) — Slider labels ARE the buttons; balanced default 1:1; committed + pushed both (addon v0.8.29–v0.8.30 + site)
+
+Two quick follow-ups after v0.8.29, then committed & pushed everything (user on break, explicitly authorized
+push+deploy — pushing `main` also publishes the GitHub Pages site so the user can finally see the site CSS).
+- **v0.8.30 — flanking labels are the nudge buttons.** User: the addon's "Raid"/"1:4"/etc. weren't clickable
+  and should be (matching the site, where the slider's end labels ARE the buttons). Replaced the separate
+  ◂/▸ buttons with clickable labels: "◂ Raid" (nudge toward EHP) + "1:4 ▸" (readout, nudge toward Threat),
+  and "◂ HP" / "12.5k ▸" for Min-HP. New `textBtn` helper (base colour, white on hover). `tuneSlider`
+  reworked. **Balanced default corrected to 1:1** (v=0) — I'd read the green highlight as 1:1.5; user says 1:1.
+- **Site defaults:** left unchanged, confirmed by user (site Balanced is a blend dial, not an independent
+  ratio; changing public defaults avoided).
+- Verified: JS 150/150, 31-file Lua syntax PASS, zip rebuilt, installed synced. **Still NOT eyeballed
+  in-game** (user on break) — on return, `/reload` + confirm the label-buttons click/nudge, arrows render
+  (else swap ◂/▸ → ASCII), layout isn't cramped; reload the now-deployed site to see the Min-HP button restyle.
+
+## 2026-07-10 — Slider polish: Min-HP sliders, ◂/▸ nudge buttons, Spell-hit row, preferred defaults (addon v0.8.29 + site)
+
+Punch-list from the user after the tuning sliders landed (screenshot table of their preferred slider stops):
+- **Live tab — Spell hit row** under Spell power. `Core.readSheet` now returns `spellHitPct` (Precision
+  talent rank + a gear spell-hit-rating scan / 12.62, mirroring `runner.js spellHitPct`); UI shows `x% / 17%`.
+  Live min height 404→420.
+- **Min-HP sliders exposed** (were hidden gates). Rewrote the Optimize tuning row: each goal now has an
+  EHP↔Threat slider AND a Min-HP slider (10k–20k / 500) on one line, each flanked by **◂ / ▸ nudge buttons**
+  (`incButton` + generalized `tuneSlider` helper). `UI.goalMinHP` state → `gates.minHealth`. Ratio readout
+  compacted to `L:R` (was "EHP x : y Threat") to fit both sliders. Arrows are UTF-8 byte escapes
+  (`\226\151\130` / `\226\150\184`) so source encoding is safe — **verify they render in WoW's font**, else
+  swap for ASCII.
+- **Preferred defaults:** raid 1:4, aoe 1:4, **survival 1:1** (was 1.5:1), **balanced 1:1.5** (was 1:1).
+  Min-HP defaults 11.5k/14k/10.5k/12.5k (12.5k so it lands on a 500 step).
+- **Site — Min-HP buttons** restyled to match the EHP/Threat end-buttons + given ◂/▸ arrows via CSS
+  `::before`/`::after` (pseudo-content survives the JS value rewrites). `web/style.css` only.
+- Verified: JS 150/150, 31-file Lua syntax PASS, all 8 parity harnesses PASS (runner_parity still flakes
+  intermittently — a JS-optimizer tie-break, unrelated; passes on rerun). Zip rebuilt, installed synced.
+  **NOT eyeballed in-game/browser** — user to `/reload` + reload the site.
+- **OPEN QUESTION for next session:** should the SITE's slider defaults also move to survival 1:1 / balanced
+  1:1.5 to stay consistent with the addon? Left the site defaults as-is (survival 1.5:1, balanced blend-dial
+  midpoint) since changing the public tool's defaults is more consequential, and the site's balanced is a
+  cross-goal BLEND dial (not an independent ratio like the addon), so "1:1.5" doesn't map 1:1. Ask the user.
+
+## 2026-07-10 — Per-goal EHP↔Threat tuning sliders in the addon (addon v0.8.28)
+
+Follow-up after the v0.8.27 buff work landed and the user confirmed buffs now read right (site-built threat
+set flipped 102.09%→102.74% uncrushable with the Live "Assume Kings+MotW" toggle). Next complaint: addon sets
+carry less spell power / **spell hit** than the user's site-built sets; they prefer theirs. Tabulated
+threat/aoe/survival/balanced (buffed EHP, SP, spell-hit) — addon consistently traded SP+hit for a little EHP.
+- **Diagnosis (not a bug):** scoring is a pure dot-product of aggregate stats × the goal's blended scale;
+  spell hit IS valued (1.1 in the threat component, above SP's 1.0). The trades come from the **ratios**. The
+  real root cause: the addon **hardcoded** goal ratios (raid `ehp:1 threat:2`, survival `2:1`, aoe `1:2`)
+  while the **site defaults its per-goal sliders more threat-leaning** (raid v=3 → `1:4`, survival v=−0.5 →
+  `1.5:1`, aoe v=3 → `1:4`). So the addon was systematically tankier than the site by default. User (via the
+  question tool) chose: **port the site's sliders into the addon** (over bumping defaults or reweighting).
+- **Built (v0.8.28):** four EHP↔Threat sliders (one per goal) in the Optimize tab, `v ∈ [−3,3]` step 0.5,
+  reusing `web/app.js`'s `ratioFor` math verbatim (verified defaults reproduce the site's ratios exactly).
+  Live "EHP x : y Threat" readout per slider. Defaults = site (raid 3 / surv −0.5 / aoe 3 / bal 0); site
+  Min-HP floors (11.5k/14k/10.5k/~12.75k) passed as `gates.minHealth`. `UI.Optimize` clones
+  `Runner.GOAL_PRESETS` and overrides ratio+minHealth, passes via `optimizeSets`'s existing `goals` option.
+  Slider build `pcall`-guarded (OptionsSliderTemplate). Optimize min height 478→582. Footer reworded.
+- Verified: JS 150/150, 31-file Lua syntax PASS, ratio-parity check PASS, zip rebuilt (32 files), installed
+  addon synced == repo. **runner_parity has a KNOWN nondeterministic flake** (case4 perSlot hands.defGemmed /
+  ring2 alternative objDelta) — passed on both re-runs, and it doesn't load UI.lua/Core.lua, so unrelated to
+  this change; worth chasing separately (JS optimizer tie-break ordering). **NOT yet eyeballed in-game** —
+  user to `/reload`, confirm the four sliders render + drag, the ratio readouts update, and Optimize honours
+  them (drag Survival toward Threat → its set gains SP/hit).
+
+## 2026-07-10 — Diagnosed "addon makes different sets than the sim" → Kings+MotW visibility + toggle (addon v0.8.27)
+
+User compared four site-built sets ("my threat/balanced/survival/aoe") vs the addon's Optimize output and
+asked why they differ. **Diagnosis (traced through both engines, not guessed):**
+- The addon's optimizer **already assumes Kings + MotW** (`UI.Optimize` passes `buff = "raid"` →
+  `BUFF_MODE.raid = {kings, MotW}`, identical to the site's default `statBuff`). So "the addon isn't
+  assuming buffs" was NOT the cause — that part already matched.
+- The confusion came from the **Live readout**: `Core.readSheet` reads the actual in-game character sheet
+  (`GetDodgeChance`, `UnitHealthMax`, …), which only reflects buffs physically on the player. It already
+  models "Holy Shield up" (checkbox) but **not** Kings+MotW — so a threat set built to be uncrushable *when
+  raid-buffed* showed 102.09% (< 102.4%, crushable) while the user stood unbuffed in town. The set was fine;
+  the panel just wasn't crediting the buffs. (User's instinct — "gear slightly under, buffs cover the crush
+  cap" — is exactly what the optimizer does; the Live panel wasn't showing it.)
+- Remaining real set difference (site sets carry a little more spell power) traces to **re-gem**: site
+  default = "Re-gem everything"; addon keeps your gems (v0.8.25). User declined a re-gem toggle ("my in-game
+  sets are already higher threat with equipped gems").
+
+**Built (v0.8.27):**
+- **Live tab "Assume Kings + MotW" checkbox** (default on, mirrors Holy Shield). `Core.readSheet` gained
+  `opts.assumeBuffs`: detects which of Kings/MotW are live (`buffActive`, incl. Greater/Gift variants) so it
+  never double-counts, reads effective agi/stam/str via `UnitStat`, and adds the buffs to the derived values
+  they move — agi→dodge(+armor), stam→health, str→block value; crit immunity untouched. New helpers
+  `talentRank` / `liveStaminaMult` (Sacred Duty +3%/Combat Expertise +2%) so the +14 stamina scales like the
+  sheet. `withBuffs()` does the strip-Kings / strip-MotW / re-add / re-apply math (verified: unbuffed→both =
+  +1.06% dodge, +1030 HP; already-buffed = 0). Live rows start y −32→−50; min height unchanged (fits).
+- **Optimize tab "Optimize with Kings + MotW (raid buffs)" checkbox** (default on). Off → `buff = "none"`.
+  Cards start cy −56→−76; Optimize min height 458→478.
+- `.toc` → 0.8.27. Verified: JS 150/150, Lua wasm parity all PASS, 31-file syntax PASS. **NOT yet eyeballed
+  in-game** — user to `/reload` and confirm: (1) the Live "Assume Kings+MotW" toggle flips dodge/EHP/crush by
+  the raid-buff amount and makes the site-built threat/aoe sets read uncrushable; (2) the Optimize buff toggle
+  changes the sets. Zip rebuilt this session.
+
+## 2026-07-07 — Match the addon's numbers to reality: keep trinkets + keep gems + click-to-copy site link (addon v0.8.23–v0.8.26)
 
 Catch-up handoff for the four version bumps after v0.8.22 (they landed but the SESSION_LOG top entry hadn't
 been extended past v0.8.22). All still **uncommitted**; CHANGELOG carries the per-version detail.

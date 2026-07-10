@@ -1007,3 +1007,60 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   limit that killed the export copy box). A transparent button now overlays the footer: clicking it pops a
   `StaticPopup` (`TGS_COPY_URL`) with the URL pre-selected and focused, ready for Ctrl+C to paste into a
   browser (WoW can't launch one from an addon). Hover shows a "click to copy" tooltip. 31-file Lua syntax pass.
+- **Addon v0.8.27 — Kings + MotW assumption is now visible AND toggleable (closes the "sim-vs-addon set"
+  confusion).** Root cause of the mismatch a user hit comparing site-built sets to the addon's: the
+  optimizer *already* assumes raid buffs (`buff = "raid"` → Kings + MotW, same as the site's default), but
+  the **Live readout** reads your actual in-game sheet, which only reflects buffs physically on you. So a
+  threat set built to be uncrushable *when raid-buffed* read as crushable (102.09% < 102.4%) while standing
+  in town — it wasn't broken, the panel just wasn't crediting the buffs. Two additions:
+  - **Live tab — "Assume Kings + MotW" checkbox** (default on, mirrors "Assume Holy Shield up"). `Core.readSheet`
+    gained an `assumeBuffs` opt that models the missing buffs the same way the engine does: detects which of
+    Kings / MotW are already live (never double-counts), reads effective agility/stamina/strength
+    (`UnitStat`), and applies Kings (+10% after flats) + MotW (+14 each) to the derived sheet values the
+    buffs actually move — agility → dodge (+ armor), stamina → health, strength → block value. Crit immunity
+    is deliberately untouched (buffs add no defense/resilience). A fully-unbuffed prot pally gains ~+1.06%
+    dodge / ~+1030 HP; already-buffed → zero change. `talentRank`/`liveStaminaMult` read the live stamina
+    multiplier (Sacred Duty/Combat Expertise) so the +14 stamina scales exactly like the sheet.
+  - **Optimize tab — "Optimize with Kings + MotW (raid buffs)" checkbox** (default on). Off passes
+    `buff = "none"`, so the sets must reach the crush cap from gear alone (tankier, slightly less spell power).
+  - `.toc` → 0.8.27. JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **Addon v0.8.28 — per-goal EHP↔Threat tuning sliders in the Optimize tab (closes the "addon is tankier
+  than the site" gap).** Diagnosed while a user compared site-built sets to the addon's: the addon hardcoded
+  the goal ratios (raid `ehp:1 threat:2`, survival `2:1`, aoe `1:2`) while the **site defaults its sliders
+  more threat-leaning** (raid v=3 → `ehp:1 threat:4`, survival v=−0.5 → `1.5:1`, aoe v=3 → `1:4`). So the
+  addon's out-of-the-box sets were systematically tankier / lower spell-power than the site's — which is what
+  the user was seeing. Now the addon exposes the same knob:
+  - Four sliders (one per goal) in the Optimize tab, value `v ∈ [−3,3]` step 0.5, using the **same
+    `ratioFor` math as `web/app.js`** (`Lw = v<0?1−v:1`, `Rw = v>0?1+v:1`). Drag right → more spell power /
+    spell hit; left → more stamina/armor EHP. A live "EHP x : y Threat" readout sits beside each.
+  - **Defaults match the site exactly** (raid 3, survival −0.5, aoe 3, balanced 0) so the addon's default
+    sets now agree with the site's, and the site's Min-HP floors (11.5k/14k/10.5k, balanced ~12.75k) are
+    passed as hard `gates.minHealth` so leaning threat can't quietly drop below a safe HP wall.
+  - `UI.Optimize` builds the four goals by cloning `Runner.GOAL_PRESETS` (keeps name/gates/lockEye) and
+    overriding `ratio` + `minHealth` from the sliders, then passes them via `optimizeSets`'s `goals` option
+    (engine already supported this). Slider creation is `pcall`-guarded so a template hiccup can't break the
+    tab. Optimize min height 478→582; footer reworded (goal tuning is now in-addon; re-gem/phase stay
+    site-only). `.toc` → 0.8.28. JS 150/150, Lua wasm parity + 31-file syntax pass (runner_parity has a known
+    nondeterministic tie-break flake in per-slot alternatives, unrelated to this change).
+- **Addon v0.8.29 + site — slider polish: Min-HP sliders, ◂/▸ nudge buttons, a Spell-hit readout, preferred
+  defaults.** Round of refinements after the sliders landed:
+  - **Live tab — "Spell hit" row** under "Spell power" (`Core.readSheet` now returns `spellHitPct` = Precision
+    talent + gear spell-hit rating / 12.62, via a gear scan mirroring the resilience one; shown as `x% / 17%`
+    against the level-73 cap). Live min height 404→420.
+  - **Optimize tab — Min-HP sliders exposed** (were hidden gates). Each goal row now carries BOTH an
+    EHP↔Threat slider and a Min-HP slider (10k–20k, 500 step), each flanked by **◂ / ▸ nudge buttons** (small
+    buttons that step the slider, dim→gold on hover — the addon analogue of the site's end-buttons). Ratio
+    readout compacted to `L:R` to fit both sliders on one row. `UI.goalMinHP` state drives `gates.minHealth`.
+  - **Preferred defaults** (the user's validated slider stops): raid `1:4`, aoe `1:4`, **survival `1:1`**
+    (was 1.5:1), **balanced `1:1.5`** (was 1:1). Min-HP defaults 11.5k / 14k / 10.5k / 12.5k.
+  - **Site — Min-HP buttons restyled** to match the EHP/Threat end-buttons (same pill background/border/hover)
+    and given **◂ / ▸ arrows** via CSS `::before`/`::after` pseudo-content (so the JS value-updates never wipe
+    them). CSS-only change in `web/style.css`.
+  - `.toc` → 0.8.29. JS 150/150, Lua wasm parity + 31-file syntax pass all green.
+- **Addon v0.8.30 — the slider labels ARE the nudge buttons; balanced default → 1:1.** Followed the site's
+  pattern more faithfully: instead of separate tiny ◂/▸ buttons, the flanking **labels themselves are the
+  clickable nudge buttons** — "◂ Raid" (left, nudges toward EHP) and "1:4 ▸" (right, the live readout, nudges
+  toward Threat); likewise "◂ HP" / "12.5k ▸" for Min-HP. New `textBtn` helper (base colour, white on hover);
+  `tuneSlider` reworked around it. Also corrected the **balanced default to 1:1** (v=0, was 1:1.5) per the
+  user. Site slider defaults left unchanged (its Balanced is a cross-goal blend dial, not an independent
+  ratio). `.toc` → 0.8.30. JS 150/150, Lua wasm parity + 31-file syntax pass.

@@ -10,7 +10,9 @@ local Core = ns.Core
 local Evaluate = ns.engine.Evaluate
 local Combat = ns.engine.Combat
 local Const = ns.engine.Constants
+local CharData = ns.engine.CharacterData
 local RATING = Const.RATING
+local CHAR, BUFFS = CharData.CHARACTER, CharData.BUFFS
 
 local function safe(fn, ...)
   if type(fn) ~= "function" then return nil end
@@ -54,6 +56,24 @@ local function equippedResilienceRating()
         for _, k in ipairs(RESIL_KEYS) do
           if stats[k] then total = total + stats[k] end
         end
+      end
+    end
+  end
+  return total
+end
+
+-- Spell hit RATING summed off equipped gear (same reliable path as resilience — the Anniversary
+-- combat-rating API is flaky). Feeds the Live "Spell hit" readout: spellHitPct = Precision + rating/12.62.
+local SPELLHIT_KEYS = { "ITEM_MOD_HIT_SPELL_RATING", "ITEM_MOD_HIT_SPELL_RATING_SHORT" }
+local function equippedSpellHitRating()
+  if type((C_Item and C_Item.GetItemStats) or GetItemStats) ~= "function" then return 0 end
+  local total = 0
+  for slot = 1, 18 do
+    local link = safe(GetInventoryItemLink, "player", slot)
+    if link then
+      local stats = itemStats(link)
+      if stats then
+        for _, k in ipairs(SPELLHIT_KEYS) do if stats[k] then total = total + stats[k] end end
       end
     end
   end
@@ -118,23 +138,62 @@ local function blockLibramRating()
   return (id and BLOCK_LIBRAMS[id]) or 0
 end
 
--- Improved Righteous Fury talent rank (0-3). Its 2%/rank damage reduction applies only while
--- Righteous Fury is up — read the live rank so a non-tank spec doesn't get a phantom EHP boost.
-local function impRighteousFuryRank()
+-- Rank (0-5) of a talent by NAME; 0 if not found or the API is unavailable. Backs the live damage-
+-- reduction (Improved Righteous Fury) and stamina-multiplier (Sacred Duty / Combat Expertise) reads.
+local function talentRank(target)
   if type(GetTalentInfo) ~= "function" then return 0 end
   local tabs = (GetNumTalentTabs and GetNumTalentTabs()) or 3
   for tab = 1, tabs do
     local n = (GetNumTalents and GetNumTalents(tab)) or 0
     for i = 1, n do
       local name, _, _, _, rank = GetTalentInfo(tab, i)
-      if name == "Improved Righteous Fury" then return rank or 0 end
+      if name == target then return rank or 0 end
     end
   end
   return 0
 end
 
+-- Improved Righteous Fury talent rank (0-3). Its 2%/rank damage reduction applies only while
+-- Righteous Fury is up — read the live rank so a non-tank spec doesn't get a phantom EHP boost.
+local function impRighteousFuryRank() return talentRank("Improved Righteous Fury") end
+
+-- Live stamina multiplier from talents (Sacred Duty +3%/rank, Combat Expertise +2%/rank), matching
+-- Model.aggregate's staminaMult. Read live so the Kings/MotW health preview scales the flat +14 stamina
+-- exactly as the sheet does (the game applies these % increases to effective stamina).
+local function liveStaminaMult()
+  return 1 + 0.03 * talentRank("Sacred Duty") + 0.02 * talentRank("Combat Expertise")
+end
+
+-- Raid stat buffs (Kings + Mark of the Wild) the OPTIMIZER always assumes. The live sheet only shows
+-- them when they're physically on you, so a set built to be uncrushable / hit an EHP floor WHEN RAID-
+-- BUFFED reads short in town. `opts.assumeBuffs` models the missing buffs here so the Live panel matches
+-- the optimizer's raid-buffed assumption (mirrors the Holy Shield toggle). Kings = +10% primaries (after
+-- flats); MotW = +14 flat each. We detect each so an already-active buff is never double-counted. Only
+-- agility (-> dodge + armor), stamina (-> health) and strength (-> block value) move a tank's readout;
+-- the buffs add no defense/resilience, so crit immunity is deliberately untouched.
+local BLESSING_OF_KINGS = { "Blessing of Kings", "Greater Blessing of Kings" }
+local MARK_OF_THE_WILD = { "Mark of the Wild", "Gift of the Wild" }
+local function anyBuffActive(names)
+  for _, n in ipairs(names) do if buffActive(n) then return true end end
+  return false
+end
+
+-- Effective value of a primary stat if BOTH Kings and MotW were active, given the current effective
+-- value E and which of the two are already on. `flat` = MotW's amount; `mult` = any talent stat-
+-- multiplier applied to that flat before Kings (1 for agi/str, staminaMult for stamina).
+local function withBuffs(E, kActive, mActive, flat, mult, kMult)
+  local preKings = E / (kActive and kMult or 1)          -- strip Kings' x1.10 back off
+  local core = preKings - (mActive and flat * mult or 0) -- strip MotW's (mult-scaled) flat, if present
+  return (core + flat * mult) * kMult                    -- re-add MotW, then apply Kings
+end
+
+-- The current effective value of a primary stat (2nd UnitStat return, like Exporter's `stat`).
+local function effStat(id) return (select(2, safe(UnitStat, "player", id))) or 0 end
+
 -- Read the final sheet values evaluateSet() consumes. `opts.holyShield` (default true) toggles
 -- the Holy Shield uptime assumption (+30% block, plus a block libram's HS-conditional block).
+-- `opts.assumeBuffs` (default false) models Kings + Mark of the Wild the same way the optimizer does,
+-- so the Live panel can show the raid-buffed readout (see withBuffs); off = raw current sheet.
 function Core.readSheet(opts)
   opts = opts or {}
   local holyShield = opts.holyShield
@@ -164,13 +223,33 @@ function Core.readSheet(opts)
   local rfActive = buffActive("Righteous Fury")
   local damageTakenMult = (rfActive and rfRank > 0) and (1 - 0.02 * rfRank) or 1
 
+  -- Live derived values the raid buffs would move. Kept in locals so the assumeBuffs preview can add
+  -- the missing Kings/MotW contribution before evaluateSet recomputes avoid/crush/EHP from them.
+  local dodgePct = safe(GetDodgeChance) or 0
+  local armor = select(2, safe(UnitArmor, "player")) or 0
+  local health = safe(UnitHealthMax, "player") or 0
+  local blockValue = safe(GetShieldBlock) or 0
+  if opts.assumeBuffs then
+    local kMult = BUFFS.kingsMult
+    local kOn, mOn = anyBuffActive(BLESSING_OF_KINGS), anyBuffActive(MARK_OF_THE_WILD)
+    local flat = BUFFS.markOfTheWild
+    local curAgi, curStr, curSta = effStat(2), effStat(1), effStat(3)
+    local newAgi = withBuffs(curAgi, kOn, mOn, flat.agility, 1, kMult)
+    local newStr = withBuffs(curStr, kOn, mOn, flat.strength, 1, kMult)
+    local newSta = withBuffs(curSta, kOn, mOn, flat.stamina, liveStaminaMult(), kMult)
+    dodgePct = dodgePct + (newAgi - curAgi) / CHAR.agilityPerDodgePct   -- agility -> dodge
+    armor = armor + (newAgi - curAgi) * CHAR.armorPerAgility            -- agility -> armor
+    health = health + (newSta - curSta) * CHAR.hpPerStamina             -- stamina -> health (>20 stam)
+    blockValue = blockValue + math.floor(newStr / 20) - math.floor(curStr / 20) -- 1 BV per 20 Str
+  end
+
   return {
     defenseSkill = defenseSkill,
     resilienceRating = resilience,
     -- The game doesn't expose "miss vs boss"; derive it from defense skill exactly as the model
     -- does (src/model.js:124): 5% base + 0.04%/skill over 350.
     missPct = Combat.missChance(defenseSkill),
-    dodgePct = safe(GetDodgeChance) or 0,
+    dodgePct = dodgePct,
     parryPct = safe(GetParryChance) or 0,
     -- HS-free base block feeds the avoidance totals; blockPctEffective (base + assumed HS/libram) is
     -- what the avoidance row shows so it matches the WeakAura's live block figure.
@@ -179,10 +258,13 @@ function Core.readSheet(opts)
     hsBlockBonus = hsBlockBonus,
     holyShieldLive = hsActive,
     blockLibramRating = libramRating,
-    armor = select(2, safe(UnitArmor, "player")) or 0,
-    health = safe(UnitHealthMax, "player") or 0,
+    armor = armor,
+    health = health,
     spellPower = safe(GetSpellBonusDamage, 2) or 0, -- holy school
-    blockValue = safe(GetShieldBlock) or 0,
+    -- Spell hit % vs a raid boss: Precision talent (+1%/rank) + gear spell-hit rating / 12.62 (matches
+    -- runner.js spellHitPct). Cap for reference is Const.CAPS.spellHitCapPct (17% vs a level-73 boss).
+    spellHitPct = talentRank("Precision") + equippedSpellHitRating() / RATING.spellHitPer1,
+    blockValue = blockValue,
     -- Improved Righteous Fury's damage reduction, live (folds into physical EHP in evaluateSet).
     damageTakenMult = damageTakenMult,
     righteousFuryLive = rfActive,

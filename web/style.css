@@ -112,9 +112,12 @@ details.advanced .config-grid { margin-bottom: 0; }
 .minhp-cell .minhp-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .minhp-cell input[type=range] { flex: 1; min-width: 70px; accent-color: var(--gold); }
 .minhp-cell .minhp-val { color: var(--gold); font-size: 12px; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
-.minhp-cell button.mh-btn { background: none; border: none; padding: 0; cursor: pointer; font: inherit; }
-.minhp-cell button.mh-btn:hover { color: var(--accent); text-decoration: underline; }
-.minhp-cell button.minhp-val:hover { color: var(--accent); }
+/* Min-HP nudge buttons: same pill styling + directional arrows as the EHP/Threat end-buttons. The
+   arrows are CSS pseudo-content so the JS value-updates (which rewrite the button text) never wipe them. */
+.minhp-cell button.mh-btn { background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 2px 7px; cursor: pointer; font: inherit; line-height: 1.3; color: var(--muted); white-space: nowrap; }
+.minhp-cell button.mh-btn:hover { color: var(--gold); border-color: var(--accent); }
+.minhp-cell button.minhp-label::before { content: '\25C2\00A0'; } /* ◂ + nbsp */
+.minhp-cell button.minhp-val::after { content: '\00A0\25B8'; }   /* nbsp + ▸ */
 
 button {
   border: 1px solid var(--line); background: var(--panel2); color: var(--text);

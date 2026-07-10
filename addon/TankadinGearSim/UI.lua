@@ -10,13 +10,16 @@ local UI = ns.UI
 local Core, Exporter = ns.Core, ns.Exporter
 
 UI.holyShield = true
+-- Live readout assumes Kings + MotW by default (the optimizer always does), so a set built to be
+-- uncrushable/hit its EHP floor when raid-buffed doesn't read short while you're standing unbuffed.
+UI.assumeBuffs = true
 
 -- Per-tab MINIMUM frame size (w, h) — sized so each tab's text never overlaps. The user can drag the
 -- bottom-right grip to grow the frame; that chosen size (persisted in TankadinGearSimUI) is reused
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
-  live     = { 300, 404 },
-  optimize = { 470, 458 },
+  live     = { 300, 420 },
+  optimize = { 470, 582 },
   export   = { 470, 260 },
 }
 
@@ -28,12 +31,54 @@ local optRun -- active async handle (so re-clicking cancels the prior run)
 -- WeakAura-style palette: gold stat labels, cyan values, green/red for pass/fail, on the black bg.
 local GOOD, BAD, DIM = "|cff7ee787", "|cffff6b6b", "|cff9aa0a6"
 local GOLD, CYAN = "|cffd9b870", "|cff5fd0e6"
+local WHITE = "|cffffffff" -- hover highlight for the clickable slider nudge labels
 local TICK  = "|TInterface/RaidFrame/ReadyCheck-Ready:0|t"     -- built-in green check texture
 local CROSS = "|TInterface/RaidFrame/ReadyCheck-NotReady:0|t"  -- built-in red cross texture
 local function color(hex, s) return hex .. s .. "|r" end
 local function pct(x) return string.format("%.2f%%", x or 0) end
 local function num(x) return tostring(math.floor((x or 0) + 0.5)) end
 local function mark(ok) return ok and TICK or CROSS end
+
+-- ---- Goal tuning (EHP <-> Threat sliders) ----
+-- Mirrors the full sim's per-goal slider: a value v in [-3,3] sets the EHP:Threat ratio the objective
+-- blends (v>0 leans threat, v<0 leans EHP). The DEFAULTS below match the website's default slider
+-- positions (raid v=3 -> ehp:1 threat:4, etc.), so the addon's out-of-the-box sets now agree with the
+-- site's instead of being systematically tankier (its old hardcoded ratios were ehp:1 threat:2). Min-HP
+-- floors also match the site's defaults so leaning threat doesn't quietly drop below a raid-buffed HP wall.
+local SLIDER_GOALS = { "raid", "survival", "aoe", "balanced" }
+local GOAL_SIDES = {
+  raid     = { left = "ehp", right = "threat",    rlabel = "Threat" },
+  survival = { left = "ehp", right = "threat",    rlabel = "Threat" },
+  aoe      = { left = "ehp", right = "aoeThreat", rlabel = "AOEThr" },
+  balanced = { left = "ehp", right = "threat",    rlabel = "Threat" },
+}
+local GOAL_SLIDER_LABEL = { raid = "Raid", survival = "Surv", aoe = "AOE", balanced = "Bal" }
+-- Defaults = the user's preferred slider stops (raid 1:4, aoe 1:4, survival 1:1, balanced 1:1).
+local GOAL_V_DEFAULT = { raid = 3, survival = 0, aoe = 3, balanced = 0 }
+local MINHP = { min = 10000, max = 20000, step = 500 } -- mirrors web/app.js
+UI.goalV     = UI.goalV     or { raid = 3, survival = 0, aoe = 3, balanced = 0 }
+UI.goalMinHP = UI.goalMinHP or { raid = 11500, survival = 14000, aoe = 10500, balanced = 12500 }
+
+local function fmtW(w)
+  if w == math.floor(w) then return tostring(math.floor(w)) end
+  return string.format("%.1f", w)
+end
+-- ratioFor(id, v) -> the {ehp=..,threat/aoeThreat=..} table blendScale expects. Same math as web/app.js.
+local function ratioFor(id, v)
+  local s = GOAL_SIDES[id]
+  local Lw = (v < 0) and (1 - v) or 1
+  local Rw = (v > 0) and (1 + v) or 1
+  return { [s.left] = Lw, [s.right] = Rw }, Lw, Rw
+end
+local function ratioText(id, v)
+  local _, Lw, Rw = ratioFor(id, v)
+  return string.format("EHP %s : %s %s", fmtW(Lw), fmtW(Rw), GOAL_SIDES[id].rlabel)
+end
+-- Compact "L:R" for the slider readout (the goal name + ◂EHP / Threat▸ arrows give the direction).
+local function ratioShort(id, v)
+  local _, Lw, Rw = ratioFor(id, v)
+  return fmtW(Lw) .. ":" .. fmtW(Rw)
+end
 
 -- Full sim site. WoW can't open a browser from an addon, so the footer link pops a small dialog with
 -- the URL pre-selected for Ctrl+C.
@@ -62,6 +107,67 @@ local function statRow(pane, y, label)
   v:SetJustifyH("LEFT")
   v:SetWidth(168)
   return v
+end
+
+local function fmtHp(h) if h <= MINHP.min then return "off" end return string.format("%.1fk", h / 1000) end
+
+-- A clickable text label (the site makes the slider's flanking labels the nudge buttons; so do we —
+-- "◂ Raid" and "1:4 ▸" ARE the buttons). :SetLabel(text) repaints in the base color; hover -> white.
+local function textBtn(pane, width, justify, normalHex)
+  local b = CreateFrame("Button", nil, pane)
+  b:SetSize(width, 16)
+  local t = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  t:SetAllPoints(b); t:SetJustifyH(justify or "LEFT")
+  b.plain = ""
+  local function paint(hex) t:SetText(color(hex, b.plain)) end
+  function b:SetLabel(s) b.plain = s; paint(normalHex) end
+  b:SetScript("OnEnter", function() paint(WHITE) end)
+  b:SetScript("OnLeave", function() paint(normalHex) end)
+  return b
+end
+
+-- One bare slider (Low/High/Text captions stripped) flanked by two clickable labels: the left label
+-- (static, e.g. "◂ Raid") nudges toward min; the right label (the live readout, e.g. "1:4 ▸") nudges
+-- toward max. `format(val)` builds the readout string; `apply(val)` stores state. Returns the slider.
+local sliderSeq = 0
+local function tuneSlider(pane, x, y, cfg)
+  local left = textBtn(pane, cfg.leftW or 46, "LEFT", GOLD)
+  left:SetPoint("TOPLEFT", x, y - 2)
+  left:SetLabel("\226\151\130 " .. cfg.leftText) -- "◂ <label>"
+  sliderSeq = sliderSeq + 1
+  local sname = "TGSTune" .. sliderSeq
+  local s = CreateFrame("Slider", sname, pane, "OptionsSliderTemplate")
+  s:SetPoint("TOPLEFT", x + (cfg.leftW or 46) + 2, y); s:SetWidth(cfg.sliderW or 78); s:SetHeight(16)
+  s:SetMinMaxValues(cfg.min, cfg.max); s:SetValueStep(cfg.step); s:SetObeyStepOnDrag(true)
+  for _, suf in ipairs({ "Low", "High", "Text" }) do
+    local r = _G[sname .. suf] or s[suf]; if r then r:SetText(""); r:Hide() end
+  end
+  local right = textBtn(pane, cfg.rightW or 52, "LEFT", CYAN)
+  right:SetPoint("LEFT", s, "RIGHT", 6, 0)
+  local function setRight(val) right:SetLabel(cfg.format(val) .. " \226\150\184") end -- "<readout> ▸"
+  s:SetScript("OnValueChanged", function(self, val) cfg.apply(val); setRight(val) end)
+  left:SetScript("OnClick", function() s:SetValue(s:GetValue() - cfg.step) end)
+  right:SetScript("OnClick", function() s:SetValue(s:GetValue() + cfg.step) end)
+  s:SetValue(cfg.value); cfg.apply(cfg.value); setRight(cfg.value)
+  return s
+end
+
+-- One goal's tuning row: an EHP<->Threat slider (v in [-3,3]) and a Min-HP slider (10k-20k), each flanked
+-- by the clickable "◂ name" / "readout ▸" nudge labels. Nudging/dragging updates UI.goalV / UI.goalMinHP;
+-- the next Optimize click uses them.
+local function goalSlider(pane, y, id)
+  tuneSlider(pane, 8, y, {
+    min = -3, max = 3, step = 0.5, value = UI.goalV[id] or 0,
+    leftText = GOAL_SLIDER_LABEL[id], leftW = 46, sliderW = 76, rightW = 52,
+    format = function(val) return ratioShort(id, val) end,
+    apply = function(val) UI.goalV[id] = val end,
+  })
+  tuneSlider(pane, 238, y, {
+    min = MINHP.min, max = MINHP.max, step = MINHP.step, value = UI.goalMinHP[id] or MINHP.min,
+    leftText = "HP", leftW = 30, sliderW = 60, rightW = 48,
+    format = function(val) return fmtHp(val) end,
+    apply = function(val) UI.goalMinHP[id] = val end,
+  })
 end
 
 local function buildFrame()
@@ -119,9 +225,17 @@ local function buildFrame()
   hsLabel:SetPoint("LEFT", hs, "RIGHT", 2, 0)
   hsLabel:SetText("Assume Holy Shield up")
   hs:SetScript("OnClick", function(self) UI.holyShield = self:GetChecked() and true or false; UI.Refresh() end)
+  -- Assume Kings + MotW: previews the raid-buffed dodge/EHP the optimizer targets, so an unbuffed
+  -- readout of a raid-buffed set doesn't look crushable / under its HP floor. On by default (like HS).
+  local bf = CreateFrame("CheckButton", nil, live, "UICheckButtonTemplate")
+  bf:SetPoint("TOPLEFT", 10, -24); bf:SetSize(20, 20); bf:SetChecked(UI.assumeBuffs)
+  local bfLabel = bf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  bfLabel:SetPoint("LEFT", bf, "RIGHT", 2, 0)
+  bfLabel:SetText("Assume Kings + MotW")
+  bf:SetScript("OnClick", function(self) UI.assumeBuffs = self:GetChecked() and true or false; UI.Refresh() end)
 
   liveRows = {}
-  local y = -32
+  local y = -50
   local function row(key, label) liveRows[key] = statRow(live, y, label); y = y - 17 end
   local function gap() y = y - 9 end
   row("miss",  "Miss")
@@ -140,6 +254,7 @@ local function buildFrame()
   row("ehp",   "EHP / HP")
   gap()
   row("sp",    "Spell power")
+  row("shit",  "Spell hit")
   local note = live:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   note:SetPoint("BOTTOMLEFT", 10, 6); note:SetPoint("BOTTOMRIGHT", -8, 6); note:SetJustifyH("LEFT")
   note:SetText("Live set vs a lvl-73 boss. Avoid = miss+dodge+parry; EHP is raw HP behind armor.")
@@ -162,12 +277,31 @@ local function buildFrame()
   lockLabel:SetPoint("LEFT", lockTr, "RIGHT", 2, 0)
   lockLabel:SetText("Keep my equipped trinkets in the sets")
   lockTr:SetScript("OnClick", function(self) UI.lockTrinkets = self:GetChecked() and true or false end)
+  -- Optimize assuming Kings + MotW (default on, matching the full sim). Off gears WITHOUT the raid
+  -- buffs, so the sets must reach the crush cap from gear alone — tankier, a little less spell power.
+  UI.optBuffs = (UI.optBuffs ~= false)
+  local optBf = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
+  optBf:SetPoint("TOPLEFT", 8, -48); optBf:SetSize(20, 20); optBf:SetChecked(UI.optBuffs)
+  local optBfLabel = optBf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  optBfLabel:SetPoint("LEFT", optBf, "RIGHT", 2, 0)
+  optBfLabel:SetText("Optimize with Kings + MotW (raid buffs)")
+  optBf:SetScript("OnClick", function(self) UI.optBuffs = self:GetChecked() and true or false end)
+  -- EHP <-> Threat tuning: one slider per goal (defaults match the full sim). Drag toward Threat for
+  -- more spell power / spell hit, toward EHP for more stamina / armor. The next Optimize uses the values.
+  local tuneHdr = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  tuneHdr:SetPoint("TOPLEFT", 8, -70)
+  tuneHdr:SetText(color(DIM, "Goal lean (drag toward Threat = more SP / spell hit)  ·  Min HP floor"))
+  local sy = -88
+  for _, id in ipairs(SLIDER_GOALS) do
+    pcall(goalSlider, opt, sy, id) -- contain any template issue so the whole Optimize tab still builds
+    sy = sy - 22
+  end
   -- Four goal cards (name + gate chip, then two stat lines each).
   -- Cards span the pane width (so a wider frame shows more) and NEVER wrap — long lines clip at the
   -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
   -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
   optCards = {}
-  local cy = -56
+  local cy = -178
   for i = 1, 4 do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)
@@ -183,8 +317,8 @@ local function buildFrame()
   end
   optSubs = opt:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   optSubs:SetPoint("BOTTOMLEFT", 10, 6); optSubs:SetPoint("BOTTOMRIGHT", -22, 6); optSubs:SetJustifyH("LEFT")
-  optSubs:SetText("Keeps your completed gems/enchants (no re-gem); Kings+MotW; professions & faction auto-detected.\n"
-    .. color(CYAN, "More options (re-gem, content phase, goal tuning) at the full sim: npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"))
+  optSubs:SetText("Keeps your completed gems/enchants (no re-gem); professions & faction auto-detected.\n"
+    .. color(CYAN, "Re-gem & content-phase options at the full sim: npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"))
   -- The footer's a plain FontString (can't be Ctrl+C'd in-game), so a transparent button over it pops a
   -- dialog with the URL pre-selected to copy — WoW can't open a browser from an addon.
   local siteLink = CreateFrame("Button", nil, opt)
@@ -212,7 +346,7 @@ end
 -- Populate the Live pane from a fresh snapshot.
 function UI.Refresh()
   if not frame or not panes.live:IsShown() then return end
-  local snap = Core.snapshot({ holyShield = UI.holyShield })
+  local snap = Core.snapshot({ holyShield = UI.holyShield, assumeBuffs = UI.assumeBuffs })
   local e, i = snap.evald, snap.input
   local R = liveRows
 
@@ -237,6 +371,7 @@ function UI.Refresh()
   R.ehp:SetText((e.ehpPhysical and color(CYAN, num(e.ehpPhysical)) or color(DIM, "n/a")) ..
     color(DIM, " / ") .. color(CYAN, num(e.health)))
   R.sp:SetText(color(CYAN, num(e.spellPower)))
+  R.shit:SetText(color(CYAN, pct(i.spellHitPct)) .. color(DIM, " / 17%")) -- 17% = spell-hit cap vs lvl-73
 end
 
 -- The upload workflow shown on the Export tab (also restored after a /tgs debug view). No copy box —
@@ -340,9 +475,28 @@ function UI.Optimize()
   -- phase / goal-slider options live on the full sim site (footer link).
   local keepAll = {}
   for _, it in ipairs(items) do keepAll[#keepAll + 1] = it.itemId end
+  -- "Optimize with Kings + MotW" toggle: raid buffs assumed (default) vs unbuffed gear-only sets.
+  local buff = UI.optBuffs and "raid" or "none"
+  -- Build the four goals from the tuning sliders: clone each preset, override its EHP:Threat ratio from
+  -- the slider and set the site-matching Min-HP floor. (No slider -> preset defaults, which now match
+  -- the site.) The engine blends ratio via Scoring.blendScale and treats minHealth as a hard floor.
+  local goals = {}
+  local presets = ns.engine.Runner.GOAL_PRESETS
+  for _, id in ipairs(SLIDER_GOALS) do
+    local preset
+    for _, g in ipairs(presets) do if g.id == id then preset = g; break end end
+    if preset then
+      local v = UI.goalV[id] or 0
+      local gates = {}
+      if preset.gates then for k, val in pairs(preset.gates) do gates[k] = val end end
+      gates.minHealth = UI.goalMinHP[id]
+      goals[#goals + 1] = { id = id, name = preset.name, focus = ratioText(id, v),
+        ratio = ratioFor(id, v), gates = gates, lockEye = preset.lockEye }
+    end
+  end
   optRun = ns.Async.optimizeSets(items,
-    { buff = "raid", professions = professions, faction = faction, trinketLocks = trinketLocks,
-      keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } },
+    { buff = buff, professions = professions, faction = faction, trinketLocks = trinketLocks,
+      goals = goals, keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } },
     function(results) -- onDone
       optButton:SetEnabled(true)
       renderOptimize(results)
