@@ -19,12 +19,14 @@ UI.assumeBuffs = true
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
   live     = { 300, 482 },
-  optimize = { 380, 734 },
+  optimize = { 380, 746 },
   export   = { 470, 260 },
 }
 
 local frame, tabs, panes, liveRows, exportInfo, exportSteps
 local optCards, optStatus, optButton, optSubs
+local trinketList = {} -- [{ itemId, name }] owned trinkets, refreshed when the Optimize tab opens
+local ddIcon, ddEye    -- the two trinket-lock UIDropDownMenu frames
 local optRun -- active async handle (so re-clicking cancels the prior run)
 
 -- ---- formatting helpers ----
@@ -199,6 +201,85 @@ local function goalSlider(pane, y, id)
   })
 end
 
+-- ---- Trinket-lock dropdowns ----
+-- Light scan of owned trinkets (equipped + bags + open bank) for the lock dropdowns. Returns the two
+-- equipped trinket ids so the dropdowns can default to them.
+local function scanTrinkets()
+  wipe(trinketList)
+  local equipped, seen = {}, {}
+  local function consider(link, isEq)
+    if not link then return end
+    local id = tonumber(link:match("item:(%d+)"))
+    if not id or seen[id] then return end
+    local name = GetItemInfo and GetItemInfo(link)
+    local equipLoc = GetItemInfo and select(9, GetItemInfo(link))
+    if equipLoc == "INVTYPE_TRINKET" then
+      seen[id] = true
+      trinketList[#trinketList + 1] = { itemId = id, name = name or ("item:" .. id) }
+      if isEq then equipped[#equipped + 1] = id end
+    end
+  end
+  if GetInventoryItemLink then
+    consider(GetInventoryItemLink("player", 13), true)
+    consider(GetInventoryItemLink("player", 14), true)
+  end
+  local CC = _G.C_Container
+  local numSlots = (CC and CC.GetContainerNumSlots) or _G.GetContainerNumSlots
+  local getLink = (CC and CC.GetContainerItemLink) or _G.GetContainerItemLink
+  if numSlots and getLink then
+    for _, bag in ipairs({ 0, 1, 2, 3, 4, -1, 5, 6, 7, 8, 9, 10, 11, -3 }) do
+      local n = numSlots(bag) or 0
+      for s = 1, n do consider(getLink(bag, s), false) end
+    end
+  end
+  return equipped
+end
+
+local function trinketName(id)
+  if not id or id == "none" then return "None (optimizer picks)" end
+  for _, t in ipairs(trinketList) do if t.itemId == id then return t.name end end
+  return "item:" .. tostring(id)
+end
+
+-- Rescan trinkets and (re)point the dropdown text; default an unset selection to your equipped trinket.
+function UI.RefreshTrinkets()
+  local equipped = scanTrinkets()
+  local function resolve(sel, fallback)
+    if sel == "none" then return "none" end
+    if type(sel) == "number" then
+      for _, t in ipairs(trinketList) do if t.itemId == sel then return sel end end
+    end
+    return fallback -- nil / no-longer-owned -> default to the equipped trinket (or nil if none)
+  end
+  UI.lockTrinketIcon = resolve(UI.lockTrinketIcon, equipped[1])
+  UI.lockTrinketEye  = resolve(UI.lockTrinketEye,  equipped[2])
+  if ddIcon and UIDropDownMenu_SetText then UIDropDownMenu_SetText(ddIcon, trinketName(UI.lockTrinketIcon)) end
+  if ddEye and UIDropDownMenu_SetText then UIDropDownMenu_SetText(ddEye, trinketName(UI.lockTrinketEye)) end
+end
+
+-- One trinket-lock dropdown. get()/set() read/write the selection (itemId | "none" | nil = default).
+local trinketDDSeq = 0
+local function trinketDropdown(parent, x, y, width, get, set)
+  trinketDDSeq = trinketDDSeq + 1
+  local dd = CreateFrame("Frame", "TGSTrinketDD" .. trinketDDSeq, parent, "UIDropDownMenuTemplate")
+  dd:SetPoint("TOPLEFT", x, y)
+  UIDropDownMenu_SetWidth(dd, width)
+  UIDropDownMenu_JustifyText(dd, "LEFT")
+  UIDropDownMenu_Initialize(dd, function()
+    local none = UIDropDownMenu_CreateInfo()
+    none.text = "None (optimizer picks)"; none.checked = (get() == nil or get() == "none")
+    none.func = function() set("none"); UIDropDownMenu_SetText(dd, none.text); CloseDropDownMenus() end
+    UIDropDownMenu_AddButton(none)
+    for _, t in ipairs(trinketList) do
+      local info = UIDropDownMenu_CreateInfo()
+      info.text = t.name; info.checked = (get() == t.itemId)
+      info.func = function() set(t.itemId); UIDropDownMenu_SetText(dd, t.name); CloseDropDownMenus() end
+      UIDropDownMenu_AddButton(info)
+    end
+  end)
+  return dd
+end
+
 local function buildFrame()
   UI.LoadGoalPrefs() -- SavedVariables are loaded by now; link the slider tables so their values persist
   frame = CreateFrame("Frame", "TGSMainFrame", UIParent, "BackdropTemplate")
@@ -301,21 +382,20 @@ local function buildFrame()
   optStatus = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   optStatus:SetPoint("LEFT", optButton, "RIGHT", 8, 0); optStatus:SetJustifyH("LEFT"); optStatus:SetWidth(300)
   optStatus:SetText(color(DIM, "Reads your worn + bag + (open) bank gear."))
-  -- Force YOUR equipped trinkets into every set (Survival drops the 2nd for a defensive pick). The model
-  -- can't score proc/on-use trinkets, so without this the optimizer swaps them out for scoreable ones. On
-  -- by default; uncheck to let the optimizer pick trinkets freely.
-  UI.lockTrinkets = (UI.lockTrinkets ~= false)
-  local lockTr = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
-  lockTr:SetPoint("TOPLEFT", 8, -28); lockTr:SetSize(20, 20); lockTr:SetChecked(UI.lockTrinkets)
-  local lockLabel = lockTr:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  lockLabel:SetPoint("LEFT", lockTr, "RIGHT", 2, 0)
-  lockLabel:SetText("Keep my equipped trinkets in the sets")
-  lockTr:SetScript("OnClick", function(self) UI.lockTrinkets = self:GetChecked() and true or false end)
+  -- Lock which two trinkets go in the sets (the model can't score proc/on-use trinkets, so left free it
+  -- swaps them for scoreable ones). Default = your equipped two. LEFT dropdown is kept in EVERY set; RIGHT
+  -- in every set but Survival (which frees it for a defensive pick). "None" = optimizer picks that slot.
+  local trinkHdr = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  trinkHdr:SetPoint("TOPLEFT", 8, -32); trinkHdr:SetText(color(GOLD, "Lock trinkets:"))
+  if not pcall(function()
+    ddIcon = trinketDropdown(opt, 62, -26, 116, function() return UI.lockTrinketIcon end, function(v) UI.lockTrinketIcon = v end)
+    ddEye  = trinketDropdown(opt, 208, -26, 116, function() return UI.lockTrinketEye  end, function(v) UI.lockTrinketEye  = v end)
+  end) then ddIcon, ddEye = nil, nil end -- template hiccup -> fall back to free trinket picks
   -- Optimize assuming Kings + MotW (default on, matching the full sim). Off gears WITHOUT the raid
   -- buffs, so the sets must reach the crush cap from gear alone — tankier, a little less spell power.
   UI.optBuffs = (UI.optBuffs ~= false)
   local optBf = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
-  optBf:SetPoint("TOPLEFT", 8, -48); optBf:SetSize(20, 20); optBf:SetChecked(UI.optBuffs)
+  optBf:SetPoint("TOPLEFT", 8, -60); optBf:SetSize(20, 20); optBf:SetChecked(UI.optBuffs)
   local optBfLabel = optBf:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   optBfLabel:SetPoint("LEFT", optBf, "RIGHT", 2, 0)
   optBfLabel:SetText("Optimize with Kings + MotW (raid buffs)")
@@ -324,23 +404,23 @@ local function buildFrame()
   -- the reduced avoidance those fights leave you — Illidan's Shear can't miss; Sunwell Radiance cuts
   -- miss+dodge. Both on -> the stricter (Sunwell) applies. See UI.Optimize.
   local encLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  encLabel:SetPoint("TOPLEFT", 8, -72); encLabel:SetText(color(GOLD, "Gear for:"))
+  encLabel:SetPoint("TOPLEFT", 8, -84); encLabel:SetText(color(GOLD, "Gear for:"))
   local illyCb = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
-  illyCb:SetPoint("TOPLEFT", 62, -68); illyCb:SetSize(20, 20); illyCb:SetChecked(UI.encIllidan)
+  illyCb:SetPoint("TOPLEFT", 62, -80); illyCb:SetSize(20, 20); illyCb:SetChecked(UI.encIllidan)
   local illyLbl = illyCb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   illyLbl:SetPoint("LEFT", illyCb, "RIGHT", 1, 0); illyLbl:SetText("Illidan")
   illyCb:SetScript("OnClick", function(self) UI.encIllidan = self:GetChecked() and true or false end)
   local swpCb = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
-  swpCb:SetPoint("TOPLEFT", 168, -68); swpCb:SetSize(20, 20); swpCb:SetChecked(UI.encSunwell)
+  swpCb:SetPoint("TOPLEFT", 168, -80); swpCb:SetSize(20, 20); swpCb:SetChecked(UI.encSunwell)
   local swpLbl = swpCb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   swpLbl:SetPoint("LEFT", swpCb, "RIGHT", 1, 0); swpLbl:SetText("Sunwell")
   swpCb:SetScript("OnClick", function(self) UI.encSunwell = self:GetChecked() and true or false end)
   -- Per-goal tuning: a "threat" slider (EHP<->Threat lean — right = more SP / spell hit) and an "hp min"
   -- floor slider under each goal name. Click a label to nudge or drag the slider; the next Optimize uses them.
   local tuneHdr = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  tuneHdr:SetPoint("TOPLEFT", 8, -94)
+  tuneHdr:SetPoint("TOPLEFT", 8, -106)
   tuneHdr:SetText(color(DIM, "Goal tuning — threat ratio (right = more SP / spell hit)\n& Min-HP floor:"))
-  local sy = -126
+  local sy = -138
   for _, id in ipairs(SLIDER_GOALS) do
     pcall(goalSlider, opt, sy, id) -- contain any template issue so the whole Optimize tab still builds
     sy = sy - 56 -- three lines per goal (name, then the labelled threat + hp-min sliders)
@@ -350,7 +430,7 @@ local function buildFrame()
   -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
   -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
   optCards = {}
-  local cy = -358
+  local cy = -370
   for i = 1, 4 do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)
@@ -514,16 +594,10 @@ function UI.Optimize()
   local faction = ns.engine.Enchants and ns.engine.Enchants.detectFaction(items) or nil
   local professions = detectProfessions()
   local profTxt = (#professions > 0) and table.concat(professions, "+") or "none"
-  -- Passing trinketLocks (even empty) overrides the engine's hardcoded default. On -> force the player's
-  -- two equipped trinkets in (icon = kept in every set; eye = every set but Survival). Off -> {} = free pick.
-  local trinketLocks = {}
-  if UI.lockTrinkets then
-    local eq = {}
-    for _, it in ipairs(items) do
-      if it.slot == "trinket" and it.equipped then eq[#eq + 1] = it.itemId end
-    end
-    trinketLocks.icon, trinketLocks.eye = eq[1], eq[2]
-  end
+  -- Trinket locks from the two dropdowns. icon = kept in every set; eye = every set but Survival. A numeric
+  -- id locks it; "none"/nil frees that slot. Passing the table (even empty) overrides the engine default.
+  local function lockVal(sel) return (type(sel) == "number") and sel or nil end
+  local trinketLocks = { icon = lockVal(UI.lockTrinketIcon), eye = lockVal(UI.lockTrinketEye) }
   optStatus:SetText(color(DIM, string.format("%d items · %s · %s · solving...",
     #items, profTxt, faction or "both factions")))
 
@@ -588,7 +662,9 @@ function UI.Select(key)
     p:SetShown(k == key)
     tabs[k]:SetEnabled(k ~= key)
   end
-  if key == "export" then refreshExport() else UI.Refresh() end
+  if key == "export" then refreshExport()
+  elseif key == "optimize" then UI.RefreshTrinkets() -- rescan owned trinkets so the lock dropdowns are current
+  else UI.Refresh() end
 end
 
 function UI.Show(key)

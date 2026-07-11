@@ -1144,3 +1144,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   into the optimizer + share-link state, and the summary table's Uncrush column shows the encounter-adjusted
   value. New CAPS `sunwellHitReduction`/`sunwellDodgeReduction`. `.toc` → 0.8.42. JS 150/150, Lua wasm parity
   (eval 99 field checks) + 31-file syntax pass.
+- **Addon v0.8.43 — two trinket-lock dropdowns (replaces the "keep equipped trinkets" checkbox).** The
+  Optimize tab now has two `UIDropDownMenu`s, each listing your owned trinkets (equipped + bags + open bank,
+  scanned when the tab opens) plus "None (optimizer picks)". The LEFT lock is kept in every set; the RIGHT in
+  every set but Survival (which frees it for a defensive pick) — matching the engine's icon/eye split and the
+  site's `lockIcon`/`lockEye`. Defaults to your two equipped trinkets; a selection that's no longer owned
+  falls back to equipped. Feeds `trinketLocks = {icon, eye}` (numeric id locks; "none"/nil frees the slot).
+  Dropdown build is `pcall`-guarded (falls back to free picks on a template hiccup). Optimize min height
+  734→746. `.toc` → 0.8.43. Lua wasm parity + 31-file syntax pass.

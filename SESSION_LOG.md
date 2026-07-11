@@ -29,8 +29,13 @@ Running handoff notes for resuming work. Newest session at the top.
   encounter value. Regenerated eval fixtures (`bin/gen-fixtures.mjs` — NOT in the hook, staged manually);
   hook regens runner/optimizer/solver fixtures (unchanged by default). Validated vs the WA to the decimal.
   Optimize min height 710→734 (encounter row); Live 448→482 (2 rows).
-- **Still TODO:** the two trinket-lock DROPDOWNS (addon; replace the "keep equipped" checkbox; populate from
-  owned trinkets → trinketLocks {icon,eye}). Site already has lockIcon/lockEye dropdowns. Next build.
+- **Trinket dropdowns SHIPPED (v0.8.43, addon).** Replaced the "keep equipped trinkets" checkbox with two
+  `UIDropDownMenu`s (`ddIcon`/`ddEye`). `scanTrinkets()` (GetItemInfo equipLoc == INVTYPE_TRINKET over
+  equipped 13/14 + bags/bank) fills `trinketList`; `UI.RefreshTrinkets()` (called from UI.Select "optimize")
+  defaults `UI.lockTrinketIcon`/`Eye` to the equipped two, keeps a still-owned pick, else falls back.
+  `trinketDropdown()` builds each with a "None" option. `UI.Optimize` → `trinketLocks = {icon,eye}` via
+  `lockVal` (numeric locks; "none"/nil frees). pcall-guarded. Optimize min height 734→746 (dropdowns +12 vs
+  the old checkbox). NOT eyeballed in-game — UIDropDownMenu layout/width at 380 min is the main unknown.
 
 ## 2026-07-10 — Spacing before the footer (addon v0.8.40)
 
