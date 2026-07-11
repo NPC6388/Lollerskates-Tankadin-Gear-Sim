@@ -19,7 +19,7 @@ UI.assumeBuffs = true
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
   live     = { 300, 420 },
-  optimize = { 470, 726 },
+  optimize = { 470, 744 },
   export   = { 470, 260 },
 }
 
@@ -136,7 +136,7 @@ local function tuneSlider(pane, x, y, cfg)
   sliderSeq = sliderSeq + 1
   local sname = "TGSTune" .. sliderSeq
   local s = CreateFrame("Slider", sname, pane, "OptionsSliderTemplate")
-  s:SetPoint("TOPLEFT", sliderX, y - 16); s:SetWidth(w); s:SetHeight(16)
+  s:SetPoint("TOPLEFT", sliderX, y); s:SetWidth(w); s:SetHeight(16)
   s:SetMinMaxValues(cfg.min, cfg.max); s:SetValueStep(cfg.step); s:SetObeyStepOnDrag(true)
   for _, suf in ipairs({ "Low", "High", "Text" }) do
     local r = _G[sname .. suf] or s[suf]; if r then r:SetText(""); r:Hide() end
@@ -145,17 +145,14 @@ local function tuneSlider(pane, x, y, cfg)
   left:SetPoint("RIGHT", s, "LEFT", -1, 0)
   local right = arrowButton(pane, 1, function() s:SetValue(s:GetValue() + cfg.step) end)
   right:SetPoint("LEFT", s, "RIGHT", 1, 0)
-  -- 3-part label line: left/centre/right share the slider's width box, differing only in justify, so a
-  -- short left axis, a centred value and a right axis never collide as long as they don't overflow w.
-  local function lbl(justify, hex, txt)
-    local f = pane:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    f:SetPoint("TOPLEFT", sliderX, y); f:SetWidth(w); f:SetJustifyH(justify)
-    if txt then f:SetText(color(hex, txt)) end
-    return f
-  end
-  lbl("LEFT", DIM, cfg.leftLabel)
-  lbl("RIGHT", DIM, cfg.rightLabel)
-  local centre = lbl("CENTER", CYAN, nil)
+  -- 3-part label line anchored to the slider: left axis at its left edge, right axis at its right edge,
+  -- and the live value centred between them (so it reads centred over the track).
+  local L = pane:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  L:SetPoint("BOTTOMLEFT", s, "TOPLEFT", 0, 3); L:SetText(color(DIM, cfg.leftLabel))
+  local R = pane:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  R:SetPoint("BOTTOMRIGHT", s, "TOPRIGHT", 0, 3); R:SetText(color(DIM, cfg.rightLabel))
+  local centre = pane:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  centre:SetPoint("BOTTOM", s, "TOP", 0, 3)
   local function setV(val) centre:SetText(color(CYAN, cfg.format(val))) end
   s:SetScript("OnValueChanged", function(self, val) cfg.apply(val); setV(val) end)
   s:SetValue(cfg.value); cfg.apply(cfg.value); setV(cfg.value)
@@ -168,14 +165,14 @@ end
 local function goalSlider(pane, y, id)
   local name = pane:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   name:SetPoint("TOPLEFT", 12, y); name:SetText(color(GOLD, GOAL_FULLNAME[id]))
-  local ly = y - 18 -- the two sliders' label lines (each slider is 16 below its labels)
-  tuneSlider(pane, 8, ly, {
+  local sy = y - 30 -- slider top; its 3-part labels sit just above it, one line under the name
+  tuneSlider(pane, 8, sy, {
     min = -3, max = 3, step = 0.5, value = UI.goalV[id] or 0,
     leftLabel = "EHP", rightLabel = "Threat", sliderW = 120,
     format = function(val) return ratioShort(id, val) end,
     apply = function(val) UI.goalV[id] = val end,
   })
-  tuneSlider(pane, 190, ly, {
+  tuneSlider(pane, 190, sy, {
     min = MINHP.min, max = MINHP.max, step = MINHP.step, value = UI.goalMinHP[id] or MINHP.min,
     leftLabel = "off", rightLabel = "20k", sliderW = 120,
     format = function(val) return fmtHp(val) end,
@@ -303,8 +300,8 @@ local function buildFrame()
   -- floor slider under each goal name. Click a label to nudge or drag the slider; the next Optimize uses them.
   local tuneHdr = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   tuneHdr:SetPoint("TOPLEFT", 8, -70)
-  tuneHdr:SetText(color(DIM, "Goal tuning — threat ratio (right = more SP / spell hit) & Min-HP floor:"))
-  local sy = -88
+  tuneHdr:SetText(color(DIM, "Goal tuning — threat ratio (right = more SP / spell hit)\n& Min-HP floor:"))
+  local sy = -102
   for _, id in ipairs(SLIDER_GOALS) do
     pcall(goalSlider, opt, sy, id) -- contain any template issue so the whole Optimize tab still builds
     sy = sy - 56 -- three lines per goal (name, then the labelled threat + hp-min sliders)
@@ -314,7 +311,7 @@ local function buildFrame()
   -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
   -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
   optCards = {}
-  local cy = -320
+  local cy = -334
   for i = 1, 4 do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)
@@ -439,16 +436,16 @@ local function renderOptimize(results)
       card.head:SetText(""); card.l2:SetText(""); card.l3:SetText("")
     else
       local e, a = r.evald, r.agg
-      local legalTxt = r.legal and color(GOOD, "legal") or color(BAD, "illegal")
-      if r.hpBestEffort then legalTxt = color(BAD, "HP unreachable") end
-      card.head:SetText(color(GOLD, r.goal.name) .. "   " .. mark(r.legal) .. " " .. legalTxt
+      local legalTxt = r.legal and "" or color(BAD, " illegal")
+      if r.hpBestEffort then legalTxt = color(BAD, " HP unreachable") end
+      card.head:SetText(color(GOLD, r.goal.name) .. "   " .. mark(r.legal) .. legalTxt
         .. color(DIM, "   " .. (r.goal.focus or "")))
       card.l2:SetText(
         color(GOLD, "SP ") .. color(CYAN, num(a.spellPowerLiteral or a.spellPower))
         .. color(GOLD, "   Uncrush ") .. color(e.uncrushable and GOOD or BAD, pct(e.totalAvoidanceWithHS))
         .. color(GOLD, "   Crit ") .. color(e.raidCritImmune and GOOD or BAD, pct(e.critReduction)))
       card.l3:SetText(
-        color(GOLD, "EHP ") .. color(CYAN, num(e.ehpPhysical)) .. color(DIM, " / ") .. color(CYAN, num(e.health))
+        color(GOLD, "EHP/HP ") .. color(CYAN, num(e.ehpPhysical)) .. color(DIM, " / ") .. color(CYAN, num(e.health))
         .. color(GOLD, "   Avoid ") .. color(CYAN, pct(e.actualAvoidance))
         .. color(GOLD, "   Block ") .. color(CYAN, num(e.blockValue)))
     end

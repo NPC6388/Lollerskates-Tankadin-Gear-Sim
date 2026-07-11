@@ -4,7 +4,21 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Slider layout iterations to the user's mockups (addon v0.8.32–v0.8.33)
+## 2026-07-10 (latest) — Tuning + card polish from an in-game screenshot (addon v0.8.34)
+
+Four small fixes off a screenshot of the working v0.8.33 Optimize tab:
+- **Centre the ratio** — the value now anchors to the slider's centre (`centre:SetPoint("BOTTOM", s, "TOP")`)
+  and the axis labels to its edges (`BOTTOMLEFT`/`BOTTOMRIGHT` to the slider), so `1:4` reads centred
+  between `EHP` and `Threat` regardless of label widths. Reworked `tuneSlider` y-semantics: `y` is now the
+  slider top; labels anchor above it. `goalSlider` slider y = name y − 30.
+- **Header wraps** before "& Min-HP floor" (`\n`). Goals start shifted −88→−102.
+- **Dropped "legal"** from result cards (the ✓ conveys it; failures still say "illegal"/"HP unreachable").
+- **`EHP` → `EHP/HP`** on the card line that shows both numbers.
+- Optimize min height 726→744; cards cy −320→−334.
+- Verified JS 150/150, 31-file syntax PASS, zip rebuilt, installed synced. Committed + pushed.
+  **In-game check pending:** the centred value sits mid-track, header wraps cleanly, cards read right.
+
+## 2026-07-10 — Slider layout iterations to the user's mockups (addon v0.8.32–v0.8.33)
 
 Two more layout passes on the Optimize tuning sliders (all addon-only, committed + pushed; user iterating
 via screenshots):

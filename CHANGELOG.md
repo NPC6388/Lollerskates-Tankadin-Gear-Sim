@@ -1084,3 +1084,9 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   **`off` | `<hp>` | `20k`** — each flanked by the ◄ / ► arrow buttons. The three label parts share the
   slider's width box (left/centre/right justify) so they never collide. Optimize min height 668→726 (cards
   shifted for the taller rows). `.toc` → 0.8.33. JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **Addon v0.8.34 — tuning + result-card polish.** (1) The centred slider value now anchors to the slider's
+  centre (and the axis labels to its edges), so the ratio reads centred between `EHP` and `Threat`.
+  (2) The tuning header wraps before "& Min-HP floor". (3) Result cards drop the redundant "legal" word
+  (the ✓ already says it; failures still show "illegal" / "HP unreachable"). (4) The cards' EHP line is
+  relabelled **`EHP/HP`** since it shows both (`EHP/HP 32406 / 12831`). Optimize min height 726→744.
+  `.toc` → 0.8.34. JS 150/150, Lua wasm parity + 31-file syntax pass.
