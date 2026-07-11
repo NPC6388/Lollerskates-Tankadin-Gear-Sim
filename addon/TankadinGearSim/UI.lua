@@ -18,8 +18,8 @@ UI.assumeBuffs = true
 -- bottom-right grip to grow the frame; that chosen size (persisted in TankadinGearSimUI) is reused
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
-  live     = { 300, 420 },
-  optimize = { 470, 744 },
+  live     = { 300, 448 },
+  optimize = { 470, 668 },
   export   = { 470, 260 },
 }
 
@@ -145,14 +145,15 @@ local function tuneSlider(pane, x, y, cfg)
   left:SetPoint("RIGHT", s, "LEFT", -1, 0)
   local right = arrowButton(pane, 1, function() s:SetValue(s:GetValue() + cfg.step) end)
   right:SetPoint("LEFT", s, "RIGHT", 1, 0)
-  -- 3-part label line anchored to the slider: left axis at its left edge, right axis at its right edge,
-  -- and the live value centred between them (so it reads centred over the track).
+  -- 3-part label line above the slider: left axis at its left edge, right axis at its right edge, and the
+  -- value centred in the GAP BETWEEN them (anchored to both labels, not the track), so a wider right axis
+  -- ("Threat") doesn't push the value off-centre — equal blank space either side.
   local L = pane:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   L:SetPoint("BOTTOMLEFT", s, "TOPLEFT", 0, 3); L:SetText(color(DIM, cfg.leftLabel))
   local R = pane:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   R:SetPoint("BOTTOMRIGHT", s, "TOPRIGHT", 0, 3); R:SetText(color(DIM, cfg.rightLabel))
   local centre = pane:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  centre:SetPoint("BOTTOM", s, "TOP", 0, 3)
+  centre:SetPoint("LEFT", L, "RIGHT", 2, 0); centre:SetPoint("RIGHT", R, "LEFT", -2, 0); centre:SetJustifyH("CENTER")
   local function setV(val) centre:SetText(color(CYAN, cfg.format(val))) end
   s:SetScript("OnValueChanged", function(self, val) cfg.apply(val); setV(val) end)
   s:SetValue(cfg.value); cfg.apply(cfg.value); setV(cfg.value)
@@ -440,8 +441,11 @@ local function renderOptimize(results)
       if r.hpBestEffort then legalTxt = color(BAD, " HP unreachable") end
       card.head:SetText(color(GOLD, r.goal.name) .. "   " .. mark(r.legal) .. legalTxt
         .. color(DIM, "   " .. (r.goal.focus or "")))
+      local sh = (ns.engine.CharacterData.TALENTS.precisionSpellHitPct or 3)
+        + ((a._raw and a._raw.spellHitRating) or 0) / (ns.engine.Constants.RATING.spellHitPer1 or 12.62)
       card.l2:SetText(
-        color(GOLD, "SP ") .. color(CYAN, num(a.spellPowerLiteral or a.spellPower))
+        color(GOLD, "SP/SH ") .. color(CYAN, num(a.spellPowerLiteral or a.spellPower))
+        .. color(DIM, " / ") .. color(CYAN, pct(sh))
         .. color(GOLD, "   Uncrush ") .. color(e.uncrushable and GOOD or BAD, pct(e.totalAvoidanceWithHS))
         .. color(GOLD, "   Crit ") .. color(e.raidCritImmune and GOOD or BAD, pct(e.critReduction)))
       card.l3:SetText(

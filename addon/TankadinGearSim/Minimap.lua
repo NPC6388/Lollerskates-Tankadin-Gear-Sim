@@ -7,6 +7,22 @@ ns.Minimap = ns.Minimap or {}
 local M = ns.Minimap
 
 local GOLD, CYAN, DIM, GOOD, BAD = "|cffd9b870", "|cff5fd0e6", "|cff9aa0a6", "|cff7ee787", "|cffff6b6b"
+-- Legal/illegal marks: built-in ready-check textures (render reliably, unlike a font glyph).
+local TICK  = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"
+local CROSS = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:0|t"
+
+-- Thematic icon per set (built-in TBC spell/ability icons). Options if you want to swap:
+--   raid:     Spell_Holy_RighteousFury (threat aura) · Ability_ThunderClap · Spell_Holy_Excorcism_02 · INV_Sword_27
+--   survival: Spell_Holy_DevotionAura (armor aura)   · Spell_Holy_BlessingOfProtection · INV_Shield_06 · Ability_Defend
+--   aoe:      Ability_Warrior_Cleave (multi-target)  · Spell_Fire_SelfDestruct · Spell_Holy_Excorcism_02
+--   balanced: Spell_Holy_SealOfJustice (scales)      · Ability_Paladin_ArtOfWar · INV_Misc_Gem_Diamond_01
+local SET_ICON = {
+  raid     = "Interface\\Icons\\Spell_Holy_RighteousFury",
+  survival = "Interface\\Icons\\Spell_Holy_DevotionAura",
+  aoe      = "Interface\\Icons\\Ability_Warrior_Cleave",
+  balanced = "Interface\\Icons\\Spell_Holy_SealOfJustice",
+}
+local SET_ICON_FALLBACK = "Interface\\Icons\\INV_Misc_QuestionMark"
 
 -- Our slot names -> WoW inventory slot ids (for equipping). Ordered for the tooltip readout.
 local SLOT_ORDER = { "head", "neck", "shoulder", "back", "chest", "wrist", "hands", "waist", "legs",
@@ -127,8 +143,11 @@ local function getRow(i)
   if not row then
     row = CreateFrame("Button", nil, flyout)
     row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(16, 16); row.icon:SetPoint("LEFT", 6, 0)
+    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92) -- trim the default icon border
     row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    row.text:SetPoint("LEFT", 6, 0); row.text:SetJustifyH("LEFT")
+    row.text:SetPoint("LEFT", row.icon, "RIGHT", 5, 0); row.text:SetJustifyH("LEFT")
     flyout.rows[i] = row
   end
   return row
@@ -152,6 +171,7 @@ function M.BuildFlyout()
   if #sets == 0 then
     local row = getRow(1)
     row:ClearAllPoints(); row:SetSize(width - 12, 18); row:SetPoint("TOPLEFT", 6, y)
+    row.icon:Hide()
     row.text:SetText(DIM .. "No sets yet — run /tgs \226\134\146 Optimize.|r")
     row:SetScript("OnEnter", nil); row:SetScript("OnLeave", nil); row:SetScript("OnClick", nil)
     row:Show(); y = y - 20
@@ -159,7 +179,8 @@ function M.BuildFlyout()
     for i, set in ipairs(sets) do
       local row = getRow(i)
       row:ClearAllPoints(); row:SetSize(width - 12, 20); row:SetPoint("TOPLEFT", 6, y)
-      row.text:SetText((set.legal and GOOD .. "\226\151\143|r " or BAD .. "\226\151\143|r ") .. set.name)
+      row.icon:SetTexture(SET_ICON[set.id] or SET_ICON_FALLBACK); row.icon:Show()
+      row.text:SetText((set.legal and TICK or CROSS) .. " " .. set.name)
       row:SetScript("OnEnter", function(self) showSetTooltip(self, set) end)
       row:SetScript("OnLeave", function() GameTooltip:Hide() end)
       row:SetScript("OnClick", function() equipSet(set); flyout:Hide() end)

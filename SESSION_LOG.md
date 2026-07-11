@@ -4,7 +4,25 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Tuning + card polish from an in-game screenshot (addon v0.8.34)
+## 2026-07-10 (latest) — Minimap set icons, SP/SH card, ratio centring, min-size fixes (addon v0.8.35)
+
+Batch of fixes from more in-game screenshots:
+- **Minimap set icons** — the flyout's per-set status was a `●` glyph rendering as an empty box. Replaced
+  with a **thematic ability icon** per set (`SET_ICON`: raid=Righteous Fury, survival=Devotion Aura,
+  aoe=Cleave, balanced=Seal of Justice — alt options in the code comment) + a ready-check ✓/✗ texture.
+  Added `row.icon` to the flyout rows; `set.id` (raid/survival/aoe/balanced) keys the map.
+- **Result cards SP → SP/SH** — now shows spell power AND spell hit % (`SP/SH 752 / 9.18%`), computed from
+  `agg._raw.spellHitRating`/12.62 + Precision, mirroring the Live row.
+- **Ratio centring (real fix)** — the value was anchored to the slider centre, so a wider "Threat" label
+  made the gaps unequal. Now anchored LEFT→EHP.right, RIGHT→Threat.left, CENTER justify → equal blank space.
+- **Min-size fixes** — pane = frameHeight − 74 (anchored TOPLEFT 8,−62 / BOTTOMRIGHT −8,12). Live 420→448
+  (Spell-hit row + wrapping note were overlapping the bottom rows); Optimize 744→668 (content ends ~pane-y
+  −554, so 744 left dead space the user couldn't shrink away).
+- Verified JS 150/150, 31-file syntax PASS, zip rebuilt, installed synced. Committed + pushed.
+  **In-game check pending:** icons render (swap any that show blank via `SET_ICON`), ratio reads centred,
+  both frames size right.
+
+## 2026-07-10 — Tuning + card polish from an in-game screenshot (addon v0.8.34)
 
 Four small fixes off a screenshot of the working v0.8.33 Optimize tab:
 - **Centre the ratio** — the value now anchors to the slider's centre (`centre:SetPoint("BOTTOM", s, "TOP")`)

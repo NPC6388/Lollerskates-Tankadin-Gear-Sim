@@ -1090,3 +1090,13 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   (the ✓ already says it; failures still show "illegal" / "HP unreachable"). (4) The cards' EHP line is
   relabelled **`EHP/HP`** since it shows both (`EHP/HP 32406 / 12831`). Optimize min height 726→744.
   `.toc` → 0.8.34. JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **Addon v0.8.35 — minimap set icons + `SP/SH` on cards.** The minimap flyout's per-set status dot was a
+  `●` font glyph that rendered as an empty box (same font-glyph issue as the arrows). Replaced it: each set
+  row now shows a **thematic ability icon** — Raid Threat = Righteous Fury, Survival = Devotion Aura, AOE
+  Trash = Cleave, Balanced = Seal of Justice (alternatives listed in `SET_ICON`'s comment for easy swaps) —
+  plus a ready-check ✓/✗ texture for legal/illegal (renders reliably). Also relabelled the result cards'
+  spell-power line **`SP/SH`** with the set's spell-hit % (e.g. `SP/SH 752 / 9.18%`), mirroring the Live
+  readout. Also this version: **ratio value truly centred** (anchored to span the gap *between* the EHP and
+  Threat labels with centre justify, so a wider "Threat" no longer pushes it off-centre) and **min-size
+  fixes** — Live 420→448 (the Spell-hit row + note were overlapping) and Optimize 744→668 (it couldn't shrink
+  to the content). `.toc` → 0.8.35. JS 150/150, Lua wasm parity + 31-file syntax pass.
