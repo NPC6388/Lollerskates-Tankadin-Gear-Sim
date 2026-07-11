@@ -1064,3 +1064,10 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   `tuneSlider` reworked around it. Also corrected the **balanced default to 1:1** (v=0, was 1:1.5) per the
   user. Site slider defaults left unchanged (its Balanced is a cross-goal blend dial, not an independent
   ratio). `.toc` → 0.8.30. JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **Addon v0.8.31 — tuning rows relaid out per the user's mockup; dropped the box-glyph arrows.** In-game the
+  ◂/▸ arrows rendered as empty boxes (WoW's default font lacks those glyphs) and the one-line rows were
+  cramped (goal names truncated to "Su.."). Reworked to a **two-line block per goal**: the full goal name on
+  its own line ("Raid Threat", "Survival", "AOE Trash", "Balanced"), then a **"threat" slider** (EHP↔Threat
+  lean, readout e.g. `1:4`) and an **"hp min" slider** (floor, e.g. `11.5k`) beneath it. The flanking labels
+  stay click-to-nudge (dim, white on hover) — just no arrow glyphs. Optimize min height 582→668.
+  `.toc` → 0.8.31. JS 150/150, Lua wasm parity + 31-file syntax pass.

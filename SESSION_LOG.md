@@ -4,7 +4,22 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Slider labels ARE the buttons; balanced default 1:1; committed + pushed both (addon v0.8.29–v0.8.30 + site)
+## 2026-07-10 (latest) — Tuning rows relaid out (2-line/goal), box-arrows dropped (addon v0.8.31)
+
+User sent an in-game screenshot: the ◂/▸ arrows rendered as **empty boxes** (WoW's font lacks U+25C2/25B8)
+and the one-line rows were cramped (goal name truncated to "Su.."). Sent a mockup: goal name on its own line,
+then `threat --- 1:4` and `hp min --- 11.5k` beneath. Implemented:
+- **Two-line block per goal** — full name ("Raid Threat"/"Survival"/"AOE Trash"/"Balanced") on line 1, then
+  the "threat" (EHP↔Threat) + "hp min" (floor) sliders on line 2. `GOAL_FULLNAME` replaces the abbreviated
+  `GOAL_SLIDER_LABEL`. `goalSlider` now lays out name + two `tuneSlider`s at `cy = y-17`; loop step -22→-42.
+- **Dropped the ◂/▸ glyphs** — flanking labels are now plain descriptive text ("threat" / "hp min" left, the
+  readout right), still click-to-nudge (DIM, white on hover), drag still works. No font-dependent glyphs.
+- Optimize min height 582→668; cards cy -178→-262.
+- Verified JS 150/150, 31-file syntax PASS, zip rebuilt, installed synced. Committed + pushed (user on break).
+  **Still needs in-game eyeball on return:** the 2-line layout fits without overlap and the labels nudge.
+- Site: user confirmed the deployed Min-HP button restyle "looks good."
+
+## 2026-07-10 — Slider labels ARE the buttons; balanced default 1:1; committed + pushed both (addon v0.8.29–v0.8.30 + site)
 
 Two quick follow-ups after v0.8.29, then committed & pushed everything (user on break, explicitly authorized
 push+deploy — pushing `main` also publishes the GitHub Pages site so the user can finally see the site CSS).

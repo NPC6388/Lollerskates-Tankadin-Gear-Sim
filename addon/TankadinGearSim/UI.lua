@@ -19,7 +19,7 @@ UI.assumeBuffs = true
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
   live     = { 300, 420 },
-  optimize = { 470, 582 },
+  optimize = { 470, 668 },
   export   = { 470, 260 },
 }
 
@@ -52,7 +52,7 @@ local GOAL_SIDES = {
   aoe      = { left = "ehp", right = "aoeThreat", rlabel = "AOEThr" },
   balanced = { left = "ehp", right = "threat",    rlabel = "Threat" },
 }
-local GOAL_SLIDER_LABEL = { raid = "Raid", survival = "Surv", aoe = "AOE", balanced = "Bal" }
+local GOAL_FULLNAME = { raid = "Raid Threat", survival = "Survival", aoe = "AOE Trash", balanced = "Balanced" }
 -- Defaults = the user's preferred slider stops (raid 1:4, aoe 1:4, survival 1:1, balanced 1:1).
 local GOAL_V_DEFAULT = { raid = 3, survival = 0, aoe = 3, balanced = 0 }
 local MINHP = { min = 10000, max = 20000, step = 500 } -- mirrors web/app.js
@@ -127,24 +127,24 @@ local function textBtn(pane, width, justify, normalHex)
 end
 
 -- One bare slider (Low/High/Text captions stripped) flanked by two clickable labels: the left label
--- (static, e.g. "◂ Raid") nudges toward min; the right label (the live readout, e.g. "1:4 ▸") nudges
--- toward max. `format(val)` builds the readout string; `apply(val)` stores state. Returns the slider.
+-- (static, e.g. "threat") nudges toward min; the right label (the live readout, e.g. "1:4") nudges toward
+-- max. Dragging works too. `format(val)` builds the readout; `apply(val)` stores state. Returns the slider.
 local sliderSeq = 0
 local function tuneSlider(pane, x, y, cfg)
-  local left = textBtn(pane, cfg.leftW or 46, "LEFT", GOLD)
+  local left = textBtn(pane, cfg.leftW or 44, "LEFT", DIM)
   left:SetPoint("TOPLEFT", x, y - 2)
-  left:SetLabel("\226\151\130 " .. cfg.leftText) -- "◂ <label>"
+  left:SetLabel(cfg.leftText)
   sliderSeq = sliderSeq + 1
   local sname = "TGSTune" .. sliderSeq
   local s = CreateFrame("Slider", sname, pane, "OptionsSliderTemplate")
-  s:SetPoint("TOPLEFT", x + (cfg.leftW or 46) + 2, y); s:SetWidth(cfg.sliderW or 78); s:SetHeight(16)
+  s:SetPoint("TOPLEFT", x + (cfg.leftW or 44) + 2, y); s:SetWidth(cfg.sliderW or 64); s:SetHeight(16)
   s:SetMinMaxValues(cfg.min, cfg.max); s:SetValueStep(cfg.step); s:SetObeyStepOnDrag(true)
   for _, suf in ipairs({ "Low", "High", "Text" }) do
     local r = _G[sname .. suf] or s[suf]; if r then r:SetText(""); r:Hide() end
   end
-  local right = textBtn(pane, cfg.rightW or 52, "LEFT", CYAN)
+  local right = textBtn(pane, cfg.rightW or 44, "LEFT", CYAN)
   right:SetPoint("LEFT", s, "RIGHT", 6, 0)
-  local function setRight(val) right:SetLabel(cfg.format(val) .. " \226\150\184") end -- "<readout> ▸"
+  local function setRight(val) right:SetLabel(cfg.format(val)) end
   s:SetScript("OnValueChanged", function(self, val) cfg.apply(val); setRight(val) end)
   left:SetScript("OnClick", function() s:SetValue(s:GetValue() - cfg.step) end)
   right:SetScript("OnClick", function() s:SetValue(s:GetValue() + cfg.step) end)
@@ -152,19 +152,22 @@ local function tuneSlider(pane, x, y, cfg)
   return s
 end
 
--- One goal's tuning row: an EHP<->Threat slider (v in [-3,3]) and a Min-HP slider (10k-20k), each flanked
--- by the clickable "◂ name" / "readout ▸" nudge labels. Nudging/dragging updates UI.goalV / UI.goalMinHP;
--- the next Optimize click uses them.
+-- One goal's tuning block: the goal name on its own line, then an EHP<->Threat slider ("threat  <ratio>")
+-- and a Min-HP slider ("hp min  <floor>") below it. The flanking labels are click-to-nudge (or drag the
+-- slider); nudging/dragging updates UI.goalV / UI.goalMinHP, which the next Optimize click uses.
 local function goalSlider(pane, y, id)
-  tuneSlider(pane, 8, y, {
+  local name = pane:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  name:SetPoint("TOPLEFT", 12, y); name:SetText(color(GOLD, GOAL_FULLNAME[id]))
+  local cy = y - 17
+  tuneSlider(pane, 22, cy, {
     min = -3, max = 3, step = 0.5, value = UI.goalV[id] or 0,
-    leftText = GOAL_SLIDER_LABEL[id], leftW = 46, sliderW = 76, rightW = 52,
+    leftText = "threat", leftW = 40, sliderW = 64, rightW = 36,
     format = function(val) return ratioShort(id, val) end,
     apply = function(val) UI.goalV[id] = val end,
   })
-  tuneSlider(pane, 238, y, {
+  tuneSlider(pane, 216, cy, {
     min = MINHP.min, max = MINHP.max, step = MINHP.step, value = UI.goalMinHP[id] or MINHP.min,
-    leftText = "HP", leftW = 30, sliderW = 60, rightW = 48,
+    leftText = "hp min", leftW = 42, sliderW = 56, rightW = 44,
     format = function(val) return fmtHp(val) end,
     apply = function(val) UI.goalMinHP[id] = val end,
   })
@@ -286,22 +289,22 @@ local function buildFrame()
   optBfLabel:SetPoint("LEFT", optBf, "RIGHT", 2, 0)
   optBfLabel:SetText("Optimize with Kings + MotW (raid buffs)")
   optBf:SetScript("OnClick", function(self) UI.optBuffs = self:GetChecked() and true or false end)
-  -- EHP <-> Threat tuning: one slider per goal (defaults match the full sim). Drag toward Threat for
-  -- more spell power / spell hit, toward EHP for more stamina / armor. The next Optimize uses the values.
+  -- Per-goal tuning: a "threat" slider (EHP<->Threat lean — right = more SP / spell hit) and an "hp min"
+  -- floor slider under each goal name. Click a label to nudge or drag the slider; the next Optimize uses them.
   local tuneHdr = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   tuneHdr:SetPoint("TOPLEFT", 8, -70)
-  tuneHdr:SetText(color(DIM, "Goal lean (drag toward Threat = more SP / spell hit)  ·  Min HP floor"))
+  tuneHdr:SetText(color(DIM, "Goal tuning — threat ratio (right = more SP / spell hit) & Min-HP floor:"))
   local sy = -88
   for _, id in ipairs(SLIDER_GOALS) do
     pcall(goalSlider, opt, sy, id) -- contain any template issue so the whole Optimize tab still builds
-    sy = sy - 22
+    sy = sy - 42 -- two lines per goal (name, then the threat + hp-min sliders)
   end
   -- Four goal cards (name + gate chip, then two stat lines each).
   -- Cards span the pane width (so a wider frame shows more) and NEVER wrap — long lines clip at the
   -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
   -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
   optCards = {}
-  local cy = -178
+  local cy = -262
   for i = 1, 4 do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)
