@@ -13,9 +13,9 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/character.js": "./src/character.js?v=2edbad5f",
+      "./src/character.js": "./src/character.js?v=45f2fda5",
       "./src/combat.js": "./src/combat.js?v=13ddabe8",
-      "./src/constants.js": "./src/constants.js?v=135cf2aa",
+      "./src/constants.js": "./src/constants.js?v=f1aeafc4",
       "./src/enchants.js": "./src/enchants.js?v=923da28d",
       "./src/gems.js": "./src/gems.js?v=32263164",
       "./src/gemsolver.js": "./src/gemsolver.js?v=e89a88f5",
@@ -24,7 +24,7 @@
       "./src/model.js": "./src/model.js?v=c7025d12",
       "./src/optimizer.js": "./src/optimizer.js?v=1b80110f",
       "./src/professions.js": "./src/professions.js?v=b09ec45a",
-      "./src/runner.js": "./src/runner.js?v=13df0f15",
+      "./src/runner.js": "./src/runner.js?v=741f2cbd",
       "./src/savedvars.js": "./src/savedvars.js?v=7f013127",
       "./src/scoring.js": "./src/scoring.js?v=c28687d8",
       "./src/scrolls.js": "./src/scrolls.js?v=82c926c6",
@@ -197,6 +197,15 @@
             <small>Caps gem choices and picks the BiS reference list for that content phase.</small>
           </div>
           <div class="field">
+            <label for="encounter">Encounter avoidance</label>
+            <select id="encounter">
+              <option value="" selected>Normal boss — uncrushable at 102.4%</option>
+              <option value="illidan">Illidan — Shear can't miss (drops miss)</option>
+              <option value="sunwell">Sunwell — Radiance (−5% miss, −20% dodge)</option>
+            </select>
+            <small>Forces the uncrushable-gated sets (Raid / Survival / Balanced) to reach the cap with the reduced avoidance those fights leave you.</small>
+          </div>
+          <div class="field">
             <label>Faction</label>
             <div id="factionReadout" class="readout muted">Available after you load gear</div>
             <small>Auto-detected from your equipped shoulder inscription (sets which inscriptions are available).</small>
@@ -268,6 +277,6 @@
       <a href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim">Source on GitHub</a></p>
   </footer>
 
-  <script type="module" src="web/app.js?v=f5b3cbef"></script>
+  <script type="module" src="web/app.js?v=87d9da98"></script>
 </body>
 </html>

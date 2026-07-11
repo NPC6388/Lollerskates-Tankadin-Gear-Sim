@@ -25,6 +25,12 @@ const ALT_EPS = 0.01;                        // a slot alternative is "near-iden
 const ALT_MAX = 3;                           // at most this many alternatives shown per slot
 export const DEFAULT_TRINKET_LOCKS = { icon: 29370, eye: 28789 }; // Icon of the Silver Crescent / Eye of Magtheridon
 
+// Encounter-adjusted crush avoidance / uncrushable (see character.js evaluateSet). `enc` is
+// 'illidan' | 'sunwell' | null (normal boss). Used so the uncrushable gate can demand the extra
+// avoidance those fights need (Illidan's Shear can't miss; Sunwell Radiance cuts miss+dodge).
+const encAvoid = (e, enc) => enc === 'sunwell' ? e.swpAvoidance : enc === 'illidan' ? e.illyAvoidance : e.totalAvoidanceWithHS;
+const encUncrush = (e, enc) => enc === 'sunwell' ? e.swpUncrushable : enc === 'illidan' ? e.illyUncrushable : e.uncrushable;
+
 // Preset goals as TUNABLE EHP:threat ratios (blendScale builds the objective). Every goal uses
 // the same EHP↔threat axis; AOE Trash differs only by a relaxed crush gate (trash can't crush).
 // `lockEye` adds Eye of Magtheridon to the locked trinkets.
@@ -379,7 +385,7 @@ function runGoal(goal, items, ctx, seed = {}) {
     const gt = goal.gates || {};
     const critOk = gt.raid === false ? e.heroicCritImmune : e.raidCritImmune;
     const need = gt.uncrushableTarget ?? CAPS.uncrushableCombined;
-    const crushOk = !gt.requireUncrushable || e.totalAvoidanceWithHS + 1e-9 >= need;
+    const crushOk = !gt.requireUncrushable || encAvoid(e, ctx.encounter) + 1e-9 >= need;
     const hpOk = !gt.minHealth || (e.health ?? 0) + 1e-9 >= gt.minHealth;
     return critOk && crushOk && hpOk;
   };
@@ -398,7 +404,7 @@ function runGoal(goal, items, ctx, seed = {}) {
     gateAware = true;
     const gg = gemSet((v) => scaleOf.get(v));
     const improved = finalLegal(gg.evald)
-      || gg.evald.totalAvoidanceWithHS > g.evald.totalAvoidanceWithHS
+      || encAvoid(gg.evald, ctx.encounter) > encAvoid(g.evald, ctx.encounter)
       || gg.evald.critReduction > g.evald.critReduction;
     if (improved) g = gg; else gateAware = false;
   }
@@ -660,6 +666,9 @@ export function optimizeSets(items, options = {}) {
     // Per-goal forced item picks (UI "pin to slot"): { [goalId]: { [slotKey]: itemId } }.
     pins: options.pins || {},
     maxPhase: options.maxPhase,
+    // Encounter avoidance mode: 'illidan' | 'sunwell' | null. Forces the uncrushable gate onto the
+    // reduced avoidance those fights leave you (see encAvoid/encUncrush).
+    encounter: options.encounter || null,
     // Aldor/Scryer for faction-locked shoulder inscriptions; null = consider both.
     faction: options.faction || null,
     // Imbued Unstable Diamond is opt-in (like buffs); excluded from meta choices when off.
@@ -687,7 +696,7 @@ export function optimizeSets(items, options = {}) {
     const floor = (g.gates && g.gates.minHealth) || 0;
     const crushReq = !g.gates || g.gates.requireUncrushable !== false;
     const floorMet = !floor || r.agg.health + 1e-9 >= floor;
-    const crushMet = !crushReq || r.evald.uncrushable;
+    const crushMet = !crushReq || encUncrush(r.evald, ctx.encounter);
     if (floorMet && crushMet) return r; // the gates this recovery repairs (Min-HP floor + uncrushable) are met
     // Uncrushable and Min-HP are HARD gates, but the greedy+repair heuristic can return an ILLEGAL set
     // even when a legal one exists — e.g. it keeps a higher-threat libram and lands ~0.1% short of the

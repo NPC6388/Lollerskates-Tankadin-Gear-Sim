@@ -41,6 +41,8 @@ C.CAPS = {
   defenseSkillRaid = 490,      -- crit immunity vs level 73 (guide: 1527-1534)
   defenseSkillHeroic = 485,    -- crit immunity vs level 72
   uncrushableCombined = 102.4, -- miss+dodge+parry+block >= this => no crushing (guide: 1566)
+  sunwellHitReduction = 5,
+  sunwellDodgeReduction = 20,
   spellHitCapPct = 17,         -- vs raid boss (guide table)
   meleeHitCapPct = 9,          -- vs raid boss (6% with 3/3 Precision)
   expertiseSoftCap = 26,       -- eliminates boss dodge

@@ -18,8 +18,8 @@ UI.assumeBuffs = true
 -- bottom-right grip to grow the frame; that chosen size (persisted in TankadinGearSimUI) is reused
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
-  live     = { 300, 448 },
-  optimize = { 380, 710 },
+  live     = { 300, 482 },
+  optimize = { 380, 734 },
   export   = { 470, 260 },
 }
 
@@ -279,6 +279,8 @@ local function buildFrame()
   row("crit",  "Crit")
   row("critH", "\194\183 heroic")
   row("crush", "Crush")
+  row("illy",  "Illidan")
+  row("swp",   "Sunwell")
   gap()
   row("bv",    "Block value")
   row("armor", "Armor")
@@ -318,12 +320,27 @@ local function buildFrame()
   optBfLabel:SetPoint("LEFT", optBf, "RIGHT", 2, 0)
   optBfLabel:SetText("Optimize with Kings + MotW (raid buffs)")
   optBf:SetScript("OnClick", function(self) UI.optBuffs = self:GetChecked() and true or false end)
+  -- Encounter avoidance: force the uncrushable-gated sets (Raid/Survival/Balanced) to reach the cap with
+  -- the reduced avoidance those fights leave you — Illidan's Shear can't miss; Sunwell Radiance cuts
+  -- miss+dodge. Both on -> the stricter (Sunwell) applies. See UI.Optimize.
+  local encLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  encLabel:SetPoint("TOPLEFT", 8, -72); encLabel:SetText(color(GOLD, "Gear for:"))
+  local illyCb = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
+  illyCb:SetPoint("TOPLEFT", 62, -68); illyCb:SetSize(20, 20); illyCb:SetChecked(UI.encIllidan)
+  local illyLbl = illyCb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  illyLbl:SetPoint("LEFT", illyCb, "RIGHT", 1, 0); illyLbl:SetText("Illidan")
+  illyCb:SetScript("OnClick", function(self) UI.encIllidan = self:GetChecked() and true or false end)
+  local swpCb = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
+  swpCb:SetPoint("TOPLEFT", 168, -68); swpCb:SetSize(20, 20); swpCb:SetChecked(UI.encSunwell)
+  local swpLbl = swpCb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  swpLbl:SetPoint("LEFT", swpCb, "RIGHT", 1, 0); swpLbl:SetText("Sunwell")
+  swpCb:SetScript("OnClick", function(self) UI.encSunwell = self:GetChecked() and true or false end)
   -- Per-goal tuning: a "threat" slider (EHP<->Threat lean — right = more SP / spell hit) and an "hp min"
   -- floor slider under each goal name. Click a label to nudge or drag the slider; the next Optimize uses them.
   local tuneHdr = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  tuneHdr:SetPoint("TOPLEFT", 8, -70)
+  tuneHdr:SetPoint("TOPLEFT", 8, -94)
   tuneHdr:SetText(color(DIM, "Goal tuning — threat ratio (right = more SP / spell hit)\n& Min-HP floor:"))
-  local sy = -102
+  local sy = -126
   for _, id in ipairs(SLIDER_GOALS) do
     pcall(goalSlider, opt, sy, id) -- contain any template issue so the whole Optimize tab still builds
     sy = sy - 56 -- three lines per goal (name, then the labelled threat + hp-min sliders)
@@ -333,7 +350,7 @@ local function buildFrame()
   -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
   -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
   optCards = {}
-  local cy = -334
+  local cy = -358
   for i = 1, 4 do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)
@@ -397,6 +414,11 @@ function UI.Refresh()
   R.critH:SetText(color(DIM, pct(e.critReduction) .. " / 5.4%") .. " " .. mark(e.heroicCritImmune))
   R.crush:SetText(color(e.uncrushable and GOOD or BAD, pct(e.totalAvoidanceWithHS)) ..
     color(DIM, " / 102.4%") .. " " .. mark(e.uncrushable))
+  -- Encounter-specific uncrushable: Illidan (Shear can't miss) / Sunwell (Radiance cuts miss+dodge).
+  R.illy:SetText(color(e.illyUncrushable and GOOD or BAD, pct(e.illyAvoidance)) ..
+    color(DIM, " / 102.4%") .. " " .. mark(e.illyUncrushable))
+  R.swp:SetText(color(e.swpUncrushable and GOOD or BAD, pct(e.swpAvoidance)) ..
+    color(DIM, " / 102.4%") .. " " .. mark(e.swpUncrushable))
 
   -- Mitigation + throughput.
   R.bv:SetText(color(CYAN, num(e.blockValue)))
@@ -531,9 +553,11 @@ function UI.Optimize()
         ratio = ratioFor(id, v), gates = gates, lockEye = preset.lockEye }
     end
   end
+  -- Encounter avoidance mode (Sunwell is the stricter of the two, so it wins if both are ticked).
+  local encounter = (UI.encSunwell and "sunwell") or (UI.encIllidan and "illidan") or nil
   optRun = ns.Async.optimizeSets(items,
     { buff = buff, professions = professions, faction = faction, trinketLocks = trinketLocks,
-      goals = goals, keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } },
+      encounter = encounter, goals = goals, keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } },
     function(results) -- onDone
       optButton:SetEnabled(true)
       renderOptimize(results)

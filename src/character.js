@@ -15,9 +15,21 @@ export function evaluateSet(s) {
   const hsBonus = s.hsBlockBonus ?? 30; // Holy Shield +30%, or 35.32 w/ block libram
   const critRed = critReduction(s.defenseSkill, s.resilienceRating ?? 0);
 
-  const actualAvoidance = (s.missPct ?? 0) + (s.dodgePct ?? 0) + (s.parryPct ?? 0);
-  const totalAvoidanceNoHS = actualAvoidance + (s.blockPct ?? 0);
+  const missP = s.missPct ?? 0, dodgeP = s.dodgePct ?? 0, parryP = s.parryPct ?? 0, blockP = s.blockPct ?? 0;
+  const actualAvoidance = missP + dodgeP + parryP;
+  const totalAvoidanceNoHS = actualAvoidance + blockP;
   const totalAvoidanceWithHS = totalAvoidanceNoHS + hsBonus;
+
+  // Encounter-adjusted crush avoidance (Holy Shield included). Some fights strip part of your avoidance,
+  // so staying uncrushable there needs MORE gear avoidance:
+  //  • Illidan — Shear cannot MISS, so miss doesn't count: dodge + parry + block + HS.
+  //  • Sunwell — Sunwell Radiance = boss +5% hit (miss -5) and -20% to your dodge:
+  //    max(0, miss-5) + max(0, dodge-20) + parry + block + HS.
+  const illyAvoidance = dodgeP + parryP + blockP + hsBonus;
+  const swpAvoidance =
+    Math.max(0, missP - CAPS.sunwellHitReduction) +
+    Math.max(0, dodgeP - CAPS.sunwellDodgeReduction) +
+    parryP + blockP + hsBonus;
 
   // Physical EHP = the health pool behind armor mitigation. Avoidance (dodge/parry/miss) is NOT
   // multiplied in here: the guide notes it has DIMINISHING returns (it smooths the average but not
@@ -47,6 +59,14 @@ export function evaluateSet(s) {
     crushSurplus: totalAvoidanceWithHS - CAPS.uncrushableCombined,
     uncrushable: totalAvoidanceWithHS + 1e-9 >= CAPS.uncrushableCombined,
 
+    // Encounter-specific uncrushable (Illidan / Sunwell): same 102.4% cap, reduced avoidance.
+    illyAvoidance,
+    illyUncrushable: illyAvoidance + 1e-9 >= CAPS.uncrushableCombined,
+    illyCrushSurplus: illyAvoidance - CAPS.uncrushableCombined,
+    swpAvoidance,
+    swpUncrushable: swpAvoidance + 1e-9 >= CAPS.uncrushableCombined,
+    swpCrushSurplus: swpAvoidance - CAPS.uncrushableCombined,
+
     // Throughput / survival objectives
     spellPower: s.spellPower ?? 0, // threat objective (matches the sheet's SP proxy)
     blockValue: s.blockValue ?? 0,
@@ -55,8 +75,13 @@ export function evaluateSet(s) {
   };
 }
 
-// Does a set satisfy a goal's hard gates? (uncrittable always; uncrushable per goal)
-export function passesGates(evald, { raid = true, requireUncrushable = false } = {}) {
+// Does a set satisfy a goal's hard gates? (uncrittable always; uncrushable per goal). `encounter`
+// ('illidan' | 'sunwell' | null) picks which uncrushable the crush gate uses (see evaluateSet).
+export function passesGates(evald, { raid = true, requireUncrushable = false, encounter = null } = {}) {
   const critOk = raid ? evald.raidCritImmune : evald.heroicCritImmune;
-  return critOk && (!requireUncrushable || evald.uncrushable);
+  if (!requireUncrushable) return critOk;
+  const uncrush = encounter === 'sunwell' ? evald.swpUncrushable
+    : encounter === 'illidan' ? evald.illyUncrushable
+    : evald.uncrushable;
+  return critOk && uncrush;
 }

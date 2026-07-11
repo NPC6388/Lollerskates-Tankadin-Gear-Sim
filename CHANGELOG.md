@@ -1131,3 +1131,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   don't own) shows **blue**, so you can see at a glance what you'd need to grab before the one-click equip.
   New `haveReady(id)` checks bags (`scanFor`) + equipped slots (`GetInventoryItemID`). `.toc` → 0.8.41.
   JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **v0.8.42 / engine — Illidan & Sunwell encounter avoidance (addon + site).** Some fights leave you less
+  avoidance, so the standard 102.4% uncrushable isn't enough: **Illidan's Shear can't miss** (miss doesn't
+  count → dodge+parry+block+HS), and **Sunwell Radiance** gives the boss +5% hit and −20% to your dodge
+  (→ max(0,miss−5)+max(0,dodge−20)+parry+block+HS). `character.js` `evaluateSet` now exposes `illyAvoidance` /
+  `swpAvoidance` (+ `*Uncrushable` / `*CrushSurplus`), mirrored in `engine/Evaluate.lua`; both validated
+  against the Tankadin II WeakAura (illy 56.89, swp 49.87). `runner.js`/`Runner.lua` gained an `encounter`
+  option ('illidan'|'sunwell'|null) that forces the uncrushable gate onto the reduced avoidance for the
+  uncrushable-gated sets (Raid/Survival/Balanced; AOE Trash still drops the gate). **Addon:** two "Gear for:
+  Illidan / Sunwell" checkboxes on the Optimize tab (both ticked → the stricter Sunwell), plus Illidan/Sunwell
+  rows in the Live readout. **Site:** an "Encounter avoidance" selector (Normal / Illidan / Sunwell) wired
+  into the optimizer + share-link state, and the summary table's Uncrush column shows the encounter-adjusted
+  value. New CAPS `sunwellHitReduction`/`sunwellDodgeReduction`. `.toc` → 0.8.42. JS 150/150, Lua wasm parity
+  (eval 99 field checks) + 31-file syntax pass.

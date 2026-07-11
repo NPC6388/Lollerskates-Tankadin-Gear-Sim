@@ -20,9 +20,16 @@ function Evaluate.evaluateSet(s)
   local hsBonus = s.hsBlockBonus or 30 -- Holy Shield +30%, or 35.32 w/ block libram
   local critRed = Combat.critReduction(s.defenseSkill, s.resilienceRating or 0)
 
-  local actualAvoidance = (s.missPct or 0) + (s.dodgePct or 0) + (s.parryPct or 0)
-  local totalAvoidanceNoHS = actualAvoidance + (s.blockPct or 0)
+  local missP, dodgeP, parryP, blockP = s.missPct or 0, s.dodgePct or 0, s.parryPct or 0, s.blockPct or 0
+  local actualAvoidance = missP + dodgeP + parryP
+  local totalAvoidanceNoHS = actualAvoidance + blockP
   local totalAvoidanceWithHS = totalAvoidanceNoHS + hsBonus
+
+  -- Encounter-adjusted crush avoidance (Holy Shield included): Illidan's Shear can't miss (drop miss);
+  -- Sunwell Radiance = boss +5% hit (miss -5) and -20% to your dodge. Mirrors src/character.js.
+  local illyAvoidance = dodgeP + parryP + blockP + hsBonus
+  local swpAvoidance = math.max(0, missP - CAPS.sunwellHitReduction)
+    + math.max(0, dodgeP - CAPS.sunwellDodgeReduction) + parryP + blockP + hsBonus
 
   -- Physical EHP = health behind armor mitigation. Avoidance is NOT multiplied in (diminishing
   -- returns; valued in the weight scales instead). Flat damage reduction (Imp RF) DOES fold in.
@@ -47,6 +54,14 @@ function Evaluate.evaluateSet(s)
     crushSurplus = totalAvoidanceWithHS - CAPS.uncrushableCombined,
     uncrushable = totalAvoidanceWithHS + 1e-9 >= CAPS.uncrushableCombined,
 
+    -- Encounter-specific uncrushable (Illidan / Sunwell): same 102.4% cap, reduced avoidance.
+    illyAvoidance = illyAvoidance,
+    illyUncrushable = illyAvoidance + 1e-9 >= CAPS.uncrushableCombined,
+    illyCrushSurplus = illyAvoidance - CAPS.uncrushableCombined,
+    swpAvoidance = swpAvoidance,
+    swpUncrushable = swpAvoidance + 1e-9 >= CAPS.uncrushableCombined,
+    swpCrushSurplus = swpAvoidance - CAPS.uncrushableCombined,
+
     -- Throughput / survival objectives
     spellPower = s.spellPower or 0,
     blockValue = s.blockValue or 0,
@@ -56,7 +71,7 @@ function Evaluate.evaluateSet(s)
 end
 
 -- Does a set satisfy a goal's hard gates? (uncrittable always; uncrushable per goal)
--- opts = { raid (default true), requireUncrushable (default false) }
+-- opts = { raid (default true), requireUncrushable (default false), encounter ('illidan'|'sunwell'|nil) }
 function Evaluate.passesGates(evald, opts)
   opts = opts or {}
   local raid = opts.raid
@@ -65,7 +80,12 @@ function Evaluate.passesGates(evald, opts)
   -- through to the heroic check. Branch explicitly.
   local critOk
   if raid then critOk = evald.raidCritImmune else critOk = evald.heroicCritImmune end
-  return critOk and (not opts.requireUncrushable or evald.uncrushable)
+  if not opts.requireUncrushable then return critOk end
+  local uncrush
+  if opts.encounter == "sunwell" then uncrush = evald.swpUncrushable
+  elseif opts.encounter == "illidan" then uncrush = evald.illyUncrushable
+  else uncrush = evald.uncrushable end
+  return critOk and uncrush
 end
 
 return Evaluate

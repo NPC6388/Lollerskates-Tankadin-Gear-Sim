@@ -43,6 +43,16 @@ local ALT_EPS = 0.01                       -- a slot alternative is "near-identi
 local ALT_MAX = 3                          -- at most this many alternatives shown per slot
 Runner.DEFAULT_TRINKET_LOCKS = { icon = 29370, eye = 28789 }
 
+-- Encounter-adjusted crush avoidance / uncrushable (see engine/Evaluate.lua). enc = "illidan"|"sunwell"|nil.
+local function encAvoid(e, enc)
+  if enc == "sunwell" then return e.swpAvoidance elseif enc == "illidan" then return e.illyAvoidance end
+  return e.totalAvoidanceWithHS
+end
+local function encUncrush(e, enc)
+  if enc == "sunwell" then return e.swpUncrushable elseif enc == "illidan" then return e.illyUncrushable end
+  return e.uncrushable
+end
+
 -- Preset goals as tunable EHP:threat ratios (blendScale builds the objective).
 Runner.GOAL_PRESETS = {
   { id = "raid", name = "Raid Threat", focus = "EHP : threat 1:2", ratio = { ehp = 1, threat = 2 }, gates = { raid = true, requireUncrushable = true }, lockEye = true },
@@ -456,7 +466,7 @@ local function runGoal(goal, items, ctx, seed)
     if gt.raid == false then critOk = e.heroicCritImmune else critOk = e.raidCritImmune end
     local need = gt.uncrushableTarget
     if need == nil then need = CAPS.uncrushableCombined end
-    local crushOk = (not gt.requireUncrushable) or (e.totalAvoidanceWithHS + 1e-9 >= need)
+    local crushOk = (not gt.requireUncrushable) or (encAvoid(e, ctx.encounter) + 1e-9 >= need)
     local hpOk = (not gt.minHealth) or ((e.health or 0) + 1e-9 >= gt.minHealth)
     return critOk and crushOk and hpOk
   end
@@ -471,7 +481,7 @@ local function runGoal(goal, items, ctx, seed)
     gateAware = true
     local gg = gemSet(function(v) return scaleOf[v] end)
     local improved = finalLegal(gg.evald)
-      or gg.evald.totalAvoidanceWithHS > g.evald.totalAvoidanceWithHS
+      or encAvoid(gg.evald, ctx.encounter) > encAvoid(g.evald, ctx.encounter)
       or gg.evald.critReduction > g.evald.critReduction
     if improved then g = gg else gateAware = false end
   end
@@ -749,6 +759,7 @@ function Runner.optimizeSets(items, options)
     buffName = mode.name,
     pins = options.pins or {},
     maxPhase = options.maxPhase,
+    encounter = options.encounter or nil, -- "illidan" | "sunwell" | nil (see encAvoid/encUncrush)
     faction = options.faction or nil,
     metaExclude = (options.useImbuedMeta == false) and { "Imbued Unstable Diamond" } or {},
     talents = (options.talentRanks and next(options.talentRanks) ~= nil) and Model.talentsFromRanks(options.talentRanks) or nil,
@@ -771,7 +782,7 @@ function Runner.optimizeSets(items, options)
     local floor = (g.gates and g.gates.minHealth) or 0
     local crushReq = (not g.gates) or (g.gates.requireUncrushable ~= false)
     local floorMet = (floor == 0) or (r.agg.health + 1e-9 >= floor)
-    local crushMet = (not crushReq) or r.evald.uncrushable
+    local crushMet = (not crushReq) or encUncrush(r.evald, ctx.encounter)
     if floorMet and crushMet then return r end
     local maxHpGoal = {}
     for k, v in pairs(g) do maxHpGoal[k] = v end

@@ -19,8 +19,18 @@ Running handoff notes for resuming work. Newest session at the top.
   dodge. Both validated against the Tankadin II WA screenshot (Illy 56.89, SWP 49.87). NEXT: two engine-level
   toggles that force the optimizer's uncrushable gate to use the adjusted avoidance (+HS ≥ 102.4), plus
   Live-panel Illy/SWP readout lines. Needs JS+Lua engine change (keep parity) + fixture regen.
-- **Still TODO:** the two trinket-lock DROPDOWNS (replace the "keep equipped" checkbox; populate from owned
-  trinkets → trinketLocks {icon,eye}). Layout re-flow planned; will batch with Illy/SWP as one Optimize-UI update.
+- **Illy/SWP SHIPPED (v0.8.42, engine + addon + site).** `evaluateSet` (character.js + Evaluate.lua) exposes
+  `illyAvoidance` (dodge+parry+block+HS) and `swpAvoidance` ((miss−5)+max(0,dodge−20)+parry+block+HS) + their
+  `*Uncrushable`/`*CrushSurplus`; new CAPS `sunwellHitReduction=5`/`sunwellDodgeReduction=20`. `runner.js`/
+  `Runner.lua` take an `encounter` option ('illidan'|'sunwell'|null) via `encAvoid`/`encUncrush` helpers used
+  in `finalLegal` (crushOk), the gate-recovery "improved" check, and solveGoal's `crushMet`. Addon: two "Gear
+  for: Illidan/Sunwell" checkboxes (UI.encIllidan/encSunwell, Sunwell wins) + Live Illidan/Sunwell rows. Site:
+  `#encounter` select in Advanced → optimizeSets + captureState(enc)/applyState + summary Uncrush column shows
+  encounter value. Regenerated eval fixtures (`bin/gen-fixtures.mjs` — NOT in the hook, staged manually);
+  hook regens runner/optimizer/solver fixtures (unchanged by default). Validated vs the WA to the decimal.
+  Optimize min height 710→734 (encounter row); Live 448→482 (2 rows).
+- **Still TODO:** the two trinket-lock DROPDOWNS (addon; replace the "keep equipped" checkbox; populate from
+  owned trinkets → trinketLocks {icon,eye}). Site already has lockIcon/lockEye dropdowns. Next build.
 
 ## 2026-07-10 — Spacing before the footer (addon v0.8.40)
 

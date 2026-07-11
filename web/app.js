@@ -204,6 +204,7 @@ function init() {
   // Phase drives gem availability AND the per-slot BiS reference list, so re-optimize on change
   // (re-renders with the new phase's gems + BiS list) rather than waiting for the next Optimize.
   $('phase').addEventListener('change', scheduleLiveUpdate);
+  $('encounter').addEventListener('change', scheduleLiveUpdate);
   $('optimizeBtn').addEventListener('click', runOptimize);
   $('shareBtn').addEventListener('click', copyShareLink);
   document.querySelectorAll('.guide-link').forEach((a) => { a.href = GUIDE_URL; }); // header/footer guide links
@@ -273,7 +274,7 @@ function captureState() {
   return {
     v: 1, x: slimExport(exportRaw),
     p: [$('prof1').value, $('prof2').value], b: $('statBuff').value, ph: $('phase').value,
-    k: $('keepScope').value, im: $('imbuedMeta').checked ? 1 : 0,
+    k: $('keepScope').value, im: $('imbuedMeta').checked ? 1 : 0, enc: $('encounter').value,
     sc: [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value),
     li: $('lockIcon').value, le: $('lockEye').value, t: $('talents').value,
     g: goalState, pin: pinnedSlots, ex: [...excludedItemIds], lk: [...lockedItemIds], tab: activeTab,
@@ -292,6 +293,7 @@ function applyState(s) {
   set('prof1', s.p && s.p[0]); set('prof2', s.p && s.p[1]);
   set('statBuff', s.b); set('phase', s.ph); set('keepScope', s.k);
   $('imbuedMeta').checked = !!s.im;
+  set('encounter', s.enc);
   document.querySelectorAll('.scroll-cb').forEach((c) => { c.checked = (s.sc || []).includes(c.value); });
   set('lockIcon', s.li); set('lockEye', s.le);
   if (s.t != null) { $('talents').value = s.t; updateTalentSummary(); }
@@ -569,7 +571,7 @@ function optimizeNow(live) {
       [r.goal.id, Object.fromEntries(Object.entries(r.selection).filter(([, it]) => it).map(([s, it]) => [s, it.itemId]))])) : undefined;
     const results = optimizeSets(optimizerPool(), {
       professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
-      faction, useImbuedMeta: $('imbuedMeta').checked,
+      faction, useImbuedMeta: $('imbuedMeta').checked, encounter: $('encounter').value || null,
       keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots, exclude: [...excludedItemIds], seeds,
       talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
     });
@@ -709,13 +711,18 @@ function render(results) {
   setStep(3); // guide arrow moves to the results
   $('useOwnCta').hidden = !loadedSample; // only nudge the addon when they're looking at the demo
   const sh = (r) => spellHitPct(r.agg);
+  // Encounter-adjusted crush avoidance (Illidan / Sunwell) so the Uncrush column shows the number the
+  // gate actually used for the selected encounter.
+  const enc = $('encounter').value;
+  const encName = enc === 'sunwell' ? ' (Sunwell)' : enc === 'illidan' ? ' (Illidan)' : '';
+  const crushVal = (r) => enc === 'sunwell' ? r.evald.swpAvoidance : enc === 'illidan' ? r.evald.illyAvoidance : r.evald.totalAvoidanceWithHS;
 
   $('summary').innerHTML = `<table><thead><tr>
-      <th>Set</th><th>${term('EHP', 'ehp')}</th><th>Spell&nbsp;dmg</th><th><abbr class="tip" title="Spell-hit cap vs a level-${BASE.raidBossLevel} raid boss is ${CAPS.spellHitCapPct}%. Below it, spell hit recovers missed spell threat; at it, more gives nothing. Hover a set's Spell panel for how far that set is below.">Spell&nbsp;hit</abbr></th><th>Stam</th><th>${term('Uncrush', 'uncrush')}</th><th>${term('Uncrit', 'uncrit')}</th>
+      <th>Set</th><th>${term('EHP', 'ehp')}</th><th>Spell&nbsp;dmg</th><th><abbr class="tip" title="Spell-hit cap vs a level-${BASE.raidBossLevel} raid boss is ${CAPS.spellHitCapPct}%. Below it, spell hit recovers missed spell threat; at it, more gives nothing. Hover a set's Spell panel for how far that set is below.">Spell&nbsp;hit</abbr></th><th>Stam</th><th>${term('Uncrush', 'uncrush')}${encName}</th><th>${term('Uncrit', 'uncrit')}</th>
     </tr></thead><tbody>${results.map((r, i) => `<tr class="${i === activeTab ? 'sel' : ''}">
       <td>${r.goal.name}</td><td>${fmt(r.evald.ehpPhysical)}</td><td>${fmt(litSP(r.agg))}${r.agg.spellPowerEquiv ? `<abbr class="equiv" title="+${fmt(r.agg.spellPowerEquiv)} threat-equivalent spell damage from ${r.agg.spellPowerEquivSource || 'a relic effect'} (e.g. +Consecration damage). Not literal spell power — Sixty Upgrades won't show it.">+${fmt(r.agg.spellPowerEquiv)}</abbr>` : ''}</td>
       <td>${sh(r).toFixed(2)}%</td><td>${fmt(r.agg.stamina)}</td>
-      <td>${r.evald.totalAvoidanceWithHS.toFixed(1)}%</td><td>${yesno(r.evald.raidCritImmune)}</td>
+      <td>${crushVal(r).toFixed(1)}%</td><td>${yesno(r.evald.raidCritImmune)}</td>
     </tr>`).join('')}</tbody></table>`;
 
   $('tabs').innerHTML = results.map((r, i) =>

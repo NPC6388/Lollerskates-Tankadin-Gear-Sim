@@ -35,6 +35,10 @@ export const CAPS = {
   defenseSkillRaid: 490,    // crit immunity vs level 73 (guide: 1527-1534)
   defenseSkillHeroic: 485,  // crit immunity vs level 72
   uncrushableCombined: 102.4, // miss+dodge+parry+block >= this => no crushing (guide: 1566)
+  // Encounter avoidance modifiers (see character.js evaluateSet): Illidan's Shear cannot miss, and
+  // Sunwell Radiance gives the boss +5% hit (your miss -5) and -20% to your dodge.
+  sunwellHitReduction: 5,   // Sunwell Radiance: chance to be missed reduced by 5
+  sunwellDodgeReduction: 20, // Sunwell Radiance: dodge reduced by 20
   spellHitCapPct: 17,       // vs raid boss (guide table)
   meleeHitCapPct: 9,        // vs raid boss (6% with 3/3 Precision)
   expertiseSoftCap: 26,     // eliminates boss dodge
