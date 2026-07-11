@@ -13,13 +13,15 @@ User batch (logged here; "do what you can for now"):
    screenshots that don't exist yet (docs/assets/*.png), rendering as broken-image icons on the LIVE site.
    Now hidden on load-error (JS in init) so the hub reads clean until a human captures them. Also bumped the
    stale "Addon v0.8.40" hub badge.
-3. **[TODO — big data task] Engineering / profession items missing from the "also viable" lists.** User
-   selected Engineering; expected items didn't appear. NOTE: their example, Goblin Rocket Launcher (item
-   23836), is a GUN — **paladins can't equip guns**, so that specific item is out. But the real gap is that
-   `web/bis.js` (the per-phase per-slot BiS reference list that feeds "also viable") isn't built out with
-   profession-craftable items. Fix = transcribe the guide's per-phase BiS incl. profession items
-   (https://www.wowhead.com/tbc/guide/classes/paladin/tank-bis-gear-pve) into bis.js + bis-items.js, gated by
-   profession. We're currently in **phase 2**. Sizeable — not done this turn.
+3. **[PARTLY DONE] Engineering item missing from the phase-2 also-viable list.** The example, **Goblin Rocket
+   Launcher (23836), IS an Engineering TRINKET** (Goblin Engineer, +45 stam, on-use rocket; Phase 1 → usable
+   all phases). It was already in `web/bis.js` trinket lists for phases **1, 3, 4** but **missing from phase 2**
+   (and 5) — a scrape gap, since the user is in phase 2 they didn't see it. **FIXED:** added to phase-2 trinket
+   list with an "Engineering only" note. (I earlier wrongly called it a gun — it is a trinket, confirmed by the
+   in-game tooltip.) STILL TODO: (a) audit every phase×slot for other missing profession-craftable items vs the
+   guide (https://www.wowhead.com/tbc/guide/classes/paladin/tank-bis-gear-pve); (b) optional PROFESSION-GATING
+   so the BiS block hides items you can't craft (bisHTML has no prof filter today — it shows all, now with a
+   note). Left phase 5 without it (outclassed by Sunwell trinkets).
 4. **[DONE] Advanced settings button** — made larger / button-styled + more visible. (The "⚙ Change the
    options" link below the sets already opened it via `adv.open = true`.)
 5. **[DONE] "Use my own gear" button** (`#useOwnBtn`, below the sample results) now walks the guided arrow to
