@@ -4,7 +4,25 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Tuning rows relaid out (2-line/goal), box-arrows dropped (addon v0.8.31)
+## 2026-07-10 (latest) — Slider layout iterations to the user's mockups (addon v0.8.32–v0.8.33)
+
+Two more layout passes on the Optimize tuning sliders (all addon-only, committed + pushed; user iterating
+via screenshots):
+- **v0.8.32** — the ◂/▸ text arrows rendered as boxes AND the user wanted real buttons on the slider ends.
+  Replaced them with **arrow-TEXTURE buttons** (`arrowButton` using WoW's built-in spellbook page-turn
+  textures `UI-SpellbookIcon-Prev/NextPage-Up/Down/Disabled` — reliable left/right glyphs, no font deps).
+  Moved the label + value to the line above the slider. (Intermediate — superseded same session.)
+- **v0.8.33** — user sent a precise mockup: `Set Name` on its own line, then `EHP  1:4  Threat` (left axis /
+  centred value / right axis), then `[btn] ---- [btn]`. Implemented exactly: `tuneSlider` now draws a 3-part
+  label line (three FontStrings sharing the slider's width box, LEFT/CENTER/RIGHT justify so they never
+  collide), the centred CYAN value updates live, arrow buttons flank the slider. `goalSlider` is 3 lines:
+  name, then the "EHP | ratio | Threat" and "off | hp | 20k" sliders side by side. Loop step -42→-56, cards
+  cy -262→-320, Optimize min height 668→726.
+- Verified each: JS 150/150, 31-file syntax PASS, zip rebuilt, installed synced. **Still NOT eyeballed
+  in-game** — user to `/reload` and confirm the 3-part labels align over the sliders, the spellbook arrow
+  textures render as ◄/► buttons, and nothing overlaps at the 726px min height.
+
+## 2026-07-10 — Tuning rows relaid out (2-line/goal), box-arrows dropped (addon v0.8.31)
 
 User sent an in-game screenshot: the ◂/▸ arrows rendered as **empty boxes** (WoW's font lacks U+25C2/25B8)
 and the one-line rows were cramped (goal name truncated to "Su.."). Sent a mockup: goal name on its own line,

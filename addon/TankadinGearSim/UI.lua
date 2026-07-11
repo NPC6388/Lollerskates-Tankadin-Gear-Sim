@@ -19,7 +19,7 @@ UI.assumeBuffs = true
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
   live     = { 300, 420 },
-  optimize = { 470, 668 },
+  optimize = { 470, 726 },
   export   = { 470, 260 },
 }
 
@@ -31,7 +31,6 @@ local optRun -- active async handle (so re-clicking cancels the prior run)
 -- WeakAura-style palette: gold stat labels, cyan values, green/red for pass/fail, on the black bg.
 local GOOD, BAD, DIM = "|cff7ee787", "|cffff6b6b", "|cff9aa0a6"
 local GOLD, CYAN = "|cffd9b870", "|cff5fd0e6"
-local WHITE = "|cffffffff" -- hover highlight for the clickable slider nudge labels
 local TICK  = "|TInterface/RaidFrame/ReadyCheck-Ready:0|t"     -- built-in green check texture
 local CROSS = "|TInterface/RaidFrame/ReadyCheck-NotReady:0|t"  -- built-in red cross texture
 local function color(hex, s) return hex .. s .. "|r" end
@@ -111,63 +110,74 @@ end
 
 local function fmtHp(h) if h <= MINHP.min then return "off" end return string.format("%.1fk", h / 1000) end
 
--- A clickable text label (the site makes the slider's flanking labels the nudge buttons; so do we —
--- "◂ Raid" and "1:4 ▸" ARE the buttons). :SetLabel(text) repaints in the base color; hover -> white.
-local function textBtn(pane, width, justify, normalHex)
+-- A left/right nudge button using WoW's built-in spellbook page-turn arrow textures (reliable
+-- left/right glyphs on this client — no font-dependent characters). dir<0 = left (prev), dir>0 = right.
+local function arrowButton(pane, dir, onClick)
   local b = CreateFrame("Button", nil, pane)
-  b:SetSize(width, 16)
-  local t = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  t:SetAllPoints(b); t:SetJustifyH(justify or "LEFT")
-  b.plain = ""
-  local function paint(hex) t:SetText(color(hex, b.plain)) end
-  function b:SetLabel(s) b.plain = s; paint(normalHex) end
-  b:SetScript("OnEnter", function() paint(WHITE) end)
-  b:SetScript("OnLeave", function() paint(normalHex) end)
+  b:SetSize(18, 18)
+  local base = (dir < 0) and "Interface\\Buttons\\UI-SpellbookIcon-PrevPage"
+                          or "Interface\\Buttons\\UI-SpellbookIcon-NextPage"
+  b:SetNormalTexture(base .. "-Up")
+  b:SetPushedTexture(base .. "-Down")
+  b:SetDisabledTexture(base .. "-Disabled")
+  b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+  b:SetScript("OnClick", onClick)
   return b
 end
 
--- One bare slider (Low/High/Text captions stripped) flanked by two clickable labels: the left label
--- (static, e.g. "threat") nudges toward min; the right label (the live readout, e.g. "1:4") nudges toward
--- max. Dragging works too. `format(val)` builds the readout; `apply(val)` stores state. Returns the slider.
+-- One tuning control laid out like the user's mockup: a 3-part label line ABOVE the slider —
+-- left axis (e.g. "EHP"), centered live value (e.g. "1:4"), right axis (e.g. "Threat") — then a bare
+-- slider (Low/High/Text captions stripped) flanked by ◄ / ► arrow buttons. `x,y` = top-left of the label
+-- line; the slider sits 16px below. `format(val)` builds the centre value; `apply(val)` stores state.
 local sliderSeq = 0
 local function tuneSlider(pane, x, y, cfg)
-  local left = textBtn(pane, cfg.leftW or 44, "LEFT", DIM)
-  left:SetPoint("TOPLEFT", x, y - 2)
-  left:SetLabel(cfg.leftText)
+  local w = cfg.sliderW or 120
+  local sliderX = x + 19 -- room for the left arrow button
   sliderSeq = sliderSeq + 1
   local sname = "TGSTune" .. sliderSeq
   local s = CreateFrame("Slider", sname, pane, "OptionsSliderTemplate")
-  s:SetPoint("TOPLEFT", x + (cfg.leftW or 44) + 2, y); s:SetWidth(cfg.sliderW or 64); s:SetHeight(16)
+  s:SetPoint("TOPLEFT", sliderX, y - 16); s:SetWidth(w); s:SetHeight(16)
   s:SetMinMaxValues(cfg.min, cfg.max); s:SetValueStep(cfg.step); s:SetObeyStepOnDrag(true)
   for _, suf in ipairs({ "Low", "High", "Text" }) do
     local r = _G[sname .. suf] or s[suf]; if r then r:SetText(""); r:Hide() end
   end
-  local right = textBtn(pane, cfg.rightW or 44, "LEFT", CYAN)
-  right:SetPoint("LEFT", s, "RIGHT", 6, 0)
-  local function setRight(val) right:SetLabel(cfg.format(val)) end
-  s:SetScript("OnValueChanged", function(self, val) cfg.apply(val); setRight(val) end)
-  left:SetScript("OnClick", function() s:SetValue(s:GetValue() - cfg.step) end)
-  right:SetScript("OnClick", function() s:SetValue(s:GetValue() + cfg.step) end)
-  s:SetValue(cfg.value); cfg.apply(cfg.value); setRight(cfg.value)
+  local left = arrowButton(pane, -1, function() s:SetValue(s:GetValue() - cfg.step) end)
+  left:SetPoint("RIGHT", s, "LEFT", -1, 0)
+  local right = arrowButton(pane, 1, function() s:SetValue(s:GetValue() + cfg.step) end)
+  right:SetPoint("LEFT", s, "RIGHT", 1, 0)
+  -- 3-part label line: left/centre/right share the slider's width box, differing only in justify, so a
+  -- short left axis, a centred value and a right axis never collide as long as they don't overflow w.
+  local function lbl(justify, hex, txt)
+    local f = pane:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    f:SetPoint("TOPLEFT", sliderX, y); f:SetWidth(w); f:SetJustifyH(justify)
+    if txt then f:SetText(color(hex, txt)) end
+    return f
+  end
+  lbl("LEFT", DIM, cfg.leftLabel)
+  lbl("RIGHT", DIM, cfg.rightLabel)
+  local centre = lbl("CENTER", CYAN, nil)
+  local function setV(val) centre:SetText(color(CYAN, cfg.format(val))) end
+  s:SetScript("OnValueChanged", function(self, val) cfg.apply(val); setV(val) end)
+  s:SetValue(cfg.value); cfg.apply(cfg.value); setV(cfg.value)
   return s
 end
 
--- One goal's tuning block: the goal name on its own line, then an EHP<->Threat slider ("threat  <ratio>")
--- and a Min-HP slider ("hp min  <floor>") below it. The flanking labels are click-to-nudge (or drag the
--- slider); nudging/dragging updates UI.goalV / UI.goalMinHP, which the next Optimize click uses.
+-- One goal's tuning block (mockup layout): the goal name on its own line, then two labelled sliders
+-- below it — "EHP | <ratio> | Threat" and "off | <floor> | 20k" — each with ◄ / ► arrow buttons.
+-- Nudging/dragging updates UI.goalV / UI.goalMinHP, which the next Optimize click uses.
 local function goalSlider(pane, y, id)
   local name = pane:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   name:SetPoint("TOPLEFT", 12, y); name:SetText(color(GOLD, GOAL_FULLNAME[id]))
-  local cy = y - 17
-  tuneSlider(pane, 22, cy, {
+  local ly = y - 18 -- the two sliders' label lines (each slider is 16 below its labels)
+  tuneSlider(pane, 8, ly, {
     min = -3, max = 3, step = 0.5, value = UI.goalV[id] or 0,
-    leftText = "threat", leftW = 40, sliderW = 64, rightW = 36,
+    leftLabel = "EHP", rightLabel = "Threat", sliderW = 120,
     format = function(val) return ratioShort(id, val) end,
     apply = function(val) UI.goalV[id] = val end,
   })
-  tuneSlider(pane, 216, cy, {
+  tuneSlider(pane, 190, ly, {
     min = MINHP.min, max = MINHP.max, step = MINHP.step, value = UI.goalMinHP[id] or MINHP.min,
-    leftText = "hp min", leftW = 42, sliderW = 56, rightW = 44,
+    leftLabel = "off", rightLabel = "20k", sliderW = 120,
     format = function(val) return fmtHp(val) end,
     apply = function(val) UI.goalMinHP[id] = val end,
   })
@@ -297,14 +307,14 @@ local function buildFrame()
   local sy = -88
   for _, id in ipairs(SLIDER_GOALS) do
     pcall(goalSlider, opt, sy, id) -- contain any template issue so the whole Optimize tab still builds
-    sy = sy - 42 -- two lines per goal (name, then the threat + hp-min sliders)
+    sy = sy - 56 -- three lines per goal (name, then the labelled threat + hp-min sliders)
   end
   -- Four goal cards (name + gate chip, then two stat lines each).
   -- Cards span the pane width (so a wider frame shows more) and NEVER wrap — long lines clip at the
   -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
   -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
   optCards = {}
-  local cy = -262
+  local cy = -320
   for i = 1, 4 do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)

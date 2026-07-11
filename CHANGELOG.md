@@ -1071,3 +1071,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   lean, readout e.g. `1:4`) and an **"hp min" slider** (floor, e.g. `11.5k`) beneath it. The flanking labels
   stay click-to-nudge (dim, white on hover) — just no arrow glyphs. Optimize min height 582→668.
   `.toc` → 0.8.31. JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **Addon v0.8.32 — labels above the slider + real arrow-texture nudge buttons.** Per the user: moved each
+  slider's label ("threat" / "hp min") and live value ("1:4" / "11.5k") to the line **above** the slider, and
+  replaced the click-to-nudge text labels with proper **◄ / ► buttons** flanking the slider — using WoW's
+  built-in spellbook page-turn arrow textures (`UI-SpellbookIcon-Prev/NextPage`), so no font-dependent glyphs.
+  Layout per goal: goal name + both sliders' label/value on the top line, the two arrow-flanked sliders below.
+  Dragging still works; the arrows step by the slider's increment. `.toc` → 0.8.32. JS 150/150, Lua wasm
+  parity + 31-file syntax pass.
+- **Addon v0.8.33 — tuning rows relaid out to the user's mockup (3-part labels).** Each goal is now three
+  lines: the **goal name** on its own line, then two labelled sliders below — the threat slider reads
+  **`EHP` | `<ratio>` | `Threat`** (left axis, centred live value, right axis) and the floor slider reads
+  **`off` | `<hp>` | `20k`** — each flanked by the ◄ / ► arrow buttons. The three label parts share the
+  slider's width box (left/centre/right justify) so they never collide. Optimize min height 668→726 (cards
+  shifted for the taller rows). `.toc` → 0.8.33. JS 150/150, Lua wasm parity + 31-file syntax pass.
