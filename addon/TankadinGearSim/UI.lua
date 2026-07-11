@@ -349,8 +349,10 @@ local function buildFrame()
   end
   optSubs = opt:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   optSubs:SetPoint("BOTTOMLEFT", 10, 6); optSubs:SetPoint("BOTTOMRIGHT", -22, 6); optSubs:SetJustifyH("LEFT")
-  optSubs:SetText("Keeps your gems/enchants; profs & faction auto-detected.\n"
-    .. color(CYAN, "Full sim: npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"))
+  -- Two lines, each short enough to NOT wrap at the 380px min width (a wrapped footer overlaps the cards):
+  -- line 1 the gem note, line 2 the bare sim URL (still the click-to-copy target below).
+  optSubs:SetText("Keeps gems/enchants; profs & faction auto. Sim:\n"
+    .. color(CYAN, "npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"))
   -- The footer's a plain FontString (can't be Ctrl+C'd in-game), so a transparent button over it pops a
   -- dialog with the URL pre-selected to copy — WoW can't open a browser from an addon.
   local siteLink = CreateFrame("Button", nil, opt)

@@ -4,7 +4,17 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Optimize tab: footer overlap + dead width fix (addon v0.8.38)
+## 2026-07-10 (latest) — Footer overlap, for real this time (addon v0.8.39)
+
+v0.8.38 didn't fix it: the "shortened" footer lines were still ~57 chars and each wrapped at the 380px min
+width → 4 rendered lines → still overlapped the Balanced card (card4 l3 at pane-y −554; a 4-line bottom-
+anchored footer's top lands ~−558 at height 686). Verified the min-clamp works (UI.Select clamps to
+max(saved, TAB_MIN)), so height WAS 686 — the footer was just too tall. Rewrote the footer as two lines that
+each fit in the 332px footer width at 380: "Keeps gems/enchants; profs & faction auto. Sim:" (47 ch) + bare
+URL (48 ch). Now a reliable 2 lines (~24px), 686 clears it by ~16px. `.toc` → 0.8.39. Verified JS 150/150,
+31-file syntax PASS, zip rebuilt, installed synced, committed + pushed.
+
+## 2026-07-10 — Optimize tab: footer overlap + dead width fix (addon v0.8.38)
 
 Screenshot at min size: the wrapping 2-logical-line footer (URL line) rendered ~4 lines and overlapped the
 Balanced card; also too much blank space on the right. Fixes: shortened footer to 2 short lines

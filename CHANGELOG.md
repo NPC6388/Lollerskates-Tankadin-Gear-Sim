@@ -1118,3 +1118,8 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   reset the Optimize min size to **380×686** (from 470×668) so the content fits with the footer clear of the
   cards and far less blank space on the right. (A previously-saved wider size persists until you drag the grip
   narrower — the min now allows down to 380.) `.toc` → 0.8.38. JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **Addon v0.8.39 — actually stop the footer overlap.** v0.8.38's "short" footer lines were still ~57 chars
+  and each wrapped at the 380px min width, so the footer rendered 4 lines and still clipped the Balanced card.
+  Rewrote it as two genuinely-short lines that don't wrap at 380px — line 1 the gem note, line 2 the bare sim
+  URL — so the footer is a reliable 2 lines that the 686px height clears. `.toc` → 0.8.39. JS 150/150, Lua
+  wasm parity + 31-file syntax pass.

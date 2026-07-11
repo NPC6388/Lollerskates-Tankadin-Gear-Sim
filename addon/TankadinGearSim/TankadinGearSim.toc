@@ -2,7 +2,7 @@
 ## Title: Tankadin Gear Sim
 ## Notes: Live tank readout (uncrittable/uncrushable/EHP) + gear export for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.8.38
+## Version: 0.8.39
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB, TankadinGearSimUI
 ## X-Category: Combat
