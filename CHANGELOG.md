@@ -1112,3 +1112,9 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **Addon v0.8.37 — Escape closes the window.** Registered `TGSMainFrame` in `UISpecialFrames` so pressing
   Escape hides it like any standard Blizzard window. `.toc` → 0.8.37. JS 150/150, Lua wasm parity + 31-file
   syntax pass.
+- **Addon v0.8.38 — Optimize tab: no footer overlap + less dead width.** The wrapping footer was tall enough
+  to overlap the Balanced card at the shrunk height, and the frame was wider than its content. Shortened the
+  footer to two short lines, narrowed the two tuning sliders (120→110) and pulled the Min-HP column in, and
+  reset the Optimize min size to **380×686** (from 470×668) so the content fits with the footer clear of the
+  cards and far less blank space on the right. (A previously-saved wider size persists until you drag the grip
+  narrower — the min now allows down to 380.) `.toc` → 0.8.38. JS 150/150, Lua wasm parity + 31-file syntax pass.

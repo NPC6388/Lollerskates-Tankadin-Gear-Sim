@@ -19,7 +19,7 @@ UI.assumeBuffs = true
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
   live     = { 300, 448 },
-  optimize = { 470, 668 },
+  optimize = { 380, 686 },
   export   = { 470, 260 },
 }
 
@@ -187,13 +187,13 @@ local function goalSlider(pane, y, id)
   local sy = y - 30 -- slider top; its 3-part labels sit just above it, one line under the name
   tuneSlider(pane, 8, sy, {
     min = -3, max = 3, step = 0.5, value = UI.goalV[id] or 0,
-    leftLabel = "EHP", rightLabel = "Threat", sliderW = 120,
+    leftLabel = "EHP", rightLabel = "Threat", sliderW = 110,
     format = function(val) return ratioShort(id, val) end,
     apply = function(val) UI.goalV[id] = val end,
   })
-  tuneSlider(pane, 190, sy, {
+  tuneSlider(pane, 176, sy, {
     min = MINHP.min, max = MINHP.max, step = MINHP.step, value = UI.goalMinHP[id] or MINHP.min,
-    leftLabel = "off", rightLabel = "20k", sliderW = 120,
+    leftLabel = "off", rightLabel = "20k", sliderW = 110,
     format = function(val) return fmtHp(val) end,
     apply = function(val) UI.goalMinHP[id] = val end,
   })
@@ -349,8 +349,8 @@ local function buildFrame()
   end
   optSubs = opt:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   optSubs:SetPoint("BOTTOMLEFT", 10, 6); optSubs:SetPoint("BOTTOMRIGHT", -22, 6); optSubs:SetJustifyH("LEFT")
-  optSubs:SetText("Keeps your completed gems/enchants (no re-gem); professions & faction auto-detected.\n"
-    .. color(CYAN, "Re-gem & content-phase options at the full sim: npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"))
+  optSubs:SetText("Keeps your gems/enchants; profs & faction auto-detected.\n"
+    .. color(CYAN, "Full sim: npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"))
   -- The footer's a plain FontString (can't be Ctrl+C'd in-game), so a transparent button over it pops a
   -- dialog with the URL pre-selected to copy — WoW can't open a browser from an addon.
   local siteLink = CreateFrame("Button", nil, opt)

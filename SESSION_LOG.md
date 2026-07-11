@@ -4,7 +4,17 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Escape closes the window (addon v0.8.37)
+## 2026-07-10 (latest) — Optimize tab: footer overlap + dead width fix (addon v0.8.38)
+
+Screenshot at min size: the wrapping 2-logical-line footer (URL line) rendered ~4 lines and overlapped the
+Balanced card; also too much blank space on the right. Fixes: shortened footer to 2 short lines
+("Keeps your gems/enchants; profs & faction auto." / "Full sim: <url>"), narrowed both tuning sliders
+120→110 and moved the Min-HP column x 190→176, min size 470×668 → **380×686**. Pane usable height =
+frameHeight−74; card4 l3 ends ~pane-y −554, so 686 keeps the bottom-anchored footer (~24px) clear.
+NOTE: the shared saved size persists — a previously-saved 470 width stays until the user drags narrower (min
+now 380). `.toc` → 0.8.38. JS 150/150, 31-file syntax PASS, zip rebuilt, installed synced, committed + pushed.
+
+## 2026-07-10 — Escape closes the window (addon v0.8.37)
 
 `tinsert(UISpecialFrames, "TGSMainFrame")` in buildFrame so Escape hides the window like standard Blizzard
 frames. `.toc` → 0.8.37. JS 150/150, 31-file syntax PASS, zip rebuilt, installed synced, committed + pushed.
