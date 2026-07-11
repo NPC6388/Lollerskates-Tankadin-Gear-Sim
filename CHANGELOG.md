@@ -1126,3 +1126,8 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **Addon v0.8.40 — breathing room before the footer.** The 2-line footer no longer overlapped but sat right
   against the Balanced card; nudged the Optimize min height 686→710 so the bottom-anchored footer clears the
   cards with a comfortable gap. `.toc` → 0.8.40. JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **Addon v0.8.41 — minimap flyout colors "not in bags" items blue (ItemRack-style).** In the set tooltip,
+  each piece already in your bags OR currently worn shows white; a piece that's only in the bank (or you
+  don't own) shows **blue**, so you can see at a glance what you'd need to grab before the one-click equip.
+  New `haveReady(id)` checks bags (`scanFor`) + equipped slots (`GetInventoryItemID`). `.toc` → 0.8.41.
+  JS 150/150, Lua wasm parity + 31-file syntax pass.

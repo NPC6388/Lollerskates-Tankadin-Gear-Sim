@@ -4,7 +4,25 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Spacing before the footer (addon v0.8.40)
+## 2026-07-11 (latest) — Minimap "not in bags" items blue; marketing package built; Illy/SWP formulas confirmed
+
+- **Addon v0.8.41 — minimap flyout blue-coloring.** Set tooltip: white = in bags or worn (`haveReady` via
+  `scanFor(BAGS)` + `GetInventoryItemID` slots 1-19); blue (0.5,0.7,1.0) = only in bank / unowned, ItemRack-
+  style. Footer line notes "Blue = not in bags."
+- **Marketing package (separate commit).** Five agents produced `docs/{explainer,visual-identity,asset-
+  checklist,tutorial,curseforge,launch-posts}.md` + `docs/assets/.gitkeep`, an overhauled `README.md`, and an
+  `index.html` "About the ecosystem" hub + fixed the dead `href="#"` guide link (now the real guide URL) +
+  scoped `web/style.css`. Screenshots are placeholders — human must capture per `docs/asset-checklist.md`;
+  CurseForge setup still TODO (per `addon/PUBLISHING.md`).
+- **Illy/SWP formulas CONFIRMED (next build).** Illy (Illidan) = dodge+parry+block (Shear can't miss). SWP
+  (Sunwell) = (miss−5) + max(0, dodge−20) + parry + block — Sunwell Radiance = boss +5% hit / −20% tank
+  dodge. Both validated against the Tankadin II WA screenshot (Illy 56.89, SWP 49.87). NEXT: two engine-level
+  toggles that force the optimizer's uncrushable gate to use the adjusted avoidance (+HS ≥ 102.4), plus
+  Live-panel Illy/SWP readout lines. Needs JS+Lua engine change (keep parity) + fixture regen.
+- **Still TODO:** the two trinket-lock DROPDOWNS (replace the "keep equipped" checkbox; populate from owned
+  trinkets → trinketLocks {icon,eye}). Layout re-flow planned; will batch with Illy/SWP as one Optimize-UI update.
+
+## 2026-07-10 — Spacing before the footer (addon v0.8.40)
 
 Footer no longer overlapped (2 lines now) but sat flush against the Balanced card. Bumped Optimize min
 height 686→710 so the bottom-anchored footer clears the cards with a ~26px gap. `.toc` → 0.8.40. JS 150/150,

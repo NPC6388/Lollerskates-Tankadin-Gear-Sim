@@ -72,6 +72,18 @@ local function freeBagSlots()
   return out
 end
 
+-- Is an item ready to equip right now (already in your bags OR already worn)? Items that fail this — in
+-- the bank, or not owned — are shown blue in the flyout tooltip, like ItemRack, so you can see what to grab.
+local GetInventoryItemID = _G.GetInventoryItemID
+local function haveReady(id)
+  if not id then return false end
+  if scanFor(BAGS, id) then return true end
+  if GetInventoryItemID then
+    for slot = 1, 19 do if GetInventoryItemID("player", slot) == id then return true end end
+  end
+  return false
+end
+
 -- ---- store the optimizer's results (called from UI.Optimize onDone) ----
 function M.SetSets(results)
   sets = {}
@@ -136,10 +148,15 @@ local function showSetTooltip(owner, set)
   GameTooltip:AddLine(set.name .. (set.legal and "" or "  " .. BAD .. "(gates not met)|r"), 1, 0.85, 0.44)
   for _, slot in ipairs(SLOT_ORDER) do
     local it = set.slots[slot]
-    if it then GameTooltip:AddDoubleLine(DIM .. SLOT_LABEL[slot] .. "|r", it.name or ("item:" .. tostring(it.id)), 1, 1, 1, 0.9, 0.9, 0.9) end
+    if it then
+      -- White = ready (bags/worn); blue = not in your bags (bank or unowned), like ItemRack.
+      local r, g, b = 0.9, 0.9, 0.9
+      if not haveReady(it.id) then r, g, b = 0.5, 0.7, 1.0 end
+      GameTooltip:AddDoubleLine(DIM .. SLOT_LABEL[slot] .. "|r", it.name or ("item:" .. tostring(it.id)), 1, 1, 1, r, g, b)
+    end
   end
   GameTooltip:AddLine(" ")
-  GameTooltip:AddLine(CYAN .. "Click|r to equip this set.", 0.6, 0.8, 1)
+  GameTooltip:AddLine(CYAN .. "Click|r to equip this set.  " .. "|cff7fb2ffBlue|r = not in bags.", 0.6, 0.8, 1)
   GameTooltip:Show()
 end
 
