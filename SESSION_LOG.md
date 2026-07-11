@@ -4,7 +4,33 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-11 (latest) — Minimap "not in bags" items blue; marketing package built; Illy/SWP formulas confirmed
+## 2026-07-11 (latest) — Site polish batch + logged tasks
+
+User batch (logged here; "do what you can for now"):
+1. **[DONE] Eye-of-Magtheridon** hardcoded in the Balanced blend-dial note (app.js ~432) → reworded generic
+   ("2nd-trinket lock") since the user may lock different trinkets.
+2. **[DONE] Broken graphics on the site** — the "About the ecosystem" hub `<img>`s are placeholders for
+   screenshots that don't exist yet (docs/assets/*.png), rendering as broken-image icons on the LIVE site.
+   Now hidden on load-error (JS in init) so the hub reads clean until a human captures them. Also bumped the
+   stale "Addon v0.8.40" hub badge.
+3. **[TODO — big data task] Engineering / profession items missing from the "also viable" lists.** User
+   selected Engineering; expected items didn't appear. NOTE: their example, Goblin Rocket Launcher (item
+   23836), is a GUN — **paladins can't equip guns**, so that specific item is out. But the real gap is that
+   `web/bis.js` (the per-phase per-slot BiS reference list that feeds "also viable") isn't built out with
+   profession-craftable items. Fix = transcribe the guide's per-phase BiS incl. profession items
+   (https://www.wowhead.com/tbc/guide/classes/paladin/tank-bis-gear-pve) into bis.js + bis-items.js, gated by
+   profession. We're currently in **phase 2**. Sizeable — not done this turn.
+4. **[DONE] Advanced settings button** — made larger / button-styled + more visible. (The "⚙ Change the
+   options" link below the sets already opened it via `adv.open = true`.)
+5. **[DONE] "Use my own gear" button** (`#useOwnBtn`, below the sample results) now walks the guided arrow to
+   the "Use your own gear — install…" dropdown (`#ownGear`) and opens+scrolls to it.
+6. **[REMINDER for next session] Check the addon updates in-game** — the user's addon-update mechanism lags
+   this repo (see [[savedvars-disk-path]]); after a session that bumps the addon, verify in-game it's current
+   (or reinstall from the freshly-built `addon/TankadinGearSim.zip`). Lots of addon versions shipped this
+   session (up to v0.8.43), all UNVERIFIED in-game: trinket dropdowns, Illidan/Sunwell toggles + Live rows,
+   minimap blue-coloring, the tuning-slider layout.
+
+## 2026-07-11 — Minimap "not in bags" items blue; marketing package built; Illy/SWP formulas confirmed
 
 - **Addon v0.8.41 — minimap flyout blue-coloring.** Set tooltip: white = in bags or worn (`haveReady` via
   `scanFor(BAGS)` + `GetInventoryItemID` slots 1-19); blue (0.5,0.7,1.0) = only in bank / unowned, ItemRack-

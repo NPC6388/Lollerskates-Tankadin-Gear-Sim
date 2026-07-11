@@ -197,8 +197,17 @@ function init() {
   $('loadSample').addEventListener('click', loadSample);
   // CTA under the results: open the "use your own gear" section and jump to it.
   $('useOwnBtn').addEventListener('click', () => {
-    $('ownGear').open = true;
-    $('input-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const og = $('ownGear');
+    og.open = true;
+    og.classList.add('nudge'); // walk the guided arrow to the "use your own gear" dropdown
+    og.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  // The "About the ecosystem" hub screenshots are placeholders until a human captures them (docs/assets).
+  // Hide any that fail to load so the live page never shows broken-image icons.
+  document.querySelectorAll('#about-panel img').forEach((img) => {
+    const hide = () => { const fig = img.closest('figure'); (fig || img).style.display = 'none'; };
+    if (img.complete && img.naturalWidth === 0) hide();
+    img.addEventListener('error', hide);
   });
   $('talents').addEventListener('input', updateTalentSummary);
   // Phase drives gem availability AND the per-slot BiS reference list, so re-optimize on change
@@ -429,7 +438,7 @@ function renderLogic() {
     </ul>
 
     <h4>5 · The four sets &amp; the sliders</h4>
-    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Raid Threat, Survival and AOE Trash each blend an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with their own Min-HP floor (AOE also uses AOE-threat weighting and drops the crush gate). <strong>Balanced is a blend dial:</strong> its slider slides between your Survival set (left) and your Raid Threat set (right), interpolating their ratios AND their Min-HP floors (and taking the nearer side's Eye-of-Magtheridon lock) — so the ends reproduce those two sets and the middle splits the difference. It has no Min-HP knob of its own; the floor shown is derived from your two sets.</p>
+    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Raid Threat, Survival and AOE Trash each blend an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with their own Min-HP floor (AOE also uses AOE-threat weighting and drops the crush gate). <strong>Balanced is a blend dial:</strong> its slider slides between your Survival set (left) and your Raid Threat set (right), interpolating their ratios AND their Min-HP floors (and taking the nearer side's 2nd-trinket lock) — so the ends reproduce those two sets and the middle splits the difference. It has no Min-HP knob of its own; the floor shown is derived from your two sets.</p>
 
     <h4>6 · Gems, enchants &amp; metas</h4>
     <ul>
@@ -481,6 +490,7 @@ function tryParse(text) {
 
 async function handleFile(e) {
   const file = e.target.files[0]; if (!file) return;
+  $('ownGear').classList.remove('nudge'); // they're uploading — retire the guided arrow
   const text = await file.text();
   exportRaw = text;
   $('ownGear').open = true; // keep the upload section in view
