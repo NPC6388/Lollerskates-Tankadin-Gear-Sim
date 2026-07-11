@@ -4,7 +4,19 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Minimap set icons, SP/SH card, ratio centring, min-size fixes (addon v0.8.35)
+## 2026-07-10 (latest) — Persist slider values across /reload (addon v0.8.36)
+
+Slider positions (threat lean + Min-HP) were module tables that reset each reload. Now persisted in
+`TankadinGearSimUI` SavedVariables: new `UI.LoadGoalPrefs()` (called at the top of `buildFrame`, which only
+runs on user action so SavedVariables are loaded) links `UI.goalV`/`UI.goalMinHP` to
+`TankadinGearSimUI.goalV`/`.goalMinHP`, seeding missing goals from `GOAL_V_DEFAULT`/`GOAL_MINHP_DEFAULT`. The
+slider `apply` callbacks write `UI.goalV[id] = val` straight into the saved table → persists on logout.
+Also in 0.8.36: **icon swaps** (raid=Sanctity Aura 20218, aoe=Consecration 26573, balanced=Aldori Legacy
+Defender item 29275) resolved by ID (`GetSpellInfo`/`GetItemIcon`) with static fallbacks — if any render
+blank the ID or fallback needs a tweak; **"AOEThr" → "AOE Threat"** on the AOE card (GOAL_SIDES.aoe.rlabel).
+`.toc` → 0.8.36. Verified JS 150/150, 31-file syntax PASS, zip rebuilt, installed synced, committed + pushed.
+
+## 2026-07-10 — Minimap set icons, SP/SH card, ratio centring, min-size fixes (addon v0.8.35)
 
 Batch of fixes from more in-game screenshots:
 - **Minimap set icons** — the flyout's per-set status was a `●` glyph rendering as an empty box. Replaced

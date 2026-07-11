@@ -1100,3 +1100,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Threat labels with centre justify, so a wider "Threat" no longer pushes it off-centre) and **min-size
   fixes** — Live 420→448 (the Spell-hit row + note were overlapping) and Optimize 744→668 (it couldn't shrink
   to the content). `.toc` → 0.8.35. JS 150/150, Lua wasm parity + 31-file syntax pass.
+- **Addon v0.8.36 — slider values persist across /reload.** The per-goal threat/Min-HP slider positions were
+  module-local and reset every reload. They now live in `TankadinGearSimUI` (SavedVariables): `UI.LoadGoalPrefs`
+  (run at the top of `buildFrame`, after SavedVariables load) points `UI.goalV` / `UI.goalMinHP` at the saved
+  tables — seeding any missing goal from the defaults — so a slider you move stays put across reloads and
+  logins. Also this version: **minimap set icons swapped** to the user's picks — raid = Sanctity Aura,
+  aoe = Consecration, balanced = Aldori Legacy Defender (resolved by spell/item **ID** via
+  `GetSpellInfo`/`GetItemIcon` for exact art, with static fallbacks); survival stays Devotion Aura. And the
+  AOE card's ratio label reads **"AOE Threat"** instead of "AOEThr". `.toc` → 0.8.36. JS 150/150, Lua wasm
+  parity + 31-file syntax pass.

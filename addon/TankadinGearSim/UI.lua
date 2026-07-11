@@ -48,15 +48,33 @@ local SLIDER_GOALS = { "raid", "survival", "aoe", "balanced" }
 local GOAL_SIDES = {
   raid     = { left = "ehp", right = "threat",    rlabel = "Threat" },
   survival = { left = "ehp", right = "threat",    rlabel = "Threat" },
-  aoe      = { left = "ehp", right = "aoeThreat", rlabel = "AOEThr" },
+  aoe      = { left = "ehp", right = "aoeThreat", rlabel = "AOE Threat" },
   balanced = { left = "ehp", right = "threat",    rlabel = "Threat" },
 }
 local GOAL_FULLNAME = { raid = "Raid Threat", survival = "Survival", aoe = "AOE Trash", balanced = "Balanced" }
--- Defaults = the user's preferred slider stops (raid 1:4, aoe 1:4, survival 1:1, balanced 1:1).
-local GOAL_V_DEFAULT = { raid = 3, survival = 0, aoe = 3, balanced = 0 }
+-- Defaults = the user's preferred slider stops (raid 1:4, aoe 1:4, survival 1:1, balanced 1:1). These are
+-- only the seed; the live values persist in TankadinGearSimUI (see UI.LoadGoalPrefs, run in buildFrame),
+-- so a slider you move stays put across /reload.
+local GOAL_V_DEFAULT     = { raid = 3, survival = 0, aoe = 3, balanced = 0 }
+local GOAL_MINHP_DEFAULT = { raid = 11500, survival = 14000, aoe = 10500, balanced = 12500 }
 local MINHP = { min = 10000, max = 20000, step = 500 } -- mirrors web/app.js
-UI.goalV     = UI.goalV     or { raid = 3, survival = 0, aoe = 3, balanced = 0 }
-UI.goalMinHP = UI.goalMinHP or { raid = 11500, survival = 14000, aoe = 10500, balanced = 12500 }
+UI.goalV     = UI.goalV     or GOAL_V_DEFAULT     -- re-pointed at the saved table in UI.LoadGoalPrefs
+UI.goalMinHP = UI.goalMinHP or GOAL_MINHP_DEFAULT
+
+-- Point UI.goalV / UI.goalMinHP at the SavedVariable tables (seeding any missing goal from the defaults),
+-- so the sliders read persisted values and every change writes straight through to disk on logout/reload.
+function UI.LoadGoalPrefs()
+  TankadinGearSimUI = TankadinGearSimUI or {}
+  local function link(saved, defaults)
+    saved = saved or {}
+    for k, v in pairs(defaults) do if saved[k] == nil then saved[k] = v end end
+    return saved
+  end
+  TankadinGearSimUI.goalV     = link(TankadinGearSimUI.goalV, GOAL_V_DEFAULT)
+  TankadinGearSimUI.goalMinHP = link(TankadinGearSimUI.goalMinHP, GOAL_MINHP_DEFAULT)
+  UI.goalV     = TankadinGearSimUI.goalV
+  UI.goalMinHP = TankadinGearSimUI.goalMinHP
+end
 
 local function fmtW(w)
   if w == math.floor(w) then return tostring(math.floor(w)) end
@@ -182,6 +200,7 @@ local function goalSlider(pane, y, id)
 end
 
 local function buildFrame()
+  UI.LoadGoalPrefs() -- SavedVariables are loaded by now; link the slider tables so their values persist
   frame = CreateFrame("Frame", "TGSMainFrame", UIParent, "BackdropTemplate")
   frame:SetSize(300, 404) -- compact by default (Live tab); widened for the Export tab in UI.Select
   frame:SetPoint("CENTER")

@@ -11,16 +11,22 @@ local GOLD, CYAN, DIM, GOOD, BAD = "|cffd9b870", "|cff5fd0e6", "|cff9aa0a6", "|c
 local TICK  = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t"
 local CROSS = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:0|t"
 
--- Thematic icon per set (built-in TBC spell/ability icons). Options if you want to swap:
---   raid:     Spell_Holy_RighteousFury (threat aura) · Ability_ThunderClap · Spell_Holy_Excorcism_02 · INV_Sword_27
---   survival: Spell_Holy_DevotionAura (armor aura)   · Spell_Holy_BlessingOfProtection · INV_Shield_06 · Ability_Defend
---   aoe:      Ability_Warrior_Cleave (multi-target)  · Spell_Fire_SelfDestruct · Spell_Holy_Excorcism_02
---   balanced: Spell_Holy_SealOfJustice (scales)      · Ability_Paladin_ArtOfWar · INV_Misc_Gem_Diamond_01
+-- Resolve an icon by spell/item ID (exact art, independent of the icon file name), with a static fallback
+-- if the client hasn't cached that ID yet.
+local function spellTex(id)
+  if not GetSpellInfo then return nil end
+  local _, _, icon = GetSpellInfo(id)
+  return icon
+end
+local function itemTex(id) return GetItemIcon and GetItemIcon(id) or nil end
+
+-- Thematic icon per set: raid = Sanctity Aura, aoe = Consecration, balanced = Aldori Legacy Defender
+-- (by ID); survival = Devotion Aura. Each is a resolver so the ID lookup runs when the flyout is built.
 local SET_ICON = {
-  raid     = "Interface\\Icons\\Spell_Holy_RighteousFury",
-  survival = "Interface\\Icons\\Spell_Holy_DevotionAura",
-  aoe      = "Interface\\Icons\\Ability_Warrior_Cleave",
-  balanced = "Interface\\Icons\\Spell_Holy_SealOfJustice",
+  raid     = function() return spellTex(20218) or "Interface\\Icons\\Spell_Holy_MindVision" end,  -- Sanctity Aura
+  survival = function() return "Interface\\Icons\\Spell_Holy_DevotionAura" end,
+  aoe      = function() return spellTex(26573) or "Interface\\Icons\\Spell_Holy_InnerFire" end,    -- Consecration
+  balanced = function() return itemTex(29275) or "Interface\\Icons\\INV_Shield_18" end,            -- Aldori Legacy Defender
 }
 local SET_ICON_FALLBACK = "Interface\\Icons\\INV_Misc_QuestionMark"
 
@@ -179,7 +185,8 @@ function M.BuildFlyout()
     for i, set in ipairs(sets) do
       local row = getRow(i)
       row:ClearAllPoints(); row:SetSize(width - 12, 20); row:SetPoint("TOPLEFT", 6, y)
-      row.icon:SetTexture(SET_ICON[set.id] or SET_ICON_FALLBACK); row.icon:Show()
+      local ic = SET_ICON[set.id]
+      row.icon:SetTexture((ic and ic()) or SET_ICON_FALLBACK); row.icon:Show()
       row.text:SetText((set.legal and TICK or CROSS) .. " " .. set.name)
       row:SetScript("OnEnter", function(self) showSetTooltip(self, set) end)
       row:SetScript("OnLeave", function() GameTooltip:Hide() end)
