@@ -210,6 +210,8 @@ local function buildFrame()
   frame:RegisterForDrag("LeftButton")
   frame:SetScript("OnDragStart", frame.StartMoving)
   frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+  -- Close on Escape, like standard Blizzard windows (UISpecialFrames hides the top such frame).
+  tinsert(UISpecialFrames, "TGSMainFrame")
   local bg = frame:CreateTexture(nil, "BACKGROUND")
   bg:SetAllPoints(); bg:SetColorTexture(0, 0, 0, 0.9)
 

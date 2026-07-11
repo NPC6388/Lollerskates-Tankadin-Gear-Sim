@@ -1109,3 +1109,6 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   `GetSpellInfo`/`GetItemIcon` for exact art, with static fallbacks); survival stays Devotion Aura. And the
   AOE card's ratio label reads **"AOE Threat"** instead of "AOEThr". `.toc` → 0.8.36. JS 150/150, Lua wasm
   parity + 31-file syntax pass.
+- **Addon v0.8.37 — Escape closes the window.** Registered `TGSMainFrame` in `UISpecialFrames` so pressing
+  Escape hides it like any standard Blizzard window. `.toc` → 0.8.37. JS 150/150, Lua wasm parity + 31-file
+  syntax pass.

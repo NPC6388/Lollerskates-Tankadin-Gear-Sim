@@ -4,7 +4,12 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Persist slider values across /reload (addon v0.8.36)
+## 2026-07-10 (latest) — Escape closes the window (addon v0.8.37)
+
+`tinsert(UISpecialFrames, "TGSMainFrame")` in buildFrame so Escape hides the window like standard Blizzard
+frames. `.toc` → 0.8.37. JS 150/150, 31-file syntax PASS, zip rebuilt, installed synced, committed + pushed.
+
+## 2026-07-10 — Persist slider values across /reload (addon v0.8.36)
 
 Slider positions (threat lean + Min-HP) were module tables that reset each reload. Now persisted in
 `TankadinGearSimUI` SavedVariables: new `UI.LoadGoalPrefs()` (called at the top of `buildFrame`, which only
