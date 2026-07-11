@@ -1152,3 +1152,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   falls back to equipped. Feeds `trinketLocks = {icon, eye}` (numeric id locks; "none"/nil frees the slot).
   Dropdown build is `pcall`-guarded (falls back to free picks on a template hiccup). Optimize min height
   734→746. `.toc` → 0.8.43. Lua wasm parity + 31-file syntax pass.
+- **Site — presentation + fixes (no addon bump).** (1) The "Advanced settings" disclosure is now a prominent
+  pill button (gear icon + caret) so the optimizer knobs are findable; the "⚙ Change the options" link under
+  the sets opens it. (2) The "Use my own gear" button walks the guided arrow to the "Use your own gear"
+  dropdown and opens/scrolls to it (arrow retires on upload). (3) The "About the ecosystem" hub's screenshot
+  placeholders hide on load-error so the live page never shows broken-image icons until real captures land.
+  (4) The Balanced blend-dial note no longer names a specific trinket ("2nd-trinket lock"). (5) **BiS lists:**
+  added the **Goblin Rocket Launcher** (Engineering trinket, +45 stam, on-use rocket) to the **Phase 2**
+  trinket also-viable list — it was already listed for phases 1/3/4 but missing from phase 2 (a scrape gap).
+  Profession-specific BiS items are shown to everyone with an ⓘ note (by design — not profession-gated).

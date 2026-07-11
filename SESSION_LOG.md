@@ -22,6 +22,9 @@ User batch (logged here; "do what you can for now"):
    guide (https://www.wowhead.com/tbc/guide/classes/paladin/tank-bis-gear-pve); (b) optional PROFESSION-GATING
    so the BiS block hides items you can't craft (bisHTML has no prof filter today — it shows all, now with a
    note). Left phase 5 without it (outclassed by Sunwell trinkets).
+   **USER PREFERENCE (confirmed):** do NOT profession-gate the BiS block — show profession-specific items to
+   everyone WITH an ⓘ note. So (b) above is settled as "no gating"; the only remaining subtask is the (a)
+   per-phase audit for other missing profession-craftable items.
 4. **[DONE] Advanced settings button** — made larger / button-styled + more visible. (The "⚙ Change the
    options" link below the sets already opened it via `adv.open = true`.)
 5. **[DONE] "Use my own gear" button** (`#useOwnBtn`, below the sample results) now walks the guided arrow to
