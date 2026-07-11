@@ -19,7 +19,7 @@ UI.assumeBuffs = true
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
 local TAB_MIN = {
   live     = { 300, 448 },
-  optimize = { 380, 686 },
+  optimize = { 380, 710 },
   export   = { 470, 260 },
 }
 

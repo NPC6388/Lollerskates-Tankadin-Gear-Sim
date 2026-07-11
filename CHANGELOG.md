@@ -1123,3 +1123,6 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   Rewrote it as two genuinely-short lines that don't wrap at 380px — line 1 the gem note, line 2 the bare sim
   URL — so the footer is a reliable 2 lines that the 686px height clears. `.toc` → 0.8.39. JS 150/150, Lua
   wasm parity + 31-file syntax pass.
+- **Addon v0.8.40 — breathing room before the footer.** The 2-line footer no longer overlapped but sat right
+  against the Balanced card; nudged the Optimize min height 686→710 so the bottom-anchored footer clears the
+  cards with a comfortable gap. `.toc` → 0.8.40. JS 150/150, Lua wasm parity + 31-file syntax pass.

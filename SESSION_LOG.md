@@ -4,7 +4,13 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-10 (latest) — Footer overlap, for real this time (addon v0.8.39)
+## 2026-07-10 (latest) — Spacing before the footer (addon v0.8.40)
+
+Footer no longer overlapped (2 lines now) but sat flush against the Balanced card. Bumped Optimize min
+height 686→710 so the bottom-anchored footer clears the cards with a ~26px gap. `.toc` → 0.8.40. JS 150/150,
+31-file syntax PASS, zip rebuilt, installed synced, committed + pushed.
+
+## 2026-07-10 — Footer overlap, for real this time (addon v0.8.39)
 
 v0.8.38 didn't fix it: the "shortened" footer lines were still ~57 chars and each wrapped at the 380px min
 width → 4 rendered lines → still overlapped the Balanced card (card4 l3 at pane-y −554; a 4-line bottom-
