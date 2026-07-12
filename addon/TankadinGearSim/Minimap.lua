@@ -257,7 +257,9 @@ local function buildButton()
   button:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
   button:SetScript("OnClick", function(self, btn)
     if btn == "RightButton" then
-      if ns.UI and ns.UI.Show then ns.UI.Show("optimize") end
+      -- Toggle: right-click opens the Optimize tab, and right-clicking again closes the window.
+      if ns.UI and ns.UI.Toggle then ns.UI.Toggle("optimize")
+      elseif ns.UI and ns.UI.Show then ns.UI.Show("optimize") end
     else
       M.Toggle()
     end
@@ -266,7 +268,7 @@ local function buildButton()
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("Tankadin Gear Sim")
     GameTooltip:AddLine(CYAN .. "Left-click|r  optimized sets", 1, 1, 1)
-    GameTooltip:AddLine(CYAN .. "Right-click|r  open the Optimize tab", 1, 1, 1)
+    GameTooltip:AddLine(CYAN .. "Right-click|r  toggle the Optimize tab", 1, 1, 1)
     GameTooltip:AddLine(CYAN .. "Drag|r  move around the minimap", 1, 1, 1)
     GameTooltip:Show()
   end)

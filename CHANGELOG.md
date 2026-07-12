@@ -1161,3 +1161,37 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   added the **Goblin Rocket Launcher** (Engineering trinket, +45 stam, on-use rocket) to the **Phase 2**
   trinket also-viable list — it was already listed for phases 1/3/4 but missing from phase 2 (a scrape gap).
   Profession-specific BiS items are shown to everyone with an ⓘ note (by design — not profession-gated).
+- **v0.8.44 / engine — Illidan & Sunwell are now always-on preset GOALS, not a toggle (addon + site).**
+  Replaced the global "Encounter avoidance" mechanism (which forced ALL of Raid/Survival/Balanced onto the
+  reduced-avoidance gate, so on gear that can't reach it every set went illegal) with **two additional
+  preset goals** — the optimizer now returns **six** sets. `GOAL_PRESETS` gains `illidan` and `sunwell`,
+  each carrying a per-goal `enc` field, a threat-max ratio (`ehp:1, threat:2`), `lockEye`, and the normal
+  uncrushable gate measured on THAT fight's avoidance (Illy = dodge+parry+block+HS, no miss; SWP =
+  (miss−5)+max(0,dodge−20)+parry+block+HS). Each set meets its gate then leans surplus budget into threat;
+  if the reduced-avoidance cap is unreachable with the gear the set is still returned, flagged illegal
+  (best-effort) rather than dropping the whole run. Engine: `runGoal`/`solveGoal` now read `goal.enc`
+  (`ctx.encounter` kept only as a harmless back-compat fallback) in both `src/runner.js` and
+  `engine/Runner.lua`; regenerated `runner_fixtures.lua` (21 goal results, JS↔Lua parity within 1e-6 across
+  all six). **Site:** dropped the `#encounter` `<select>` and all its state (share-link `enc`, live listener,
+  optimize option); the encounter presets aren't user-tunable so they render no slider row in Goal tuning
+  (`GOAL_PRESETS.filter(g => !g.enc)`), and each set's summary **Uncrush** column now shows the avoidance
+  ITS OWN gate uses. **Addon:** removed the "Gear for: Illidan/Sunwell" checkboxes; the two presets are
+  appended to the built goal list straight from the preset (no slider); Optimize now has **six** goal cards
+  (each card's Uncrush reflects its own gate) — layout reclaimed the checkbox row (tuning header −106→−84)
+  and min height 746→848. The Live pane's Illidan/Sunwell readout rows are unchanged. `.toc` → 0.8.44.
+  - **Encounter sets now actually REACH their gate (the fix that made them legal).** Two problems kept the
+    Illy/SWP sets illegal even when a legal set existed: (1) the optimizer's gate checks (`optimizer.js`
+    `gatesPass`/`gateDeficit`, `Optimizer.lua`) measured only *normal* `totalAvoidanceWithHS` during item
+    SELECTION — so it aimed for normal uncrushable (trivially met) and never pushed toward the harder
+    encounter gate, only checking it post-hoc. Added `crushAvoid(evald, gates)` keyed on `gates.enc`
+    (Illy = `illyAvoidance`, SWP = `swpAvoidance`), and `runGoal` now threads `enc` into the gates it
+    hands the optimizer (`oGates`). (2) The encounter sets `lockFor` now frees BOTH trinket slots (they
+    default-locked the two equipped threat trinkets, e.g. Icon + Eye of Magtheridon, which blocks the
+    avoidance needed) — trinkets are a big avoidance lever and the model can't score proc/on-use ones
+    anyway, so the optimizer picks the best scoreable avoidance trinket to hit the gate. On a real phase-2
+    export both sets now solve legal (Illidan 102.76%, Sunwell 102.69% — Sunwell needs ~124.9% *normal*
+    avoidance to survive Radiance's −20% dodge). Regenerated optimizer + runner fixtures; JS↔Lua parity
+    holds (19 optimizer cases, 21 goal results).
+- **Addon v0.8.44 — minimap right-click toggles the window.** Right-clicking the minimap button opened the
+  Optimize tab but never closed it; it now calls `UI.Toggle("optimize")` (open on first right-click, close on
+  the next, matching `/tgs`'s existing toggle), with the tooltip updated to "toggle the Optimize tab".

@@ -4,7 +4,55 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-11 (latest) — Site polish batch + logged tasks
+## 2026-07-11 (latest) — Illy/SWP as preset goals (not a toggle) + minimap right-click toggle
+
+In-game vetting round. Two changes, engine + site + addon, all built & installed (v0.8.44):
+
+1. **Illidan/Sunwell reworked from a global toggle into two always-on preset GOALS.** The old
+   `encounter` option forced Raid/Survival/Balanced onto the reduced-avoidance gate, so on gear that
+   can't reach it EVERY set went illegal (the bug the user hit). Now the optimizer returns **6 sets**:
+   the 4 existing + **Illidan** + **Sunwell**. Each new preset (`GOAL_PRESETS` in both `src/runner.js`
+   and `engine/Runner.lua`) carries a per-goal `enc` field, a threat-max ratio (`ehp:1, threat:2`),
+   `lockEye`, and the uncrushable gate measured on that fight's avoidance. `runGoal`/`solveGoal` read
+   `goal.enc` now (`ctx.encounter` left as a dead back-compat fallback). Meets the gate → leans surplus
+   into threat; if the reduced cap is unreachable the set is returned flagged illegal (best-effort),
+   not dropped. **On the sample gear: Illidan solves legal (102.6%, SP≈520); Sunwell can't reach the cap
+   (84.2%) and is honestly flagged illegal** — that's physics (Radiance −5% miss / −20% dodge is brutal),
+   not a bug. Site: `#encounter` select removed + all its state; Illy/SWP render no tuning slider
+   (`filter(g => !g.enc)`); each summary Uncrush cell shows its own gate's metric. Addon: "Gear for:"
+   checkboxes removed, 2 presets appended to the goal list, **6 goal cards** now (min height 746→848,
+   tuning header −106→−84 reclaimed the checkbox row). Live pane Illy/SWP rows kept. Regenerated
+   `runner_fixtures.lua` — JS↔Lua parity holds (21 goal results within 1e-6); 151 JS tests pass;
+   31-file Lua syntax pass. Updated `test/librams.test.js` to skip the enc goals in its
+   "uncrushable-required goals stay legal" invariant (their gate can be legitimately unreachable).
+2. **Minimap right-click now TOGGLES** the window (was open-only) via the existing `UI.Toggle("optimize")`;
+   tooltip updated. `Minimap.lua`.
+3. **Made the encounter sets actually reach their gate (why they were still illegal).** Verified against
+   the user's LIVE export on disk ([[savedvars-disk-path]]). Two root causes: (a) the optimizer's gate
+   checks (`optimizer.js`/`Optimizer.lua` `gatesPass`/`gateDeficit`) measured only normal
+   `totalAvoidanceWithHS` during SELECTION, so it aimed for normal uncrushable and never reached toward
+   the harder encounter gate (only checked post-hoc in `finalLegal`); (b) the sets default-locked the two
+   equipped THREAT trinkets (Icon + Eye of Mag), blocking the avoidance needed. Fix: added
+   `crushAvoid(evald, gates)` keyed on `gates.enc`, `runGoal` threads `enc` into the optimizer's gates
+   (`oGates`), and `lockFor` frees BOTH trinkets for enc goals. **Result on the user's phase-2 gear: both
+   now solve LEGAL — Illidan 102.76%, Sunwell 102.69%** (Sunwell needs ~124.9% normal avoidance to beat
+   Radiance's −20% dodge; it barely makes it). So the answer to "is Illidan impossible with my gear?" was
+   NO. Regenerated optimizer + runner fixtures; parity holds; 150 JS tests pass.
+
+**Trinket-lock note:** `lockEye: true` never hardcoded Eye of Mag — it means "honor the 2nd trinket
+dropdown; None = free." On the site, own-gear defaults BOTH trinket dropdowns to none (nothing locked);
+only the demo pre-fills Icon+Eye. The encounter sets now free trinkets entirely regardless (see above).
+
+**VERIFIED IN-GAME (v0.8.44):** the user confirmed all of it — 6-card Optimize sizing is good, minimap
+right-click toggle works, trinket-lock dropdowns work, minimap flyout blue-coloring works, and the
+Illidan/Sunwell sets generate. Site: the Illy/SWP sets weren't showing on the LIVE site because the work
+was uncommitted (GitHub Pages deploys from pushed `main`); committed + pushed this session so the deployed
+site now shows all 6. This clears the v0.8.41–0.8.44 in-game backlog.
+
+REMAINING from last session (unchanged): per-phase×slot BiS audit vs the Wowhead guide for other missing
+profession-craftable items (do NOT profession-gate — annotate). See [[bis-lists-show-prof-items-with-note]].
+
+## 2026-07-11 — Site polish batch + logged tasks
 
 User batch (logged here; "do what you can for now"):
 1. **[DONE] Eye-of-Magtheridon** hardcoded in the Balanced blend-dial note (app.js ~432) → reworded generic

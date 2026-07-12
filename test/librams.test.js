@@ -55,6 +55,10 @@ test('uncrushable-required goals stay legal & uncrushable; AOE may be crushable'
     talentRanks: parsed.talentRanks,
   });
   for (const r of res) {
+    // The encounter presets (Illy/SWP) gate on REDUCED avoidance (Shear ignores miss; Radiance cuts
+    // miss+dodge), which can be genuinely unreachable with a given gear set — they're returned flagged
+    // illegal rather than dropped. This invariant is about the standard-gate libram recovery, so skip them.
+    if (r.goal.enc) continue;
     const requiresUncrush = (r.goal.gates || {}).requireUncrushable !== false;
     if (requiresUncrush) {
       assert.ok(r.evald.uncrushable, `${r.goal.id}: must be uncrushable (got ${r.evald.totalAvoidanceWithHS.toFixed(2)}%)`);

@@ -42,6 +42,13 @@ export const GOAL_PRESETS = [
   // (trash can still crit). Spell hit is also weighted low in the aoeThreat scale (only ~5% needed).
   { id: 'aoe', name: 'AOE Trash', focus: 'AOE threat (trash ≤72 — no crushing blows)', ratio: { ehp: 1, aoeThreat: 2 }, gates: { raid: true, requireUncrushable: false }, lockEye: true },
   { id: 'balanced', name: 'Balanced', focus: 'EHP : threat 1:1', ratio: { ehp: 1, threat: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: true },
+  // Encounter sets: threat-max lean, but the uncrushable gate is measured on the avoidance THAT FIGHT
+  // leaves you — Illidan's Shear can't miss (miss ignored); Sunwell Radiance = boss +5% hit / −20% tank
+  // dodge (see encAvoid/encUncrush + character.js). `enc` swaps the gate metric per goal; extra budget
+  // over the (harder) gate leans into threat. If the gear can't reach the reduced-avoidance cap the set
+  // is still returned, flagged illegal (like any unreachable gate) rather than dropped.
+  { id: 'illidan', name: 'Illidan', focus: 'Illidan gate · lean threat', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true }, lockEye: true, enc: 'illidan' },
+  { id: 'sunwell', name: 'Sunwell', focus: 'Sunwell gate · lean threat', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true }, lockEye: true, enc: 'sunwell' },
 ];
 
 export const spellHitPct = (a) => TALENTS.precisionSpellHitPct + ((a._raw && a._raw.spellHitRating) || 0) / RATING.spellHitPer1;
@@ -166,6 +173,11 @@ function itemVariants(it, objScale, ctx) {
 }
 
 function lockFor(goal, locks) {
+  // Encounter sets must reach a HARDER avoidance gate, and trinkets are a big avoidance lever (and the
+  // model can't score proc/on-use trinkets anyway) — so they free BOTH trinket slots, letting the
+  // optimizer slot the best scoreable avoidance trinket to hit the gate. (Locking a threat trinket makes
+  // the gate unreachable — e.g. Illidan can't clear 102.4% with Icon+Eye locked but can with them free.)
+  if (goal.enc) return {};
   const lock = {};
   if (locks.icon) lock.trinket1 = locks.icon;
   if (goal.lockEye && locks.eye) lock.trinket2 = locks.eye;
@@ -284,6 +296,7 @@ function enableMeta(M, counts, recolorable, gemOpt, gemOptDual, objScale) {
 
 function runGoal(goal, items, ctx, seed = {}) {
   const { perks, buff, maxPhase, faction, locks, talents } = ctx;
+  const enc = goal.enc || ctx.encounter || null; // per-goal encounter gate (Illy/SWP presets); ctx fallback for back-compat
   const aggOpts = { hsBlockBonus: HS, ...buff, ...(talents ? { talents } : {}) };
   const objScale = blendScale(goal.ratio);
   const prepared = items.flatMap((it) => itemVariants(it, objScale, ctx));
@@ -296,7 +309,11 @@ function runGoal(goal, items, ctx, seed = {}) {
     const kept = pool[slot].filter((v) => v.itemId === Number(itemId));
     if (kept.length) pool[slot] = kept;
   }
-  const oGoal = { objective: 'scale', scaleWeights: objScale, gates: goal.gates, ...aggOpts };
+  // Encounter goals push the gate onto their reduced avoidance during SELECTION too (not just the final
+  // legality check), so the optimizer actually reaches for dodge/parry/block instead of settling for
+  // normal uncrushable and picking threat trinkets.
+  const oGates = enc ? { ...goal.gates, enc } : goal.gates;
+  const oGoal = { objective: 'scale', scaleWeights: objScale, gates: oGates, ...aggOpts };
   const res = optimizeHeuristic(pool, oGoal, { distinct, locked, seed });
 
   // Gem a SELECTION (slot -> item) under a per-item scale (objScale = goal/threat gems, CAP_SCALE =
@@ -385,7 +402,7 @@ function runGoal(goal, items, ctx, seed = {}) {
     const gt = goal.gates || {};
     const critOk = gt.raid === false ? e.heroicCritImmune : e.raidCritImmune;
     const need = gt.uncrushableTarget ?? CAPS.uncrushableCombined;
-    const crushOk = !gt.requireUncrushable || encAvoid(e, ctx.encounter) + 1e-9 >= need;
+    const crushOk = !gt.requireUncrushable || encAvoid(e, enc) + 1e-9 >= need;
     const hpOk = !gt.minHealth || (e.health ?? 0) + 1e-9 >= gt.minHealth;
     return critOk && crushOk && hpOk;
   };
@@ -404,7 +421,7 @@ function runGoal(goal, items, ctx, seed = {}) {
     gateAware = true;
     const gg = gemSet((v) => scaleOf.get(v));
     const improved = finalLegal(gg.evald)
-      || encAvoid(gg.evald, ctx.encounter) > encAvoid(g.evald, ctx.encounter)
+      || encAvoid(gg.evald, enc) > encAvoid(g.evald, enc)
       || gg.evald.critReduction > g.evald.critReduction;
     if (improved) g = gg; else gateAware = false;
   }
@@ -696,7 +713,7 @@ export function optimizeSets(items, options = {}) {
     const floor = (g.gates && g.gates.minHealth) || 0;
     const crushReq = !g.gates || g.gates.requireUncrushable !== false;
     const floorMet = !floor || r.agg.health + 1e-9 >= floor;
-    const crushMet = !crushReq || encUncrush(r.evald, ctx.encounter);
+    const crushMet = !crushReq || encUncrush(r.evald, g.enc || ctx.encounter || null);
     if (floorMet && crushMet) return r; // the gates this recovery repairs (Min-HP floor + uncrushable) are met
     // Uncrushable and Min-HP are HARD gates, but the greedy+repair heuristic can return an ILLEGAL set
     // even when a legal one exists — e.g. it keeps a higher-threat libram and lands ~0.1% short of the

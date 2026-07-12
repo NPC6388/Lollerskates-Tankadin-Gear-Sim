@@ -89,11 +89,20 @@ local function crushTarget(gates)
   return CAPS.uncrushableCombined
 end
 
+-- The avoidance the crush gate measures: normally the full combined figure; for the encounter presets
+-- (gates.enc) the reduced avoidance that fight leaves you, so SELECTION targets the same gate finalLegal
+-- checks (Illidan drops miss; Sunwell cuts miss+dodge). Mirrors optimizer.js:crushAvoid.
+local function crushAvoid(evald, gates)
+  if gates.enc == "sunwell" then return evald.swpAvoidance
+  elseif gates.enc == "illidan" then return evald.illyAvoidance end
+  return evald.totalAvoidanceWithHS
+end
+
 local function gatesPass(evald, gates)
   gates = gates or {}
   local critOk
   if gates.raid == false then critOk = evald.heroicCritImmune else critOk = evald.raidCritImmune end
-  local crushOk = (not gates.requireUncrushable) or (evald.totalAvoidanceWithHS + 1e-9 >= crushTarget(gates))
+  local crushOk = (not gates.requireUncrushable) or (crushAvoid(evald, gates) + 1e-9 >= crushTarget(gates))
   local hpOk = (not gates.minHealth) or ((evald.health or 0) + 1e-9 >= gates.minHealth)
   return { critOk = critOk, crushOk = crushOk, hpOk = hpOk, all = critOk and crushOk and hpOk }
 end
@@ -105,7 +114,7 @@ local function gateDeficit(evald, gates)
   gates = gates or {}
   local critTarget = (gates.raid == false) and BASE.heroicBossCritVsPlayer or BASE.bossCritVsPlayer
   local critDef = math.max(0, critTarget - evald.critReduction)
-  local crushDef = gates.requireUncrushable and math.max(0, crushTarget(gates) - evald.totalAvoidanceWithHS) or 0
+  local crushDef = gates.requireUncrushable and math.max(0, crushTarget(gates) - crushAvoid(evald, gates)) or 0
   local hpDef = gates.minHealth and math.max(0, (gates.minHealth - (evald.health or 0)) / 1000) or 0
   return critDef + crushDef + hpDef
 end

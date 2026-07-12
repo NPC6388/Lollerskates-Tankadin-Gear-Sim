@@ -59,6 +59,12 @@ Runner.GOAL_PRESETS = {
   { id = "survival", name = "Survival", focus = "EHP : threat 2:1", ratio = { ehp = 2, threat = 1 }, gates = { raid = true, requireUncrushable = true }, lockEye = false },
   { id = "aoe", name = "AOE Trash", focus = "AOE threat (trash <=72 - no crushing blows)", ratio = { ehp = 1, aoeThreat = 2 }, gates = { raid = true, requireUncrushable = false }, lockEye = true },
   { id = "balanced", name = "Balanced", focus = "EHP : threat 1:1", ratio = { ehp = 1, threat = 1 }, gates = { raid = true, requireUncrushable = true }, lockEye = true },
+  -- Encounter sets: threat-max lean, uncrushable gate measured on the avoidance that fight leaves you
+  -- (Illidan's Shear can't miss; Sunwell Radiance = boss +5% hit / -20% tank dodge). `enc` swaps the
+  -- gate metric per goal; extra over the harder gate leans into threat. Returned flagged illegal (not
+  -- dropped) if the reduced-avoidance cap is unreachable. Mirrors src/runner.js.
+  { id = "illidan", name = "Illidan", focus = "Illidan gate - lean threat", ratio = { ehp = 1, threat = 2 }, gates = { raid = true, requireUncrushable = true }, lockEye = true, enc = "illidan" },
+  { id = "sunwell", name = "Sunwell", focus = "Sunwell gate - lean threat", ratio = { ehp = 1, threat = 2 }, gates = { raid = true, requireUncrushable = true }, lockEye = true, enc = "sunwell" },
 }
 
 -- --- id -> name lookups (report a locked item's current gems/enchant) --------------------------
@@ -206,6 +212,10 @@ local function itemVariants(it, objScale, ctx)
 end
 
 local function lockFor(goal, locks)
+  -- Encounter sets free BOTH trinket slots (see runner.js:lockFor): they must reach a harder avoidance
+  -- gate, trinkets are a big avoidance lever, and the model can't score proc/on-use trinkets anyway —
+  -- locking a threat trinket makes the gate unreachable, freeing them lets the optimizer hit it.
+  if goal.enc then return {} end
   local lock = {}
   if locks.icon then lock.trinket1 = locks.icon end
   if goal.lockEye and locks.eye then lock.trinket2 = locks.eye end
@@ -358,6 +368,7 @@ local function runGoal(goal, items, ctx, seed)
   tick()
   seed = seed or {}
   local perks, buff, maxPhase, faction, locks, talents = ctx.perks, ctx.buff, ctx.maxPhase, ctx.faction, ctx.locks, ctx.talents
+  local enc = goal.enc or ctx.encounter or nil -- per-goal encounter gate (Illy/SWP presets); ctx fallback for back-compat
   local aggOpts = { hsBlockBonus = HS }
   if buff then for k, v in pairs(buff) do aggOpts[k] = v end end
   if talents then aggOpts.talents = talents end
@@ -376,7 +387,15 @@ local function runGoal(goal, items, ctx, seed)
       if #kept > 0 then pool[slot] = kept end
     end
   end
-  local oGoal = { objective = "scale", scaleWeights = objScale, gates = goal.gates }
+  -- Encounter goals push the gate onto their reduced avoidance during SELECTION too (mirrors runner.js):
+  -- the optimizer reaches for dodge/parry/block instead of settling for normal uncrushable.
+  local oGates = goal.gates
+  if enc then
+    oGates = {}
+    if goal.gates then for k, v in pairs(goal.gates) do oGates[k] = v end end
+    oGates.enc = enc
+  end
+  local oGoal = { objective = "scale", scaleWeights = objScale, gates = oGates }
   for k, v in pairs(aggOpts) do oGoal[k] = v end
   local res = Optimizer.optimizeHeuristic(pool, order, oGoal, { distinct = distinct, locked = locked, seed = seed })
 
@@ -466,7 +485,7 @@ local function runGoal(goal, items, ctx, seed)
     if gt.raid == false then critOk = e.heroicCritImmune else critOk = e.raidCritImmune end
     local need = gt.uncrushableTarget
     if need == nil then need = CAPS.uncrushableCombined end
-    local crushOk = (not gt.requireUncrushable) or (encAvoid(e, ctx.encounter) + 1e-9 >= need)
+    local crushOk = (not gt.requireUncrushable) or (encAvoid(e, enc) + 1e-9 >= need)
     local hpOk = (not gt.minHealth) or ((e.health or 0) + 1e-9 >= gt.minHealth)
     return critOk and crushOk and hpOk
   end
@@ -481,7 +500,7 @@ local function runGoal(goal, items, ctx, seed)
     gateAware = true
     local gg = gemSet(function(v) return scaleOf[v] end)
     local improved = finalLegal(gg.evald)
-      or encAvoid(gg.evald, ctx.encounter) > encAvoid(g.evald, ctx.encounter)
+      or encAvoid(gg.evald, enc) > encAvoid(g.evald, enc)
       or gg.evald.critReduction > g.evald.critReduction
     if improved then g = gg else gateAware = false end
   end
@@ -782,7 +801,7 @@ function Runner.optimizeSets(items, options)
     local floor = (g.gates and g.gates.minHealth) or 0
     local crushReq = (not g.gates) or (g.gates.requireUncrushable ~= false)
     local floorMet = (floor == 0) or (r.agg.health + 1e-9 >= floor)
-    local crushMet = (not crushReq) or encUncrush(r.evald, ctx.encounter)
+    local crushMet = (not crushReq) or encUncrush(r.evald, g.enc or ctx.encounter or nil)
     if floorMet and crushMet then return r end
     local maxHpGoal = {}
     for k, v in pairs(g) do maxHpGoal[k] = v end

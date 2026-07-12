@@ -16,10 +16,10 @@ UI.assumeBuffs = true
 
 -- Per-tab MINIMUM frame size (w, h) — sized so each tab's text never overlaps. The user can drag the
 -- bottom-right grip to grow the frame; that chosen size (persisted in TankadinGearSimUI) is reused
--- across tabs, clamped up to each tab's minimum. Optimize needs the most room (four goal cards).
+-- across tabs, clamped up to each tab's minimum. Optimize needs the most room (six goal cards).
 local TAB_MIN = {
   live     = { 300, 482 },
-  optimize = { 380, 746 },
+  optimize = { 380, 848 },
   export   = { 470, 260 },
 }
 
@@ -400,38 +400,27 @@ local function buildFrame()
   optBfLabel:SetPoint("LEFT", optBf, "RIGHT", 2, 0)
   optBfLabel:SetText("Optimize with Kings + MotW (raid buffs)")
   optBf:SetScript("OnClick", function(self) UI.optBuffs = self:GetChecked() and true or false end)
-  -- Encounter avoidance: force the uncrushable-gated sets (Raid/Survival/Balanced) to reach the cap with
-  -- the reduced avoidance those fights leave you — Illidan's Shear can't miss; Sunwell Radiance cuts
-  -- miss+dodge. Both on -> the stricter (Sunwell) applies. See UI.Optimize.
-  local encLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  encLabel:SetPoint("TOPLEFT", 8, -84); encLabel:SetText(color(GOLD, "Gear for:"))
-  local illyCb = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
-  illyCb:SetPoint("TOPLEFT", 62, -80); illyCb:SetSize(20, 20); illyCb:SetChecked(UI.encIllidan)
-  local illyLbl = illyCb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  illyLbl:SetPoint("LEFT", illyCb, "RIGHT", 1, 0); illyLbl:SetText("Illidan")
-  illyCb:SetScript("OnClick", function(self) UI.encIllidan = self:GetChecked() and true or false end)
-  local swpCb = CreateFrame("CheckButton", nil, opt, "UICheckButtonTemplate")
-  swpCb:SetPoint("TOPLEFT", 168, -80); swpCb:SetSize(20, 20); swpCb:SetChecked(UI.encSunwell)
-  local swpLbl = swpCb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  swpLbl:SetPoint("LEFT", swpCb, "RIGHT", 1, 0); swpLbl:SetText("Sunwell")
-  swpCb:SetScript("OnClick", function(self) UI.encSunwell = self:GetChecked() and true or false end)
+  -- (The Illidan/Sunwell encounter sets are now always-on preset goals — the last two goal cards below —
+  -- so there's no "Gear for:" toggle: each of those sets is gated on the reduced avoidance that fight
+  -- leaves you and leans any surplus into threat. See UI.Optimize + engine/Runner.lua GOAL_PRESETS.)
   -- Per-goal tuning: a "threat" slider (EHP<->Threat lean — right = more SP / spell hit) and an "hp min"
   -- floor slider under each goal name. Click a label to nudge or drag the slider; the next Optimize uses them.
   local tuneHdr = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  tuneHdr:SetPoint("TOPLEFT", 8, -106)
+  tuneHdr:SetPoint("TOPLEFT", 8, -84)
   tuneHdr:SetText(color(DIM, "Goal tuning — threat ratio (right = more SP / spell hit)\n& Min-HP floor:"))
-  local sy = -138
+  local sy = -116
   for _, id in ipairs(SLIDER_GOALS) do
     pcall(goalSlider, opt, sy, id) -- contain any template issue so the whole Optimize tab still builds
     sy = sy - 56 -- three lines per goal (name, then the labelled threat + hp-min sliders)
   end
-  -- Four goal cards (name + gate chip, then two stat lines each).
+  -- Six goal cards (name + gate chip, then two stat lines each): the four tunable goals plus the two
+  -- always-on encounter sets (Illidan / Sunwell).
   -- Cards span the pane width (so a wider frame shows more) and NEVER wrap — long lines clip at the
   -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
   -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
   optCards = {}
-  local cy = -370
-  for i = 1, 4 do
+  local cy = -348
+  for i = 1, 6 do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)
     head:SetJustifyH("LEFT"); head:SetWordWrap(false)
@@ -568,10 +557,15 @@ local function renderOptimize(results)
         .. color(DIM, "   " .. (r.goal.focus or "")))
       local sh = (ns.engine.CharacterData.TALENTS.precisionSpellHitPct or 3)
         + ((a._raw and a._raw.spellHitRating) or 0) / (ns.engine.Constants.RATING.spellHitPer1 or 12.62)
+      -- The encounter sets (Illy/SWP) show the reduced-avoidance figure THEIR gate uses; others the normal.
+      local crushAv, crushOk
+      if r.goal.enc == "sunwell" then crushAv, crushOk = e.swpAvoidance, e.swpUncrushable
+      elseif r.goal.enc == "illidan" then crushAv, crushOk = e.illyAvoidance, e.illyUncrushable
+      else crushAv, crushOk = e.totalAvoidanceWithHS, e.uncrushable end
       card.l2:SetText(
         color(GOLD, "SP/SH ") .. color(CYAN, num(a.spellPowerLiteral or a.spellPower))
         .. color(DIM, " / ") .. color(CYAN, pct(sh))
-        .. color(GOLD, "   Uncrush ") .. color(e.uncrushable and GOOD or BAD, pct(e.totalAvoidanceWithHS))
+        .. color(GOLD, "   Uncrush ") .. color(crushOk and GOOD or BAD, pct(crushAv))
         .. color(GOLD, "   Crit ") .. color(e.raidCritImmune and GOOD or BAD, pct(e.critReduction)))
       card.l3:SetText(
         color(GOLD, "EHP/HP ") .. color(CYAN, num(e.ehpPhysical)) .. color(DIM, " / ") .. color(CYAN, num(e.health))
@@ -627,11 +621,19 @@ function UI.Optimize()
         ratio = ratioFor(id, v), gates = gates, lockEye = preset.lockEye }
     end
   end
-  -- Encounter avoidance mode (Sunwell is the stricter of the two, so it wins if both are ticked).
-  local encounter = (UI.encSunwell and "sunwell") or (UI.encIllidan and "illidan") or nil
+  -- Then the always-on encounter sets (Illidan / Sunwell): fixed threat-max presets, not tunable, each
+  -- gated on the reduced avoidance that fight leaves you. Appended straight from the preset (no slider).
+  for _, g in ipairs(presets) do
+    if g.enc then
+      local gates = {}
+      if g.gates then for k, val in pairs(g.gates) do gates[k] = val end end
+      goals[#goals + 1] = { id = g.id, name = g.name, focus = g.focus,
+        ratio = g.ratio, gates = gates, lockEye = g.lockEye, enc = g.enc }
+    end
+  end
   optRun = ns.Async.optimizeSets(items,
     { buff = buff, professions = professions, faction = faction, trinketLocks = trinketLocks,
-      encounter = encounter, goals = goals, keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } },
+      goals = goals, keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } },
     function(results) -- onDone
       optButton:SetEnabled(true)
       renderOptimize(results)

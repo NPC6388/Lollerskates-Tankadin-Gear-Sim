@@ -78,10 +78,16 @@ export function distinctOk(sel, distinct) {
 }
 
 const crushTarget = (gates = {}) => gates.uncrushableTarget ?? CAPS.uncrushableCombined;
+// The avoidance the crush gate measures. Normally the full combined figure; for the encounter presets
+// (gates.enc) it's the reduced avoidance that fight leaves you — so the SELECTION targets the same gate
+// finalLegal checks (Illidan drops miss; Sunwell cuts miss+dodge). Without this the optimizer would only
+// aim for normal uncrushable and never push toward the harder encounter gate.
+const crushAvoid = (evald, gates = {}) => gates.enc === 'sunwell' ? evald.swpAvoidance
+  : gates.enc === 'illidan' ? evald.illyAvoidance : evald.totalAvoidanceWithHS;
 
 function gatesPass(evald, gates = {}) {
   const critOk = gates.raid === false ? evald.heroicCritImmune : evald.raidCritImmune;
-  const crushOk = !gates.requireUncrushable || evald.totalAvoidanceWithHS + 1e-9 >= crushTarget(gates);
+  const crushOk = !gates.requireUncrushable || crushAvoid(evald, gates) + 1e-9 >= crushTarget(gates);
   const hpOk = !gates.minHealth || (evald.health ?? 0) + 1e-9 >= gates.minHealth;
   return { critOk, crushOk, hpOk, all: critOk && crushOk && hpOk };
 }
@@ -94,7 +100,7 @@ function gateDeficit(evald, gates = {}) {
   const critTarget = gates.raid === false ? BASE.heroicBossCritVsPlayer : BASE.bossCritVsPlayer;
   const critDef = Math.max(0, critTarget - evald.critReduction);
   const crushDef = gates.requireUncrushable
-    ? Math.max(0, crushTarget(gates) - evald.totalAvoidanceWithHS)
+    ? Math.max(0, crushTarget(gates) - crushAvoid(evald, gates))
     : 0;
   const hpDef = gates.minHealth ? Math.max(0, (gates.minHealth - (evald.health ?? 0)) / 1000) : 0;
   return critDef + crushDef + hpDef;

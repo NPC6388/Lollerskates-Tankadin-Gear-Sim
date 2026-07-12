@@ -120,7 +120,9 @@ function init() {
   }
   $('prof1').value = 'Enchanting';
 
-  $('goalConfig').innerHTML = GOAL_PRESETS.map((g) => {
+  // The encounter presets (Illy/SWP) are fixed threat-max sets, not user-tunable — they always compute
+  // and appear in the results, but have no ratio/Min-HP knob here.
+  $('goalConfig').innerHTML = GOAL_PRESETS.filter((g) => !g.enc).map((g) => {
     const bal = isBalanced(g.id);
     const { left, right } = GOAL_SIDES[g.id];
     const v = defaultVOf(g.id);
@@ -213,7 +215,6 @@ function init() {
   // Phase drives gem availability AND the per-slot BiS reference list, so re-optimize on change
   // (re-renders with the new phase's gems + BiS list) rather than waiting for the next Optimize.
   $('phase').addEventListener('change', scheduleLiveUpdate);
-  $('encounter').addEventListener('change', scheduleLiveUpdate);
   $('optimizeBtn').addEventListener('click', runOptimize);
   $('shareBtn').addEventListener('click', copyShareLink);
   document.querySelectorAll('.guide-link').forEach((a) => { a.href = GUIDE_URL; }); // header/footer guide links
@@ -283,7 +284,7 @@ function captureState() {
   return {
     v: 1, x: slimExport(exportRaw),
     p: [$('prof1').value, $('prof2').value], b: $('statBuff').value, ph: $('phase').value,
-    k: $('keepScope').value, im: $('imbuedMeta').checked ? 1 : 0, enc: $('encounter').value,
+    k: $('keepScope').value, im: $('imbuedMeta').checked ? 1 : 0,
     sc: [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value),
     li: $('lockIcon').value, le: $('lockEye').value, t: $('talents').value,
     g: goalState, pin: pinnedSlots, ex: [...excludedItemIds], lk: [...lockedItemIds], tab: activeTab,
@@ -302,7 +303,6 @@ function applyState(s) {
   set('prof1', s.p && s.p[0]); set('prof2', s.p && s.p[1]);
   set('statBuff', s.b); set('phase', s.ph); set('keepScope', s.k);
   $('imbuedMeta').checked = !!s.im;
-  set('encounter', s.enc);
   document.querySelectorAll('.scroll-cb').forEach((c) => { c.checked = (s.sc || []).includes(c.value); });
   set('lockIcon', s.li); set('lockEye', s.le);
   if (s.t != null) { $('talents').value = s.t; updateTalentSummary(); }
@@ -549,6 +549,9 @@ function currentGoals() {
   const raidHP = minhpOf('raid'), survHP = minhpOf('survival');
   const preset = (id) => GOAL_PRESETS.find((g) => g.id === id);
   return GOAL_PRESETS.map((g) => {
+    // Encounter presets aren't tunable (no slider row) — pass the preset straight through with its
+    // fixed threat-max ratio and encounter gate.
+    if (g.enc) return { ...g };
     const v = vOf(g.id);
     if (isBalanced(g.id)) {
       // Balanced slides between the Survival set (t=0) and the Raid Threat set (t=1). To make the
@@ -581,7 +584,7 @@ function optimizeNow(live) {
       [r.goal.id, Object.fromEntries(Object.entries(r.selection).filter(([, it]) => it).map(([s, it]) => [s, it.itemId]))])) : undefined;
     const results = optimizeSets(optimizerPool(), {
       professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
-      faction, useImbuedMeta: $('imbuedMeta').checked, encounter: $('encounter').value || null,
+      faction, useImbuedMeta: $('imbuedMeta').checked,
       keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots, exclude: [...excludedItemIds], seeds,
       talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
     });
@@ -721,11 +724,12 @@ function render(results) {
   setStep(3); // guide arrow moves to the results
   $('useOwnCta').hidden = !loadedSample; // only nudge the addon when they're looking at the demo
   const sh = (r) => spellHitPct(r.agg);
-  // Encounter-adjusted crush avoidance (Illidan / Sunwell) so the Uncrush column shows the number the
-  // gate actually used for the selected encounter.
-  const enc = $('encounter').value;
-  const encName = enc === 'sunwell' ? ' (Sunwell)' : enc === 'illidan' ? ' (Illidan)' : '';
-  const crushVal = (r) => enc === 'sunwell' ? r.evald.swpAvoidance : enc === 'illidan' ? r.evald.illyAvoidance : r.evald.totalAvoidanceWithHS;
+  // Each set's Uncrush column shows the avoidance ITS OWN gate uses: the Illy/SWP encounter sets are
+  // gated on the reduced avoidance those fights leave you (Shear ignores miss; Radiance cuts miss+dodge);
+  // every other set on the normal 102.4% combined avoidance.
+  const encName = '';
+  const crushVal = (r) => r.goal.enc === 'sunwell' ? r.evald.swpAvoidance
+    : r.goal.enc === 'illidan' ? r.evald.illyAvoidance : r.evald.totalAvoidanceWithHS;
 
   $('summary').innerHTML = `<table><thead><tr>
       <th>Set</th><th>${term('EHP', 'ehp')}</th><th>Spell&nbsp;dmg</th><th><abbr class="tip" title="Spell-hit cap vs a level-${BASE.raidBossLevel} raid boss is ${CAPS.spellHitCapPct}%. Below it, spell hit recovers missed spell threat; at it, more gives nothing. Hover a set's Spell panel for how far that set is below.">Spell&nbsp;hit</abbr></th><th>Stam</th><th>${term('Uncrush', 'uncrush')}${encName}</th><th>${term('Uncrit', 'uncrit')}</th>
