@@ -60,7 +60,15 @@ covered" pass). Findings + changes (all site, no addon bump):
   the `DEFAULT_TRINKET_LOCKS` import. The addon already defaulted to equipped.
 - **Dropdown label unified to "also viable - BiS list"** (was "≈N also viable" / "BiS list" by content).
 - ~40 armor slots differ from AtlasLoot's stat-rank; **kept the Wowhead-guide ordering** per the user
-  (source-opinion, not errors). 150 JS tests pass. NOT committed yet.
+  (source-opinion, not errors). 150 JS tests pass. Committed + pushed (`9dc6d67`) → site redeployed.
+
+---
+
+**Session wrapped (2026-07-11 → 07-12).** Everything above is committed + pushed to `main` and the site
+is redeployed; addon v0.8.44 is built + synced to the install and verified in-game. Scratch harnesses
+cleared. Open for a future session: none blocking — the per-phase×slot BiS audit is done (AtlasLoot local
+data is the go-to cross-check source; the addon's own scrape omits profession-locked items). If BiS lists
+are refreshed later, re-run the AtlasLoot diff rather than scraping Wowhead (JS-rendered / unfetchable).
 
 **VERIFIED IN-GAME (v0.8.44):** the user confirmed all of it — 6-card Optimize sizing is good, minimap
 right-click toggle works, trinket-lock dropdowns work, minimap flyout blue-coloring works, and the
