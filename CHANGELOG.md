@@ -1195,3 +1195,19 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **Addon v0.8.44 — minimap right-click toggles the window.** Right-clicking the minimap button opened the
   Optimize tab but never closed it; it now calls `UI.Toggle("optimize")` (open on first right-click, close on
   the next, matching `/tgs`'s existing toggle), with the tooltip updated to "toggle the Optimize tab".
+- **Site — BiS audit vs AtlasLoot + trinket-list completeness (no addon bump).** Audited every phase×slot
+  in `web/bis.js` against the **AtlasLootClassic_TBCA_BIS** addon's local per-phase Prot Paladin BiS data
+  (Wowhead's own guide is JS-rendered / unfetchable). Findings + changes: (1) **Profession-gated items are
+  complete** — Tankatronic Goggles (Engineering) is correctly Phase-2 (AtlasLoot ranks it P2#3, absent P1),
+  Goblin Rocket Launcher P1–4, JC figurines present; added the missing "Engineering only" ⓘ note to the P2
+  Tankatronic Goggles entry (policy: show profession items with a note). (2) The trinket also-viable lists
+  omitted the two most iconic tank threat trinkets — added **Icon of the Silver Crescent (29370)** and
+  **Eye of Magtheridon (28789)** to P1–P4, and extended **Tome of Fiery Redemption (30447)** to P3–P4 (was
+  P1–P2); P5 left out (Sunwell trinkets outclass, mirroring the Rocket Launcher). Added their `BIS_ITEM_DB`
+  stat entries (Icon = static +44 SP; Eye = pure resist-proc, no static stat, like the Tome). (3) **Default
+  locked trinkets now = your currently-equipped trinkets** (`populateTrinketLocks` reads `item.equipped`),
+  replacing the old hardcoded Icon+Eye demo default / nothing-on-own-gear behavior; dropped the now-unused
+  `DEFAULT_TRINKET_LOCKS` import. (4) The per-slot dropdown is now consistently labelled **"also viable -
+  BiS list"** instead of flipping between "≈ N also viable" and "BiS list" by content. The ~40 armor slots
+  where AtlasLoot's stat-rank disagrees with our Wowhead-guide ordering were left as-is (kept the guide's
+  ordering, per the request — those are source-opinion differences, not errors).

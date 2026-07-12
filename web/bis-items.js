@@ -32,6 +32,7 @@ export const BIS_ITEM_DB = {
   28660: { name: 'Gilded Thorium Cloak', slot: 'back', stats: { armor: 385, defenseRating: 24, stamina: 30 } },
   28743: { name: 'Mantle of Abrahmis', slot: 'shoulder', stats: { armor: 1087, defenseRating: 23, stamina: 43, strength: 21 }, sockets: { red: 1, yellow: 1 } },
   28766: { name: 'Ruby Drape of the Mysticant', slot: 'back', stats: { armor: 105, intellect: 21, spellDamage: 30, spellHitRating: 18, stamina: 22 } },
+  28789: { name: 'Eye of Magtheridon', slot: 'trinket', stats: {  } }, // pure proc (+67 SP for 10s when a spell resists) — no static stat to model
   28802: { name: 'Bloodmaw Magus-Blade', slot: 'weapon', stats: { intellect: 15, spellCritRating: 25, spellDamage: 203, stamina: 16 } },
   28825: { name: 'Aldori Legacy Defender', slot: 'offhand', stats: { armor: 5279, blockValue: 137, defenseRating: 19, hitRating: 15, stamina: 39 }, sockets: { blue: 1 } },
   29066: { name: 'Justicar Chestguard', slot: 'chest', stats: { armor: 1510, blockRating: 23, defenseRating: 23, intellect: 30, spellDamage: 27, stamina: 48 }, sockets: { red: 1, blue: 1, yellow: 1 } },
@@ -44,6 +45,7 @@ export const BIS_ITEM_DB = {
   29253: { name: 'Girdle of Valorous Deeds', slot: 'waist', stats: { armor: 782, blockRating: 16, defenseRating: 24, intellect: 22, spellDamage: 20, stamina: 37 } },
   29254: { name: 'Boots of the Righteous Path', slot: 'feet', stats: { armor: 955, defenseRating: 23, intellect: 26, spellDamage: 28, stamina: 34 } },
   29279: { name: 'Violet Signet of the Great Protector', slot: 'ring', stats: { armor: 392, defenseRating: 19, stamina: 37 } },
+  29370: { name: 'Icon of the Silver Crescent', slot: 'trinket', stats: { spellDamage: 44 } }, // static +44 SP; on-use burst isn't modeled
   29388: { name: 'Libram of Repentance', slot: 'relic', stats: {  } },
   29925: { name: 'Phoenix-Wing Cloak', slot: 'back', stats: { armor: 108, defenseRating: 22, dodgeRating: 27, stamina: 37 } },
   29998: { name: 'Royal Gauntlets of Silvermoon', slot: 'hands', stats: { armor: 1080, defenseRating: 24, dodgeRating: 32, stamina: 57 }, sockets: { yellow: 1, blue: 1 } },

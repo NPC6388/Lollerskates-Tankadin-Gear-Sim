@@ -2,7 +2,7 @@
 // entirely client-side: parse the pasted/uploaded export -> optimizeSets -> render four sets.
 import { parseExport, equippableItems } from '../src/import.js';
 import { toExportText } from '../src/savedvars.js';
-import { optimizeSets, spellHitPct, GOAL_PRESETS, DEFAULT_TRINKET_LOCKS } from '../src/runner.js';
+import { optimizeSets, spellHitPct, GOAL_PRESETS } from '../src/runner.js';
 import { PROFESSION_NAMES } from '../src/professions.js';
 import { GEMS, META_GEMS } from '../src/gems.js';
 import { detectFaction } from '../src/enchants.js';
@@ -509,30 +509,31 @@ async function loadSample() {
     tryParse(text);
     loadedSample = true; // showing the demo character — surface the "use your own gear" CTA under the results
     if (items && items.length) {
-      populateTrinketLocks(true); // demo keeps Icon + Eye of Magtheridon locked so it shows the intended behaviour
+      populateTrinketLocks(); // defaults to the demo's currently-equipped trinkets, like any loaded character
       runOptimize(true); // land on results immediately — the whole point of the demo
     }
   } catch { setStatus('Could not load the example file.', 'err'); }
 }
 
-// Fill the two trinket-lock dropdowns from the loaded gear. Nothing is locked by default — the player
-// picks their own proc/on-use trinkets after loading (see promptTrinketChoice). Only the sample
-// character passes applyDefaults=true, so the demo still shows the intended Icon + Eye-of-Mag locks.
-function populateTrinketLocks(applyDefaults = false) {
+// Fill the two trinket-lock dropdowns from the loaded gear, defaulting each to the player's CURRENTLY
+// EQUIPPED trinkets — the model can't score proc/on-use trinkets, so it keeps whatever you're wearing
+// unless you change these. "— none —" frees the slot for the optimizer to pick a scoreable trinket.
+function populateTrinketLocks() {
   const trinkets = items.filter((it) => it.slot === 'trinket');
+  const equipped = trinkets.filter((t) => t.equipped); // the two you're wearing (from the export's E: lines)
   const opts = '<option value="">— none —</option>' +
     trinkets.map((t) => `<option value="${t.itemId}">${t.name || t.itemId}</option>`).join('');
   const set = (sel, defId) => {
     const el = $(sel); el.innerHTML = opts; el.disabled = false; // enable now that real trinkets exist
-    el.value = (applyDefaults && trinkets.some((t) => t.itemId === defId)) ? String(defId) : '';
+    el.value = defId ? String(defId) : '';
   };
-  set('lockIcon', DEFAULT_TRINKET_LOCKS.icon);
-  set('lockEye', DEFAULT_TRINKET_LOCKS.eye);
+  set('lockIcon', equipped[0] && equipped[0].itemId);
+  set('lockEye', equipped[1] && equipped[1].itemId);
 }
 
-// After a player loads THEIR OWN gear, make picking the locked trinkets the immediate next step:
-// scroll to the top of the Setup box and flash the Locked-trinkets field. (The model can't score
-// proc/on-use trinkets, so they must be chosen by hand — nothing is pre-locked.)
+// After a player loads THEIR OWN gear, draw attention to the locked trinkets as the next step:
+// scroll to the top of the Setup box and flash the Locked-trinkets field. (Defaults to your equipped
+// trinkets; the model can't score proc/on-use ones, so confirm or change them here.)
 function promptTrinketChoice() {
   $('config-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   const wrap = $('lockIcon').closest('.field');
@@ -958,12 +959,9 @@ function slotDropdown(alts, goalId, slotKey, chosenId) {
       ${gc}
     </div>`;
   }).join('');
-  // Summary reflects both halves: "≈ N also viable" for owned near-ties, "· BiS" when the reference
-  // list is present (so the dropdown reads usefully even with zero owned alternates).
-  const parts = [];
-  if (alts.length) parts.push(`≈ ${alts.length} also viable`);
-  if (bis) parts.push('BiS list');
-  const summary = parts.join(' · ');
+  // One consistent label for the slot's dropdown (owned near-ties + the BiS reference list), regardless
+  // of which halves are present — so it never flips between "also viable" and "BiS list".
+  const summary = 'also viable - BiS list';
   return `<details class="ds-alts"><summary class="ds-alts-h">${summary}</summary><div class="ds-alts-body">${rows}${bis}</div></details>`;
 }
 

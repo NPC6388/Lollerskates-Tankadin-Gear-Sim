@@ -43,6 +43,25 @@ In-game vetting round. Two changes, engine + site + addon, all built & installed
 dropdown; None = free." On the site, own-gear defaults BOTH trinket dropdowns to none (nothing locked);
 only the demo pre-fills Icon+Eye. The encounter sets now free trinkets entirely regardless (see above).
 
+## 2026-07-11 — Per-phase×slot BiS audit + trinket-list completeness (site only)
+
+Audited `web/bis.js` against a great local source the user pointed me to: the **AtlasLootClassic_TBCA_BIS**
+addon's `data.lua` `data["PaladinTank"]` block (per-phase P1–P5, per-slot, ranked ids — no Wowhead JS
+problem). Read-only scan of `…/Interface/AddOns`. Parser gotcha logged: build the block regex from a plain
+`new RegExp('\\[P'+p+'_DIFF\\]…')`, NOT a heredoc template literal (backslashes got eaten → false "all
+covered" pass). Findings + changes (all site, no addon bump):
+- **Profession-gated items complete.** Tankatronic Goggles (Eng) is correctly P2 (AtlasLoot P2#3, ABSENT
+  P1 — so my earlier hunch to add it to P1 was wrong, good I checked); Rocket Launcher P1–4; JC figurines
+  present (AtlasLoot omits them, we're more complete). Added the missing Engineering ⓘ note to P2 goggles.
+- **Trinkets:** added **Icon (29370)** + **Eye of Mag (28789)** to P1–P4 also-viable and extended **Tome
+  (30447)** to P3–P4; P5 left out (Sunwell). Added `BIS_ITEM_DB` entries — Icon static +44 SP, Eye pure
+  proc `{}` (verified vs wiki: Eye has NO static stat, +67 SP for 10s on resist).
+- **Default locked trinkets → currently EQUIPPED** (`populateTrinketLocks` uses `item.equipped`); dropped
+  the `DEFAULT_TRINKET_LOCKS` import. The addon already defaulted to equipped.
+- **Dropdown label unified to "also viable - BiS list"** (was "≈N also viable" / "BiS list" by content).
+- ~40 armor slots differ from AtlasLoot's stat-rank; **kept the Wowhead-guide ordering** per the user
+  (source-opinion, not errors). 150 JS tests pass. NOT committed yet.
+
 **VERIFIED IN-GAME (v0.8.44):** the user confirmed all of it — 6-card Optimize sizing is good, minimap
 right-click toggle works, trinket-lock dropdowns work, minimap flyout blue-coloring works, and the
 Illidan/Sunwell sets generate. Site: the Illy/SWP sets weren't showing on the LIVE site because the work
