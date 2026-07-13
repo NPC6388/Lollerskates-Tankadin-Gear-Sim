@@ -6,8 +6,11 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ## 2026-07-12 (latest) — Illidan gate → 101.8% (Shear), + SWP/BT gearing research
 
-Research + one engine/addon change (v0.8.45), driven by the user watching Illidan/SWP tank guides and
-cross-checking Warcraft Logs.
+A v0.8.45 batch (engine + addon + site), driven by the user watching Illidan/SWP tank guides and
+cross-checking Warcraft Logs. **Committed + pushed to `main` as `0f2822c`** — GitHub Pages redeploys the
+site and the addon-download zip. (Addon also hand-copied into the live WTF AddOns folder during the session,
+and cosmetic-polished after in-game checks: encounter-card focus text trimmed to not truncate, pager label
+right-bounded + shortened, pre-optimize status line un-clipped, minimap flyout item colours reworked.)
 
 1. **Illidan uncrushable gate lowered from 102.4% → 101.8%.** Shear is a single special that can't miss and
    is fully avoided at dodge+parry+block(+HS) ≥ **101.8%** (per the community Shear-calc WA + guides), just
@@ -62,7 +65,19 @@ cross-checking Warcraft Logs.
    fold the P3/P4/P5 breakdown into a site mini-guide; (c) consume notes (Scroll of Protection, stamina food,
    Ironshield pot, Nightmare Seed for P5) are for the mini-guide, NOT the sim. Full worn-set data lives on
    Warcraft Logs (Cloudflare-blocks automated fetch — zone 1011 / boss 609); documented P3 set backbone is on
-   the honorscode progression post.
+   the honorscode progression post. (Note: the "named Brutallus preset" follow-up is now DONE — see item 2.)
+
+6. **PARKED — Brutallus "why Crystalforge over Iron Gauntlets" trace + the EHP-vs-defense explainer.** User
+   sees the gear tooltip flag Iron Gauntlets (28518) as an EHP gain, but the Brutallus set keeps Crystalforge
+   (30124). Hand-calc on the Brutallus `ehp:2/sta:1` scale: Crystalforge **312** vs Iron **266 ungemmed / 320
+   with 2 stamina gems** — so it hinges on whether the solver gems Iron's two sockets for stamina, and on
+   keep-gems mode. TO FINISH: run the real solve off the live SavedVariables
+   (`…/WTF/Account/51718250#1/SavedVariables/TankadinGearSim.lua`), force-pin each item into `hands` for the
+   Brutallus goal, and dump EHP + objective score + the gems the solver assigns. Also owe the user the "why
+   EHP doesn't weight defense" writeup: **EHP = the raw pool behind armor (health ÷ armor DR ÷ RF); defense
+   buys avoidance + crit-immunity, which smooth the AVERAGE not the consecutive-hit spike, so they're valued
+   in the weight scales, not folded into the EHP number.** Possible design outcome: a pure-pool Brutallus
+   scale (drop the dodge/parry/defense weights) if the user wants it to track literal EHP.
 
 ---
 

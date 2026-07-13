@@ -1261,6 +1261,15 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
 - **Site — logic box updated for the P3+ encounter sets + a tooltip note by the download button.** The "How the
   sim works" box §5 now documents the three always-on encounter sets (Illidan Shear gate ≥101.8% no-miss;
   Sunwell general P5 set with the crush gate relaxed since only Sacrolash crushes, EHP-focus + high avoidance,
-  Radiance shown for reference; Brutallus the >20k-HP wall), and §2's uncrushable bullet points at them. Bumped
+  Radiance shown for reference; Brutallus the >20k-HP goal), and §2's uncrushable bullet points at them. Bumped
   the addon version badge to v0.8.45 and added a note beside the "Download the addon" button explaining the new
   gear tooltips and that the threat delta is spell-power-equivalent (sim threat weights, not raw SP).
+- **Addon v0.8.45 — UX polish after in-game checks (flyout colours, no-truncation, wording).** Minimap flyout
+  now colours each set item by where it is: **white** = in bags/worn, **blue** = in the bank (only detectable
+  while the bank window is open), **red** = not in your bags and away from the bank (or unowned) — like
+  ItemRack. Trimmed the encounter cards' focus text so it no longer truncates on the no-wrap line; right-bounded
+  and shortened the pager label so it can't overrun the toggle button; un-clipped the pre-optimize status line
+  (bound to the pane edge + shortened to "Reads worn + bags + open bank."). Reworded Brutallus from "wall" to a
+  ">20k-HP **goal**" (a target, not a hard gate) across the sim + site.
+- **Shipped: the P3+ set rework, gear tooltips, pager and polish above went out as commit `0f2822c` (v0.8.45)**,
+  deploying from `main` (site + addon-download zip).
