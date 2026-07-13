@@ -59,12 +59,16 @@ Runner.GOAL_PRESETS = {
   { id = "survival", name = "Survival", focus = "EHP : threat 2:1", ratio = { ehp = 2, threat = 1 }, gates = { raid = true, requireUncrushable = true }, lockEye = false },
   { id = "aoe", name = "AOE Trash", focus = "AOE threat (trash <=72 - no crushing blows)", ratio = { ehp = 1, aoeThreat = 2 }, gates = { raid = true, requireUncrushable = false }, lockEye = true },
   { id = "balanced", name = "Balanced", focus = "EHP : threat 1:1", ratio = { ehp = 1, threat = 1 }, gates = { raid = true, requireUncrushable = true }, lockEye = true },
-  -- Encounter sets: threat-max lean, uncrushable gate measured on the avoidance that fight leaves you
-  -- (Illidan's Shear can't miss; Sunwell Radiance = boss +5% hit / -20% tank dodge). `enc` swaps the
-  -- gate metric per goal; extra over the harder gate leans into threat. Returned flagged illegal (not
-  -- dropped) if the reduced-avoidance cap is unreachable. Mirrors src/runner.js.
+  -- Encounter sets (mirrors src/runner.js). Gate measured on the avoidance that fight leaves you (Illidan
+  -- Shear can't miss, 101.8% target; Sunwell Radiance = boss +5% hit / -20% dodge). In SWP only Lady
+  -- Sacrolash crushes, and a core set (Survival) covers her, so:
+  --  * Illidan  - Shear gate REQUIRED, threat-lean.
+  --  * Sunwell  - general SWP: crush gate RELAXED, EHP focus but high avoidance (ehp scale), lockEye off.
+  --               Shows the Radiance-reduced avoidance (ungated) as a Sacrolash reference.
+  --  * Brutallus- pure EHP goal (>20k HP): gate relaxed + ratio pushed to survival (ehp+sta, no threat).
   { id = "illidan", name = "Illidan", focus = "Illidan gate - lean threat", ratio = { ehp = 1, threat = 2 }, gates = { raid = true, requireUncrushable = true }, lockEye = true, enc = "illidan" },
-  { id = "sunwell", name = "Sunwell", focus = "Sunwell gate - lean threat", ratio = { ehp = 1, threat = 2 }, gates = { raid = true, requireUncrushable = true }, lockEye = true, enc = "sunwell" },
+  { id = "sunwell", name = "Sunwell", focus = "no crush - EHP + avoidance", ratio = { ehp = 3, threat = 1 }, gates = { raid = true, requireUncrushable = false }, lockEye = false, enc = "sunwell" },
+  { id = "brutallus", name = "Brutallus", focus = "all the EHP you can get", ratio = { ehp = 2, sta = 1 }, gates = { raid = true, requireUncrushable = false }, lockEye = false, enc = "sunwell" },
 }
 
 -- --- id -> name lookups (report a locked item's current gems/enchant) --------------------------
@@ -484,7 +488,7 @@ local function runGoal(goal, items, ctx, seed)
     local critOk
     if gt.raid == false then critOk = e.heroicCritImmune else critOk = e.raidCritImmune end
     local need = gt.uncrushableTarget
-    if need == nil then need = CAPS.uncrushableCombined end
+    if need == nil then need = (enc == "illidan") and CAPS.shearAvoidanceTarget or CAPS.uncrushableCombined end
     local crushOk = (not gt.requireUncrushable) or (encAvoid(e, enc) + 1e-9 >= need)
     local hpOk = (not gt.minHealth) or ((e.health or 0) + 1e-9 >= gt.minHealth)
     return critOk and crushOk and hpOk

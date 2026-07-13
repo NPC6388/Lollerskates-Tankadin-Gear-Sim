@@ -2,7 +2,7 @@
 ## Title: Tankadin Gear Sim
 ## Notes: Live tank readout (uncrittable/uncrushable/EHP) + gear export for Lollerskate's Tankadin Gear Sim
 ## Author: NPC6388
-## Version: 0.8.44
+## Version: 0.8.45
 ## IconTexture: Interface\Icons\INV_Shield_06
 ## SavedVariables: TankadinGearSimDB, TankadinGearSimUI
 ## X-Category: Combat
@@ -66,3 +66,7 @@ UI.lua
 
 # Minimap button — ItemRack-style flyout of the optimizer's sets (consumes ns.UI + the Optimize results).
 Minimap.lua
+
+# Gear tooltip augmentation: appends threat (SP-equiv) + EHP deltas vs the worn item (consumes engine +
+# ns.Exporter/ItemPool + ns.UI.optBuffs).
+Tooltip.lua

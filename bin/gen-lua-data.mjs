@@ -61,6 +61,7 @@ const COMMENTS = {
   'CAPS.defenseSkillRaid': 'crit immunity vs level 73 (guide: 1527-1534)',
   'CAPS.defenseSkillHeroic': 'crit immunity vs level 72',
   'CAPS.uncrushableCombined': 'miss+dodge+parry+block >= this => no crushing (guide: 1566)',
+  'CAPS.shearAvoidanceTarget': 'Illidan Shear (no miss): dodge+parry+block(+HS) >= this = avoided',
   'CAPS.spellHitCapPct': 'vs raid boss (guide table)',
   'CAPS.meleeHitCapPct': 'vs raid boss (6% with 3/3 Precision)',
   'CAPS.expertiseSoftCap': 'eliminates boss dodge',

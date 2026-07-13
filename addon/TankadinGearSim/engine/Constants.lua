@@ -38,14 +38,15 @@ C.BASE = {
 
 -- --- Hard caps / thresholds (guide: #stat-conversions, #combat-table) ---
 C.CAPS = {
-  defenseSkillRaid = 490,      -- crit immunity vs level 73 (guide: 1527-1534)
-  defenseSkillHeroic = 485,    -- crit immunity vs level 72
-  uncrushableCombined = 102.4, -- miss+dodge+parry+block >= this => no crushing (guide: 1566)
+  defenseSkillRaid = 490,       -- crit immunity vs level 73 (guide: 1527-1534)
+  defenseSkillHeroic = 485,     -- crit immunity vs level 72
+  uncrushableCombined = 102.4,  -- miss+dodge+parry+block >= this => no crushing (guide: 1566)
+  shearAvoidanceTarget = 101.8, -- Illidan Shear (no miss): dodge+parry+block(+HS) >= this = avoided
   sunwellHitReduction = 5,
   sunwellDodgeReduction = 20,
-  spellHitCapPct = 17,         -- vs raid boss (guide table)
-  meleeHitCapPct = 9,          -- vs raid boss (6% with 3/3 Precision)
-  expertiseSoftCap = 26,       -- eliminates boss dodge
+  spellHitCapPct = 17,          -- vs raid boss (guide table)
+  meleeHitCapPct = 9,           -- vs raid boss (6% with 3/3 Precision)
+  expertiseSoftCap = 26,        -- eliminates boss dodge
 }
 
 -- --- Threat amplifiers (guide: #threat-system) ---

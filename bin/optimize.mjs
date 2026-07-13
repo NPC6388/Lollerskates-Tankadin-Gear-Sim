@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { parseExport, equippableItems } from '../src/import.js';
 import { toExportText } from '../src/savedvars.js';
 import { optimizeSets, spellHitPct } from '../src/runner.js';
-import { CAPS } from '../src/constants.js';
+import { crushTargetFor } from '../src/constants.js';
 
 // ---- config -----------------------------------------------------------------
 const PROFESSIONS = ['Enchanting']; // gear-relevant professions
@@ -53,7 +53,7 @@ for (const r of results) {
 
 for (const r of results) {
   const e = r.evald, a = r.agg;
-  const need = r.goal.gates.uncrushableTarget ?? CAPS.uncrushableCombined;
+  const need = crushTargetFor(r.goal.enc, r.goal.gates.uncrushableTarget);
   const crushReq = r.goal.gates.requireUncrushable !== false;
   console.log(`\n========== ${r.goal.name} (${r.goal.focus}) ==========`);
   console.log(`legal:${r.legal}  uncrit:${e.raidCritImmune} (${e.critReduction.toFixed(2)}%)  uncrush:${crushReq ? `${e.uncrushable} (${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%)` : `${e.totalAvoidanceWithHS.toFixed(1)}% (not required)`}`);

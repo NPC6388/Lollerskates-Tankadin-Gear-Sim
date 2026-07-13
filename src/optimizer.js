@@ -12,7 +12,7 @@ import { evaluateSet } from './character.js';
 import { score } from './scoring.js';
 import { SCALES } from './weights.js';
 import { setBonusStats } from './sets.js';
-import { BASE, CAPS } from './constants.js';
+import { BASE, crushTargetFor } from './constants.js';
 
 const BUILTIN_OBJECTIVES = {
   spellPower: (e) => e.spellPower,
@@ -77,7 +77,7 @@ export function distinctOk(sel, distinct) {
   return true;
 }
 
-const crushTarget = (gates = {}) => gates.uncrushableTarget ?? CAPS.uncrushableCombined;
+const crushTarget = (gates = {}) => crushTargetFor(gates.enc, gates.uncrushableTarget);
 // The avoidance the crush gate measures. Normally the full combined figure; for the encounter presets
 // (gates.enc) it's the reduced avoidance that fight leaves you — so the SELECTION targets the same gate
 // finalLegal checks (Illidan drops miss; Sunwell cuts miss+dodge). Without this the optimizer would only

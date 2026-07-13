@@ -59,10 +59,11 @@ export function evaluateSet(s) {
     crushSurplus: totalAvoidanceWithHS - CAPS.uncrushableCombined,
     uncrushable: totalAvoidanceWithHS + 1e-9 >= CAPS.uncrushableCombined,
 
-    // Encounter-specific uncrushable (Illidan / Sunwell): same 102.4% cap, reduced avoidance.
+    // Encounter-specific uncrushable. Illidan's Shear can't miss and is avoided at the LOWER 101.8%
+    // target (dodge+parry+block+HS); Sunwell keeps the 102.4% crush table on its reduced avoidance.
     illyAvoidance,
-    illyUncrushable: illyAvoidance + 1e-9 >= CAPS.uncrushableCombined,
-    illyCrushSurplus: illyAvoidance - CAPS.uncrushableCombined,
+    illyUncrushable: illyAvoidance + 1e-9 >= CAPS.shearAvoidanceTarget,
+    illyCrushSurplus: illyAvoidance - CAPS.shearAvoidanceTarget,
     swpAvoidance,
     swpUncrushable: swpAvoidance + 1e-9 >= CAPS.uncrushableCombined,
     swpCrushSurplus: swpAvoidance - CAPS.uncrushableCombined,

@@ -12,7 +12,7 @@ import { SCROLLS } from '../src/scrolls.js';
 import { SCALES, PARTS } from '../src/weights.js';
 import { SET_BONUS_STATS } from '../src/sets.js';
 import { CHARACTER, TALENTS, BUFFS } from '../src/model.js';
-import { CAPS, BASE, RATING, THREAT, ARMOR_CONST } from '../src/constants.js';
+import { CAPS, BASE, RATING, THREAT, ARMOR_CONST, crushTargetFor } from '../src/constants.js';
 import { BIS, BIS_PHASES } from './bis.js';
 import { BIS_ITEM_DB } from './bis-items.js';
 
@@ -419,7 +419,7 @@ function renderLogic() {
     <p class="muted">Every set must satisfy these <em>before</em> any stat is maximized — pass/fail, not scored:</p>
     <ul>
       <li><strong>Uncrittable</strong> — a level-${BASE.raidBossLevel} raid boss has +${BASE.bossCritVsPlayer}% crit on you; defense (over ${BASE.baseDefenseSkill}, ×${defBenefitPct}%) + resilience must cover it (≈${CAPS.defenseSkillRaid} defense, or any defense+resilience mix reaching ${BASE.bossCritVsPlayer}%).</li>
-      <li><strong>Uncrushable</strong> — miss + dodge + parry + block must total <strong>≥ ${CAPS.uncrushableCombined}%</strong> with Holy Shield up (+${THREAT.holyShieldActive}% block, more with the block libram). AOE Trash drops this gate (level ≤72 mobs can't deal crushing blows).</li>
+      <li><strong>Uncrushable</strong> — miss + dodge + parry + block must total <strong>≥ ${CAPS.uncrushableCombined}%</strong> with Holy Shield up (+${THREAT.holyShieldActive}% block, more with the block libram). AOE Trash drops this gate (level ≤72 mobs can't deal crushing blows). The encounter sets adjust it — <strong>Illidan</strong> needs dodge+parry+block ≥ ${CAPS.shearAvoidanceTarget}% (Shear can't miss, so miss doesn't count), while the <strong>Sunwell</strong> &amp; <strong>Brutallus</strong> sets relax it (only Lady Sacrolash lands crushing blows in Sunwell). See §5.</li>
       <li><strong>Min HP</strong> — a raid-buffed health floor you set per goal (10k = effectively off).</li>
     </ul>
 
@@ -437,8 +437,14 @@ function renderLogic() {
       <li><strong>Tier set bonuses are scored</strong> as spell-power-equivalents (Justicar 2pc +10% seal ≈ ${j2} SP, 4pc ≈ ${j4}, Crystalforge 2pc ≈ ${c2}), so the optimizer values completing a 2pc/4pc — weighed by the goal, so it matters on threat sets and barely registers on survival.</li>
     </ul>
 
-    <h4>5 · The four sets &amp; the sliders</h4>
-    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. Raid Threat, Survival and AOE Trash each blend an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with their own Min-HP floor (AOE also uses AOE-threat weighting and drops the crush gate). <strong>Balanced is a blend dial:</strong> its slider slides between your Survival set (left) and your Raid Threat set (right), interpolating their ratios AND their Min-HP floors (and taking the nearer side's 2nd-trinket lock) — so the ends reproduce those two sets and the middle splits the difference. It has no Min-HP knob of its own; the floor shown is derived from your two sets.</p>
+    <h4>5 · The sets &amp; the sliders</h4>
+    <p class="muted">Caps are gates; the sliders tune how the leftover budget is spent <em>beyond</em> them. The four <strong>core</strong> sets are tunable: Raid Threat, Survival and AOE Trash each blend an EHP component and a threat component in the ratio you set (e.g. EHP 1 : Threat 4), with their own Min-HP floor (AOE also uses AOE-threat weighting and drops the crush gate). <strong>Balanced is a blend dial:</strong> its slider slides between your Survival set (left) and your Raid Threat set (right), interpolating their ratios AND their Min-HP floors (and taking the nearer side's 2nd-trinket lock) — so the ends reproduce those two sets and the middle splits the difference. It has no Min-HP knob of its own; the floor shown is derived from your two sets.</p>
+    <p class="muted">Three <strong>encounter sets</strong> are always on (fixed ratios, no sliders); each gates on the avoidance <em>that fight</em> actually leaves you, so a set that's uncrushable on a normal boss can still fall short there:</p>
+    <ul>
+      <li><strong>Illidan</strong> (P3) — Shear can't miss, so it's avoided at <strong>dodge + parry + block ≥ ${CAPS.shearAvoidanceTarget}%</strong> with Holy Shield (miss excluded, so it needs <em>more</em> raw avoidance than a normal boss). Leans threat with the surplus over the gate.</li>
+      <li><strong>Sunwell</strong> (P5, general) — in Sunwell only <strong>Lady Sacrolash</strong> lands crushing blows, and a core Survival set covers her, so the crush gate is <strong>relaxed</strong> for the tier. The focus is effective health, but the EHP scale still weights dodge/parry/defense heavily, so it keeps high avoidance too. It displays the <strong>Sunwell Radiance</strong>-reduced avoidance (−${CAPS.sunwellDodgeReduction} dodge, boss +${CAPS.sunwellHitReduction}% hit), ungated, as a reference.</li>
+      <li><strong>Brutallus</strong> (P5) — a high effective-health <em>goal</em> (aim &gt;20k HP raid-buffed): the crush gate is off and the ratio is pushed to pure survival (EHP + extra stamina, no threat), so it takes all the EHP it can get while still keeping the avoidance the EHP scale values.</li>
+    </ul>
 
     <h4>6 · Gems, enchants &amp; metas</h4>
     <ul>
@@ -643,7 +649,7 @@ function buildKeepSpec() {
 const GLOSSARY = {
   ehp: 'EHP (Effective HP) — your health divided by physical damage reduction (armor + Improved Righteous Fury). The raw pool behind your mitigation; bigger means more burst survived. Avoidance is NOT folded in — it smooths averages, not the spike damage that kills tanks.',
   uncrit: 'Uncrittable — a raid boss can’t land a critical hit on you. Needs ~490 defense skill, or any defense+resilience mix covering the boss’s +5.6% crit. A hard gate every set must pass.',
-  uncrush: 'Uncrushable — crushing blows (an extra ~50% hit) can’t land. Needs miss + dodge + parry + block ≥ 102.4% with Holy Shield up. A hard gate, dropped on AOE Trash (≤72 mobs can’t crush).',
+  uncrush: 'Uncrushable — crushing blows (an extra ~50% hit) can’t land. Needs miss + dodge + parry + block ≥ 102.4% with Holy Shield up. A hard gate, dropped on AOE Trash (≤72 mobs can’t crush). The Illidan set gates on 101.8% WITHOUT miss (Shear can’t miss); the Sunwell set on the Radiance-reduced avoidance.',
   minhp: 'Min HP — a raid-buffed health floor you set per goal; the optimizer won’t go below it. 10k = effectively off.',
   defgem: 'Def-gemmed — gemmed for avoidance/defense (not threat) to help reach the uncrittable/uncrushable caps.',
   kept: 'Kept — this item’s existing gems/enchants were preserved (locked), not re-optimized.',
@@ -1005,8 +1011,12 @@ function buffNote(b, agg) {
 function setCard(r) {
   const e = r.evald, a = r.agg;
   const crushReq = r.goal.gates.requireUncrushable !== false; // AOE trash drops the crush gate
-  const need = r.goal.gates.uncrushableTarget ?? CAPS.uncrushableCombined;
-  const crushPass = e.totalAvoidanceWithHS + 1e-9 >= need;
+  const need = crushTargetFor(r.goal.enc, r.goal.gates.uncrushableTarget);
+  // The gate measures the avoidance ITS OWN fight leaves you: Illidan drops miss (Shear), Sunwell cuts
+  // miss+dodge (Radiance); every other set uses the normal combined figure. Matches the summary column.
+  const crushShown = r.goal.enc === 'sunwell' ? e.swpAvoidance
+    : r.goal.enc === 'illidan' ? e.illyAvoidance : e.totalAvoidanceWithHS;
+  const crushPass = crushShown + 1e-9 >= need;
   const minHp = r.goal.gates.minHealth || 0;
   const hpPass = !minHp || a.health + 1e-9 >= minHp;
   const metaWarn = r.metas.filter((m) => !m.active)
@@ -1024,7 +1034,7 @@ function setCard(r) {
   // Surplus avoidance hint: when an uncrushable set sits well OVER the crush cap AND it has kept (frozen)
   // gems, that surplus is locked in — re-gemming would trim it to the cap and convert it to threat. Only
   // show it when there's something locked to unfreeze (re-gem mode already trims to the cap on its own).
-  const crushSurplus = e.totalAvoidanceWithHS - need;
+  const crushSurplus = crushShown - need;
   const anyLocked = Object.values(r.perSlot).some((ps) => ps.locked);
   const surplusNote = (crushReq && crushPass && anyLocked && crushSurplus >= 1.5)
     ? `<div class="tipnote">💡 This set is <b>${crushSurplus.toFixed(1)}%</b> over the ${need}% uncrushable cap, but your <b>kept gems</b> are frozen, so that surplus avoidance can't be re-gemmed into threat. Switch <b>Gems &amp; enchants</b> to <b>“Re-gem everything”</b> (or unlock pieces) to convert it to more spell damage.</div>`
@@ -1054,8 +1064,8 @@ function setCard(r) {
         <div class="gates">
           <span class="gate ${e.raidCritImmune ? 'pass' : 'fail'}">${term('Uncrittable', 'uncrit')} ${e.critReduction.toFixed(2)}%</span>
           ${crushReq
-            ? `<span class="gate ${crushPass ? 'pass' : 'fail'}">${term('Uncrushable', 'uncrush')} ${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%</span>`
-            : `<span class="gate na">${term('Uncrushable', 'uncrush')} ${e.totalAvoidanceWithHS.toFixed(1)}% — not required (trash)</span>`}
+            ? `<span class="gate ${crushPass ? 'pass' : 'fail'}">${term('Uncrushable', 'uncrush')} ${crushShown.toFixed(1)}% / ${need}%</span>`
+            : `<span class="gate na">${term('Uncrushable', 'uncrush')} ${crushShown.toFixed(1)}% — not required (${r.goal.id === 'aoe' ? 'trash' : 'no crushing blows'})</span>`}
           ${minHp ? `<span class="gate ${hpPass ? 'pass' : 'fail'}">${term('Min HP', 'minhp')} ${fmt(a.health)} / ${fmt(minHp)}</span>` : ''}
         </div>
         <div class="set-actions">

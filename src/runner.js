@@ -17,7 +17,7 @@ import { buildPool, optimizeHeuristic, distinctOk } from './optimizer.js';
 import { professionPerks } from './professions.js';
 import { scrollStats } from './scrolls.js';
 import { libramStats } from './librams.js';
-import { CAPS, RATING } from './constants.js';
+import { RATING, crushTargetFor } from './constants.js';
 
 const HS = 30;                               // Holy Shield +30% block in the uncrushable check
 const CAP_SCALE = SCALES.survivalUncrushable; // gems that most cheaply buy avoidance/defense
@@ -42,13 +42,22 @@ export const GOAL_PRESETS = [
   // (trash can still crit). Spell hit is also weighted low in the aoeThreat scale (only ~5% needed).
   { id: 'aoe', name: 'AOE Trash', focus: 'AOE threat (trash ≤72 — no crushing blows)', ratio: { ehp: 1, aoeThreat: 2 }, gates: { raid: true, requireUncrushable: false }, lockEye: true },
   { id: 'balanced', name: 'Balanced', focus: 'EHP : threat 1:1', ratio: { ehp: 1, threat: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: true },
-  // Encounter sets: threat-max lean, but the uncrushable gate is measured on the avoidance THAT FIGHT
-  // leaves you — Illidan's Shear can't miss (miss ignored); Sunwell Radiance = boss +5% hit / −20% tank
-  // dodge (see encAvoid/encUncrush + character.js). `enc` swaps the gate metric per goal; extra budget
-  // over the (harder) gate leans into threat. If the gear can't reach the reduced-avoidance cap the set
-  // is still returned, flagged illegal (like any unreachable gate) rather than dropped.
+  // Encounter sets: the uncrushable gate is measured on the avoidance THAT FIGHT leaves you — Illidan's
+  // Shear can't miss (miss ignored, 101.8% target); Sunwell Radiance = boss +5% hit / −20% tank dodge
+  // (see encAvoid/encUncrush + character.js). `enc` swaps the gate metric per goal. If the gear can't
+  // reach the reduced-avoidance cap the set is still returned, flagged illegal, rather than dropped.
+  //  • Illidan — Shear gate REQUIRED, threat-lean (surplus over the gate goes to threat).
+  //  • Sunwell — the GENERAL SWP set. Only Lady Sacrolash lands crushing blows, and a core set (Survival)
+  //    covers HER, so every SWP fight here RELAXES the crush gate. Focus is EFFECTIVE HEALTH, but the ehp
+  //    scale still weights dodge/parry/defense heavily, so it keeps HIGH AVOIDANCE too — stamina/armor-led.
+  //    It still SHOWS the Radiance-reduced avoidance (enc:'sunwell'), ungated, as a reference for Sacrolash.
+  //    lockEye:false frees the threat trinket for a defensive pick.
+  //  • Brutallus — a high effective-health GOAL (aim >20k HP raid-buffed): crush gate relaxed
+  //    AND the ratio pushed to pure survival (ehp + extra stamina, NO threat), so it takes all the EHP
+  //    it can get. It keeps some avoidance via the ehp scale but leans harder to stamina than Sunwell.
   { id: 'illidan', name: 'Illidan', focus: 'Illidan gate · lean threat', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true }, lockEye: true, enc: 'illidan' },
-  { id: 'sunwell', name: 'Sunwell', focus: 'Sunwell gate · lean threat', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true }, lockEye: true, enc: 'sunwell' },
+  { id: 'sunwell', name: 'Sunwell', focus: 'no crush · EHP + avoidance', ratio: { ehp: 3, threat: 1 }, gates: { raid: true, requireUncrushable: false }, lockEye: false, enc: 'sunwell' },
+  { id: 'brutallus', name: 'Brutallus', focus: 'all the EHP you can get', ratio: { ehp: 2, sta: 1 }, gates: { raid: true, requireUncrushable: false }, lockEye: false, enc: 'sunwell' },
 ];
 
 export const spellHitPct = (a) => TALENTS.precisionSpellHitPct + ((a._raw && a._raw.spellHitRating) || 0) / RATING.spellHitPer1;
@@ -401,7 +410,7 @@ function runGoal(goal, items, ctx, seed = {}) {
   const finalLegal = (e) => {
     const gt = goal.gates || {};
     const critOk = gt.raid === false ? e.heroicCritImmune : e.raidCritImmune;
-    const need = gt.uncrushableTarget ?? CAPS.uncrushableCombined;
+    const need = crushTargetFor(enc, gt.uncrushableTarget);
     const crushOk = !gt.requireUncrushable || encAvoid(e, enc) + 1e-9 >= need;
     const hpOk = !gt.minHealth || (e.health ?? 0) + 1e-9 >= gt.minHealth;
     return critOk && crushOk && hpOk;

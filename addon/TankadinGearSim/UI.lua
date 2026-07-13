@@ -19,15 +19,19 @@ UI.assumeBuffs = true
 -- across tabs, clamped up to each tab's minimum. Optimize needs the most room (six goal cards).
 local TAB_MIN = {
   live     = { 300, 482 },
-  optimize = { 380, 848 },
+  optimize = { 380, 760 },
   export   = { 470, 260 },
 }
 
 local frame, tabs, panes, liveRows, exportInfo, exportSteps
-local optCards, optStatus, optButton, optSubs
+local optCards, optStatus, optButton, optSubs, optPageLabel, optPageBtn
 local trinketList = {} -- [{ itemId, name }] owned trinkets, refreshed when the Optimize tab opens
 local ddIcon, ddEye    -- the two trinket-lock UIDropDownMenu frames
 local optRun -- active async handle (so re-clicking cancels the prior run)
+-- Optimize card pager (keeps the column short): 0 = the four tunable "core" goals, 1 = the always-on
+-- encounter sets. optResults holds the last solve so flipping the page just re-paints. paintCards is
+-- forward-declared (assigned near renderOptimize) so the pager button, built earlier, can call it.
+local optPage, optResults, paintCards = 0
 
 -- ---- formatting helpers ----
 -- WeakAura-style palette: gold stat labels, cyan values, green/red for pass/fail, on the black bg.
@@ -380,8 +384,9 @@ local function buildFrame()
   optButton:SetSize(96, 22); optButton:SetPoint("TOPLEFT", 8, -4); optButton:SetText("Optimize")
   optButton:SetScript("OnClick", function() UI.Optimize() end)
   optStatus = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  optStatus:SetPoint("LEFT", optButton, "RIGHT", 8, 0); optStatus:SetJustifyH("LEFT"); optStatus:SetWidth(300)
-  optStatus:SetText(color(DIM, "Reads your worn + bag + (open) bank gear."))
+  optStatus:SetPoint("LEFT", optButton, "RIGHT", 8, 0); optStatus:SetPoint("RIGHT", opt, "RIGHT", -8, 0)
+  optStatus:SetJustifyH("LEFT"); optStatus:SetWordWrap(false)
+  optStatus:SetText(color(DIM, "Reads worn + bags + open bank."))
   -- Lock which two trinkets go in the sets (the model can't score proc/on-use trinkets, so left free it
   -- swaps them for scoreable ones). Default = your equipped two. LEFT dropdown is kept in EVERY set; RIGHT
   -- in every set but Survival (which frees it for a defensive pick). "None" = optimizer picks that slot.
@@ -413,14 +418,26 @@ local function buildFrame()
     pcall(goalSlider, opt, sy, id) -- contain any template issue so the whole Optimize tab still builds
     sy = sy - 56 -- three lines per goal (name, then the labelled threat + hp-min sliders)
   end
-  -- Six goal cards (name + gate chip, then two stat lines each): the four tunable goals plus the two
-  -- always-on encounter sets (Illidan / Sunwell).
-  -- Cards span the pane width (so a wider frame shows more) and NEVER wrap — long lines clip at the
-  -- right edge instead of wrapping onto the next card's line (the overlap bug). SetWordWrap(false)
-  -- plus the enforced per-tab minimum height keeps every card's 3 lines clear of each other + footer.
+  -- Sets pager: to keep the card column short, the four tunable "core" goals show on one page and the
+  -- always-on encounter sets (Illidan / Sacrolash / Brutallus) on another, toggled by optPageBtn.
+  -- PAGE_SIZE = the larger group, so one set of cards serves both pages; paintCards() fills them per page.
+  -- Cards span the pane width and NEVER wrap — long lines clip at the right edge (SetWordWrap(false));
+  -- the per-tab minimum height keeps the pager row + cards + footer from overlapping.
+  local coreN, encN = 0, 0
+  for _, g in ipairs(ns.engine.Runner.GOAL_PRESETS) do
+    if g.enc then encN = encN + 1 else coreN = coreN + 1 end
+  end
+  local PAGE_SIZE = math.max(coreN, encN)
+  optPageLabel = opt:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  optPageLabel:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, -346)
+  optPageLabel:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -166, -346) -- stop short of the pager button (150w + margins) so they can't overlap
+  optPageLabel:SetJustifyH("LEFT"); optPageLabel:SetWordWrap(false)
+  optPageBtn = CreateFrame("Button", nil, opt, "UIPanelButtonTemplate")
+  optPageBtn:SetSize(150, 20); optPageBtn:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, -342)
+  optPageBtn:SetScript("OnClick", function() optPage = (optPage == 0) and 1 or 0; paintCards() end)
   optCards = {}
-  local cy = -348
-  for i = 1, 6 do
+  local cy = -374
+  for i = 1, PAGE_SIZE do
     local head = opt:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     head:SetPoint("TOPLEFT", opt, "TOPLEFT", 10, cy); head:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy)
     head:SetJustifyH("LEFT"); head:SetWordWrap(false)
@@ -433,6 +450,7 @@ local function buildFrame()
     optCards[i] = { head = head, l2 = l2, l3 = l3 }
     cy = cy - 62
   end
+  if paintCards then paintCards() end -- init the pager label/button text (cards stay blank until Optimize)
   optSubs = opt:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   optSubs:SetPoint("BOTTOMLEFT", 10, 6); optSubs:SetPoint("BOTTOMRIGHT", -22, 6); optSubs:SetJustifyH("LEFT")
   -- Two lines, each short enough to NOT wrap at the 380px min width (a wrapped footer overlaps the cards):
@@ -483,9 +501,9 @@ function UI.Refresh()
   R.critH:SetText(color(DIM, pct(e.critReduction) .. " / 5.4%") .. " " .. mark(e.heroicCritImmune))
   R.crush:SetText(color(e.uncrushable and GOOD or BAD, pct(e.totalAvoidanceWithHS)) ..
     color(DIM, " / 102.4%") .. " " .. mark(e.uncrushable))
-  -- Encounter-specific uncrushable: Illidan (Shear can't miss) / Sunwell (Radiance cuts miss+dodge).
+  -- Encounter-specific uncrushable: Illidan (Shear can't miss, 101.8% gate) / Sunwell (Radiance cuts miss+dodge).
   R.illy:SetText(color(e.illyUncrushable and GOOD or BAD, pct(e.illyAvoidance)) ..
-    color(DIM, " / 102.4%") .. " " .. mark(e.illyUncrushable))
+    color(DIM, " / 101.8%") .. " " .. mark(e.illyUncrushable))
   R.swp:SetText(color(e.swpUncrushable and GOOD or BAD, pct(e.swpAvoidance)) ..
     color(DIM, " / 102.4%") .. " " .. mark(e.swpUncrushable))
 
@@ -543,10 +561,20 @@ local function detectProfessions()
   return out
 end
 
--- Render the four goal results into the cards.
-local function renderOptimize(results)
+-- Fill the visible cards from the active pager page (core 4 goals, or the encounter sets). Called on a
+-- fresh solve (via renderOptimize, which stores the results) and whenever the pager button flips pages.
+paintCards = function()
+  local results = optResults or {}
+  local core, enc = {}, {}
+  for _, r in ipairs(results) do
+    if r.goal.enc then enc[#enc + 1] = r else core[#core + 1] = r end
+  end
+  local list = (optPage == 1) and enc or core
+  -- Short label (the cards below already name each set); kept clear of the pager button by its right bound.
+  if optPageLabel then optPageLabel:SetText(color(GOLD, (optPage == 1) and "Encounter sets" or "Core sets")) end
+  if optPageBtn then optPageBtn:SetText((optPage == 1) and "<< Core sets" or "Encounter sets >>") end
   for i, card in ipairs(optCards) do
-    local r = results[i]
+    local r = list[i]
     if not r then
       card.head:SetText(""); card.l2:SetText(""); card.l3:SetText("")
     else
@@ -557,15 +585,18 @@ local function renderOptimize(results)
         .. color(DIM, "   " .. (r.goal.focus or "")))
       local sh = (ns.engine.CharacterData.TALENTS.precisionSpellHitPct or 3)
         + ((a._raw and a._raw.spellHitRating) or 0) / (ns.engine.Constants.RATING.spellHitPer1 or 12.62)
-      -- The encounter sets (Illy/SWP) show the reduced-avoidance figure THEIR gate uses; others the normal.
+      -- Encounter sets show the reduced-avoidance figure THEIR gate uses; others the normal. Goals that
+      -- don't require uncrushable (AOE trash, Brutallus) show it neutral — informational, not a gate.
+      local crushReq = r.goal.gates.requireUncrushable ~= false
       local crushAv, crushOk
       if r.goal.enc == "sunwell" then crushAv, crushOk = e.swpAvoidance, e.swpUncrushable
       elseif r.goal.enc == "illidan" then crushAv, crushOk = e.illyAvoidance, e.illyUncrushable
       else crushAv, crushOk = e.totalAvoidanceWithHS, e.uncrushable end
+      local crushColor = (not crushReq) and CYAN or (crushOk and GOOD or BAD)
       card.l2:SetText(
         color(GOLD, "SP/SH ") .. color(CYAN, num(a.spellPowerLiteral or a.spellPower))
         .. color(DIM, " / ") .. color(CYAN, pct(sh))
-        .. color(GOLD, "   Uncrush ") .. color(crushOk and GOOD or BAD, pct(crushAv))
+        .. color(GOLD, "   Uncrush ") .. color(crushColor, pct(crushAv))
         .. color(GOLD, "   Crit ") .. color(e.raidCritImmune and GOOD or BAD, pct(e.critReduction)))
       card.l3:SetText(
         color(GOLD, "EHP/HP ") .. color(CYAN, num(e.ehpPhysical)) .. color(DIM, " / ") .. color(CYAN, num(e.health))
@@ -573,6 +604,12 @@ local function renderOptimize(results)
         .. color(GOLD, "   Block ") .. color(CYAN, num(e.blockValue)))
     end
   end
+end
+
+-- Store the solve and paint the active page.
+local function renderOptimize(results)
+  optResults = results
+  paintCards()
 end
 
 -- Scan owned gear, auto-detect professions/faction, and run the optimizer across frames.

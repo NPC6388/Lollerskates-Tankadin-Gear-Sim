@@ -1211,3 +1211,56 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   BiS list"** instead of flipping between "≈ N also viable" and "BiS list" by content. The ~40 armor slots
   where AtlasLoot's stat-rank disagrees with our Wowhead-guide ordering were left as-is (kept the guide's
   ordering, per the request — those are source-opinion differences, not errors).
+- **Engine + Addon v0.8.45 — Illidan gate is 101.8% (Shear), not the 102.4% crush cap.** Illidan's Shear is
+  a single special that CANNOT miss and is fully avoided when dodge+parry+block (with Holy Shield) reaches
+  **101.8%** — 0.6% under the crush table. The Illidan preset previously reused the 102.4% crush constant, so
+  it could flag a set illegal that actually clears Shear. Added `CAPS.shearAvoidanceTarget = 101.8` plus a
+  shared `crushTargetFor(enc, override)` helper (`src/constants.js`) used at every crush-target site —
+  `character.js` (illy* fields), `optimizer.js` (`crushTarget`), `runner.js` (`finalLegal`), `bin/optimize.mjs`,
+  and `web/app.js`. Sunwell and normal bosses stay 102.4, and an explicit `gates.uncrushableTarget` override
+  (e.g. AOE-trash relax) still wins. `illyAvoidance` already excludes miss — unchanged. **Web set-card crush
+  chip** now shows each encounter set's OWN avoidance vs its OWN target (Illidan → `illyAvoidance` / 101.8,
+  Sunwell → `swpAvoidance` / 102.4), matching the summary column and `r.legal` — fixes the card previously
+  showing normal avoidance / 102.4 for the encounter sets (the 88.6% vs 111.1% discrepancy). Addon mirrored
+  (`Constants/Evaluate/Optimizer/Runner/UI.lua`, regenerated via `gen-lua`). The preset **ratio is unchanged**
+  (`ehp:1, threat:2`) — the sliders move EHP↔threat per raid comp/performance, per request. Regenerated eval
+  fixtures (every `illyCrushSurplus` +0.60, no legality flips); 150 JS tests + all 8 Lua parity suites pass.
+- **Engine + Addon v0.8.45 — SWP reworked: a relaxed-crush Sunwell EHP set + a max-EHP Brutallus set (7 goals).**
+  In Sunwell **only Lady Sacrolash lands crushing blows**, and a core set (Survival) covers her, so the crush
+  gate is **relaxed for the whole tier**. Repurposed the `sunwell` preset as the **general Sunwell** set:
+  `enc: sunwell`, `requireUncrushable: false`, `ratio ehp:3/threat:1`, `lockEye: false` — **EHP focus that still
+  keeps high avoidance** (the `ehp` weight scale already weights dodge/parry/defense heavily, just stamina/armor-
+  led), and it still SHOWS the Radiance-reduced avoidance (ungated) as a Sacrolash reference. Added a dedicated
+  **Brutallus** set (`ratio ehp:2/sta:1`, no threat, relaxed) — the tier's effective-health WALL (aim >20k HP),
+  which takes *all* the EHP it can get; on the sample export it's the tankiest of all sets (EHP 38.8k / 1258
+  stam / 351 SP). No separate Sacrolash preset (Survival handles her). Consumes / on-use-trinket HP deliberately
+  NOT modeled (per request). Encounter presets stay fixed-ratio (no slider row), same as Illidan. Web na-chip
+  reason is "no crushing blows" for Sunwell/Brutallus vs "trash" for AOE. Addon `Runner.lua` mirrored. Regenerated
+  runner fixtures (24 goal results); 150 JS tests + 8 Lua parity suites + Lua syntax check green.
+- **Addon v0.8.45 — Optimize tab pages its result cards (7 sets no longer overflow the column).** Rather than
+  stacking all seven goal cards (which pushed the pane very tall), the Optimize tab now shows one **page** at a
+  time: the four tunable **core** goals (Raid / Survival / AOE / Balanced), or the always-on **encounter** sets
+  (Illidan / Sacrolash / Brutallus), flipped by a toggle button with a header label showing the active page.
+  `UI.lua`: `PAGE_SIZE = max(coreCount, encCount)` cards are built once and re-filled by a new `paintCards()`
+  (split by `goal.enc`); `renderOptimize` stores the solve so the button re-paints without re-running; tab
+  min-height cut 848→760 (4 cards + pager row + footer). Goals that don't require uncrushable (AOE, Brutallus)
+  now show the Uncrush figure neutral (cyan) instead of red — it's informational there, not a gate. Lua syntax
+  check + all parity suites pass. (In-game visual layout to be eyeballed on /reload.)
+- **Addon v0.8.45 — gear tooltips show Threat + EHP deltas (`Tooltip.lua`).** New: hovering any gear item
+  appends two lines — **TGS Threat (SP-eq)** and **TGS Effective HP** — showing how equipping it would change
+  your worn set vs the item it replaces (Pawn-style). Threat is the sim's threat weight scale applied to the
+  stat delta (spell power + spell hit ×1.1 + expertise ×0.9 + hit + block value + strength, in SP-equivalent
+  units); EHP is a full set re-eval (`Model.aggregate` → `Evaluate.evaluateSet` ehpPhysical) since it's
+  non-linear in armor/health. Reuses `Exporter.readItemRaw` + `Items.build` to read the hovered link, and the
+  same raid-buff assumption (Kings+MotW, follows the Optimize buff toggle) / default talents as the in-game
+  optimizer, so deltas match the sim's ranking. Worn-set baseline is cached and invalidated on
+  `PLAYER_EQUIPMENT_CHANGED`. Paired slots (rings/trinkets) report the swap giving the higher resulting EHP and
+  that swap's threat delta (one real swap). Hooks `GameTooltip` + `ItemRefTooltip` via `OnTooltipSetItem`
+  (guarded so it never breaks a tooltip). Same blind spots as the sim: no tier set-bonus / proc-trinket / meta
+  re-activation modelling. Lua syntax check passes (32 files); zip rebuilt (33 files).
+- **Site — logic box updated for the P3+ encounter sets + a tooltip note by the download button.** The "How the
+  sim works" box §5 now documents the three always-on encounter sets (Illidan Shear gate ≥101.8% no-miss;
+  Sunwell general P5 set with the crush gate relaxed since only Sacrolash crushes, EHP-focus + high avoidance,
+  Radiance shown for reference; Brutallus the >20k-HP wall), and §2's uncrushable bullet points at them. Bumped
+  the addon version badge to v0.8.45 and added a note beside the "Download the addon" button explaining the new
+  gear tooltips and that the threat delta is spell-power-equivalent (sim threat weights, not raw SP).

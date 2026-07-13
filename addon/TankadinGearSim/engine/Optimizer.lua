@@ -86,6 +86,8 @@ end
 local function crushTarget(gates)
   gates = gates or {}
   if gates.uncrushableTarget ~= nil then return gates.uncrushableTarget end
+  -- Illidan's Shear can't miss and is avoided at 101.8% (dodge+parry+block+HS), under the crush table.
+  if gates.enc == "illidan" then return CAPS.shearAvoidanceTarget end
   return CAPS.uncrushableCombined
 end
 

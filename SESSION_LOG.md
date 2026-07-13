@@ -4,7 +4,69 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-11 (latest) — Illy/SWP as preset goals (not a toggle) + minimap right-click toggle
+## 2026-07-12 (latest) — Illidan gate → 101.8% (Shear), + SWP/BT gearing research
+
+Research + one engine/addon change (v0.8.45), driven by the user watching Illidan/SWP tank guides and
+cross-checking Warcraft Logs.
+
+1. **Illidan uncrushable gate lowered from 102.4% → 101.8%.** Shear is a single special that can't miss and
+   is fully avoided at dodge+parry+block(+HS) ≥ **101.8%** (per the community Shear-calc WA + guides), just
+   under the 102.4% crush table. The Illidan preset had been reusing `CAPS.uncrushableCombined`, so it was
+   0.6% stricter than the real Shear requirement. Fix = new `CAPS.shearAvoidanceTarget = 101.8` + a shared
+   `crushTargetFor(enc, override)` helper in `src/constants.js`, threaded through `character.js` (illy*),
+   `optimizer.js`, `runner.js`, `bin/optimize.mjs`, `web/app.js`, and mirrored in the addon
+   (`Constants/Evaluate/Optimizer/Runner/UI.lua`). Sunwell + normal stay 102.4; `gates.uncrushableTarget`
+   override still wins; `illyAvoidance` still excludes miss. Ratio left at `ehp:1, threat:2` (user: sliders
+   handle EHP↔threat per raid comp — do NOT hardcode a stamina lean). Also made the web set-card crush chip
+   encounter-aware (shows illy/swp avoidance vs its own target), which fixes the old card-vs-summary mismatch
+   (the 88.6% Sunwell vs 111.1% card confusion from the start of the session). Boundary-verified: 101.7% fails,
+   101.8% passes; 150 JS tests + 8 Lua parity suites green; eval fixtures regenerated (illyCrushSurplus +0.60).
+
+2. **SWP presets → relaxed-crush Sunwell EHP set + max-EHP Brutallus set (7 goals total).** Key mechanic
+   from the SWP video (iterated a few times with the user): in Sunwell **only Lady Sacrolash crushes, and a
+   core set (Survival) covers her**, so the crush gate is RELAXED for the whole tier. The `sunwell` preset is
+   now the **general Sunwell** set — `requireUncrushable:false`, `ehp:3/threat:1`, `lockEye:false`: **EHP focus
+   that KEEPS high avoidance** (the `ehp` weight scale weights dodge/parry/defense ~0.7–1.0, stamina-led), and
+   it still shows the ungated Radiance avoidance as a Sacrolash reference. Added a dedicated **Brutallus** set
+   (`ehp:2/sta:1`, no threat, relaxed) — the tier's EHP WALL (>20k HP), takes all the EHP it can get; tankiest
+   set on the sample export (38.8k EHP / 1258 stam / 351 SP). **No separate Sacrolash preset** (user: a core
+   set works for her). Consumes/procs deliberately not modeled (per request). Illidan gate confirmed 101.8 (legal
+   at 102.1%). Regenerated runner fixtures (24 goal results); all JS + Lua parity + Lua syntax green.
+   **Addon Optimize tab PAGES the cards** (7 sets were too tall): core 4 (Raid/Survival/AOE/Balanced) on one
+   page, encounter sets (Illidan/Sunwell/Brutallus) on another, toggle button + header label. `UI.lua`
+   `paintCards()` splits by `goal.enc`; `PAGE_SIZE = max(core,enc) = 4` cards reused per page; min-height
+   848→760; non-gated Uncrush (AOE/Sunwell/Brutallus) shown cyan not red. Two cosmetic fixes after an in-game
+   /reload check: the pager label was overrunning the toggle button (now right-bounded + shortened to just
+   "Core sets"/"Encounter sets"), and the encounter cards' focus text was truncating (shortened the Sunwell/
+   Brutallus focus strings to fit the no-wrap line). Addon re-copied to the WoW install; zip rebuilt.
+
+3. **Gear tooltip deltas (`Tooltip.lua`, new).** Hovering gear appends **TGS Threat (SP-eq)** + **TGS Effective
+   HP** lines — the change vs the worn item it'd replace (Pawn-style). Threat = sim threat scale · stat delta
+   (linear, SP-equivalent); EHP = full `aggregate`→`evaluateSet` re-eval (non-linear). Reuses
+   `Exporter.readItemRaw`+`Items.build`, raid-buff toggle + default talents (matches the in-game optimizer),
+   baseline cached + invalidated on `PLAYER_EQUIPMENT_CHANGED`. Hooks `GameTooltip`+`ItemRefTooltip`. Syntax
+   OK (32 files), zip 33 files, installed. NOTE: adding a new `.toc` file may need a full WoW restart (not just
+   /reload) to register — flagged to the user. Same blind spots as sim (set bonuses/procs/meta not modelled).
+   **Still open:** the P3/P4/P5 mini-guide as a site page/artifact.
+
+4. **TODO — badge-vendor items across phases.** The G'eras (Badge of Justice) vendor gains new gear each phase;
+   those need adding to `web/bis.js` BiS lists in the appropriate phase columns as they unlock (see the
+   [[badge-vendor-bis-updates]] memory). Not derivable from anything in-repo — a recurring per-phase chore.
+
+5. **Research: P3–P5 tank mini-guide (delivered in-chat, not yet a site page).** Established the gearing arc:
+   threat-first holds P2→P5 for an uncrit/uncrushable paladin; the exceptions are **avoidance-mechanic**
+   fights (P3 Illidan/Shear = miss stripped; P5 Sunwell Radiance = −20% dodge, both already modeled) and the
+   lone **stamina-item wall** — **Brutallus** (P5, ~18.9k HP target, block value poor vs 12k hits). Other SWP
+   fights just lean HP-over-avoidance (no gear swap). Open follow-ups the user is still scoping: (a) a named
+   **Brutallus preset** (EHP-max, Radiance-adjusted, crush gate relaxed) — the only genuinely new set; (b)
+   fold the P3/P4/P5 breakdown into a site mini-guide; (c) consume notes (Scroll of Protection, stamina food,
+   Ironshield pot, Nightmare Seed for P5) are for the mini-guide, NOT the sim. Full worn-set data lives on
+   Warcraft Logs (Cloudflare-blocks automated fetch — zone 1011 / boss 609); documented P3 set backbone is on
+   the honorscode progression post.
+
+---
+
+## 2026-07-11 — Illy/SWP as preset goals (not a toggle) + minimap right-click toggle
 
 In-game vetting round. Two changes, engine + site + addon, all built & installed (v0.8.44):
 

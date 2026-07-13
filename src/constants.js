@@ -35,6 +35,10 @@ export const CAPS = {
   defenseSkillRaid: 490,    // crit immunity vs level 73 (guide: 1527-1534)
   defenseSkillHeroic: 485,  // crit immunity vs level 72
   uncrushableCombined: 102.4, // miss+dodge+parry+block >= this => no crushing (guide: 1566)
+  // Illidan's Shear is a single special that CANNOT miss — it's fully avoided when dodge+parry+block
+  // (with Holy Shield) reaches 101.8%, slightly under the 102.4% crush table. So the Illidan gate uses
+  // this lower target on illyAvoidance (miss excluded), not the crush constant. (community/Shear calc)
+  shearAvoidanceTarget: 101.8,
   // Encounter avoidance modifiers (see character.js evaluateSet): Illidan's Shear cannot miss, and
   // Sunwell Radiance gives the boss +5% hit (your miss -5) and -20% to your dodge.
   sunwellHitReduction: 5,   // Sunwell Radiance: chance to be missed reduced by 5
@@ -43,6 +47,12 @@ export const CAPS = {
   meleeHitCapPct: 9,        // vs raid boss (6% with 3/3 Precision)
   expertiseSoftCap: 26,     // eliminates boss dodge
 };
+
+// Uncrushable target for the crush gate, given the encounter. Illidan's Shear (miss excluded) is
+// avoided at 101.8%; every other case uses the 102.4% crush table. An explicit gates.uncrushableTarget
+// override (e.g. AOE trash relax) always wins. Single source of truth for JS + the addon mirror.
+export const crushTargetFor = (enc, override) =>
+  override ?? (enc === 'illidan' ? CAPS.shearAvoidanceTarget : CAPS.uncrushableCombined);
 
 // --- Threat amplifiers (guide: #threat-system) ---
 export const THREAT = {

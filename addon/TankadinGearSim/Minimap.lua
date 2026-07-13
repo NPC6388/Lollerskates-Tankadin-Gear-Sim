@@ -72,16 +72,19 @@ local function freeBagSlots()
   return out
 end
 
--- Is an item ready to equip right now (already in your bags OR already worn)? Items that fail this — in
--- the bank, or not owned — are shown blue in the flyout tooltip, like ItemRack, so you can see what to grab.
+-- Where a set item is right now, for the flyout colour (like ItemRack): "ready" = in your bags or worn
+-- (white); "bank" = sitting in the bank (blue) — only detectable while the bank window is OPEN; "missing"
+-- = not in your bags and away from the bank, or not owned (red). Away from the bank the bank is unreadable,
+-- so a banked piece correctly reads "missing" (you can't reach it) until you open the bank.
 local GetInventoryItemID = _G.GetInventoryItemID
-local function haveReady(id)
-  if not id then return false end
-  if scanFor(BAGS, id) then return true end
+local function itemLoc(id)
+  if not id then return "missing" end
+  if scanFor(BAGS, id) then return "ready" end
   if GetInventoryItemID then
-    for slot = 1, 19 do if GetInventoryItemID("player", slot) == id then return true end end
+    for slot = 1, 19 do if GetInventoryItemID("player", slot) == id then return "ready" end end
   end
-  return false
+  if BankFrame and BankFrame:IsShown() and scanFor(BANKS, id) then return "bank" end
+  return "missing"
 end
 
 -- ---- store the optimizer's results (called from UI.Optimize onDone) ----
@@ -149,14 +152,15 @@ local function showSetTooltip(owner, set)
   for _, slot in ipairs(SLOT_ORDER) do
     local it = set.slots[slot]
     if it then
-      -- White = ready (bags/worn); blue = not in your bags (bank or unowned), like ItemRack.
+      -- White = in bags/worn; blue = in the bank (bank open); red = not in bags & away from bank (or unowned).
       local r, g, b = 0.9, 0.9, 0.9
-      if not haveReady(it.id) then r, g, b = 0.5, 0.7, 1.0 end
+      local loc = itemLoc(it.id)
+      if loc == "bank" then r, g, b = 0.5, 0.7, 1.0 elseif loc == "missing" then r, g, b = 1.0, 0.3, 0.3 end
       GameTooltip:AddDoubleLine(DIM .. SLOT_LABEL[slot] .. "|r", it.name or ("item:" .. tostring(it.id)), 1, 1, 1, r, g, b)
     end
   end
   GameTooltip:AddLine(" ")
-  GameTooltip:AddLine(CYAN .. "Click|r to equip this set.  " .. "|cff7fb2ffBlue|r = not in bags.", 0.6, 0.8, 1)
+  GameTooltip:AddLine(CYAN .. "Click|r to equip this set.  " .. "|cff7fb2ffBlue|r = in bank · |cffff4d4dRed|r = not in bags.", 0.6, 0.8, 1)
   GameTooltip:Show()
 end
 
