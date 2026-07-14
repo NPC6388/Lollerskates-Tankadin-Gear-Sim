@@ -53,6 +53,13 @@ boundary. This is display-metadata plumbing, not a scoring bug — the actual ge
 plumbing; user was ambivalent, so I left it cert-only (the previous session's conclusion). Kept
 [[verify-illy-swp-vs-su]]-style discipline: reverted rather than ship a half-green engine.
 
+**Session wrap (committed + pushed to `main`, GitHub Pages redeploys site + addon zip):** this session first
+ran the full suites to confirm the prior session's uncrushable-cert-margin + badge/guide/CurseForge batch
+survived a PC crash intact, then committed it as `f33f38b` (the batch was working-tree-only at handoff) and
+this diagnosis note as `39fb35a`; both pushed. Engine is unchanged from `f33f38b` — the margin experiment
+left no code, only these notes. Still open (user-only): CurseForge setup (Project ID, `CF_API_KEY`,
+screenshots, tag `v0.8.45`) and, if ever wanted, the solver-margin finish above.
+
 ---
 
 ## 2026-07-13 — Brutallus hands + badge items + mini-guide + CurseForge prep + uncrushable-cert margin
