@@ -4,7 +4,58 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-13 (latest) — Brutallus hands + badge items + mini-guide + CurseForge prep + uncrushable-cert margin
+## 2026-07-13 (latest) — Attempted "margin the SOLVER" (parked follow-up) → backed out to cert-only
+
+Picked up the parked follow-up from the uncrushable-cert-margin work below: make the SOLVER target the
+safety-MARGINED crush cap (102.7 / 102.1) so it AUTO-BUILDS a certifiable set instead of just flagging a
+marginal one. Implemented, chased the JS↔Lua parity fallout a long way, then **reverted everything** — the
+tree is back at the committed cert-only state (`f33f38b`), all 150 JS + 17 Lua suites green. **No net change.**
+
+**What I changed (and reverted):** repointed the 4 SOLVER gate sites from `crushTargetFor` (raw) to
+`crushSafeTargetFor` (margined) — `src/optimizer.js` `crushTarget`, `src/runner.js` `finalLegal`, and the
+Lua mirrors in `Optimizer.lua`/`Runner.lua`. Functionally it WORKS (sets build toward 102.7; a Balanced set
+that lands at 102.6954 is now honestly flagged illegal). The problem is **JS↔Lua parity in the synthetic
+runner fixture**, and it is NOT the "one gem-placement tie" the previous note guessed.
+
+**Real root cause (the useful finding):** margining the solver pushes the raid goal off the clean main-solve
+path and into `solveGoal`'s **Min-HP floor-recovery** branch (runGoal `r` → maxHp reseed → sweep EHP-leans →
+keep the best-scoring LEGAL lean). That path makes several **float-fragile, stat-equivalent choices** where JS
+and Lua converge to the SAME final set (`selection`/`agg`/`evald`/`gems`/`legal` all match to 1e-6) but diverge
+on **cosmetic per-slot metadata**. Three distinct divergences surfaced in sequence, each real:
+  1. **`perSlot.X.defGemmed`** — read from the optimizer's arbitrary `it._gem` cap/focus TAG, which is a
+     coin-flip for a stat-equivalent variant (e.g. a pre-colored socket whose best gem is identical on both
+     the cap and objective scales, so `focus` and `cap` variants have identical stats). Cleanly fixable by
+     deriving the badge from the RESOLVED gems (which match) instead of the tag — see below.
+  2. **`perSlot.neck.alternatives.objDelta`** — the display-only near-alt delta is normalized by
+     `res.objectiveValue`, the optimizer's PRE-reclaim figure, which isn't parity-guaranteed (agg-equivalent
+     but internally-different pre-reclaim sets). Fixable by normalizing on the final `score(agg._raw,objScale)`.
+  3. **The deeper one that made me stop:** `objDelta` ALSO diverges because JS and Lua pick **different
+     recovery leans** that converge to the same final set but carry a **different `objScale`** into
+     `nearAlternatives` (each lean's runGoal computes alt metadata on its OWN ratio scale). A `+1e-6` tie-break
+     in the lean-selection `reduce` did NOT fix it — the split is earlier (one engine returns the initial
+     solve `r` via the `floorMet && crushMet` early-return, the other drops into recovery), so the kept
+     result's alt metadata is scored under a different scale.
+
+**Fixes I built and threw away (each is individually sound if this is retried):** (a) derive `defGemmed` from
+the resolved gems — `DEF_GEM_STATS = {stamina,defenseRating,dodgeRating,parryRating,blockRating,resilienceRating}`,
+a colored non-meta gem carrying any ⇒ def-gemmed (parity-stable; `defGemmed` is display-ONLY, used once in
+`web/app.js:861`, not in the addon). (b) collapse `itemVariants` when the `cap` variant is stat-identical to
+`focus` (`statsEqual`) — no redundant coin-flip variant. (c) normalize `objDelta` on the final aggregate. (d)
+`+1e-6` earlier-lean tie-break in `solveGoal`. (a)+(b)+(c) got 16/17 Lua suites green; the lean/objScale split
+(#3) is the wall.
+
+**To finish it next time (the real remaining work):** make `nearAlternatives`/`objDelta` scale on the goal's
+CANONICAL objScale (`blendScale(goal.ratio)` of the ORIGINAL goal), not the recovery lean's ratio — thread the
+canonical scale through `runGoal`, OR recompute the winning result's alternatives on it after `best` is picked.
+AND make the `solveGoal` early-return (`floorMet && crushMet ? r : recover`) parity-stable at the margined
+boundary. This is display-metadata plumbing, not a scoring bug — the actual gear recommendations already match.
+**Cost/benefit:** the feature is a modest nicety (auto-build vs. flag), the fix is fiddly recovery-path
+plumbing; user was ambivalent, so I left it cert-only (the previous session's conclusion). Kept
+[[verify-illy-swp-vs-su]]-style discipline: reverted rather than ship a half-green engine.
+
+---
+
+## 2026-07-13 — Brutallus hands + badge items + mini-guide + CurseForge prep + uncrushable-cert margin
 
 Multi-task session (user's order: Brutallus → badge items → P3/4/5 mini-guide page → CurseForge prep), then a
 follow-up bug: **Balanced sets shown uncrushable in the Optimize tab but crushable when equipped (Live readout).**
