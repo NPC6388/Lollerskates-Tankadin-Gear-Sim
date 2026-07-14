@@ -4,7 +4,105 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-12 (latest) — Illidan gate → 101.8% (Shear), + SWP/BT gearing research
+## 2026-07-13 (latest) — Brutallus hands + badge items + mini-guide + CurseForge prep + uncrushable-cert margin
+
+Multi-task session (user's order: Brutallus → badge items → P3/4/5 mini-guide page → CurseForge prep), then a
+follow-up bug: **Balanced sets shown uncrushable in the Optimize tab but crushable when equipped (Live readout).**
+
+0. **Uncrushable CERTIFICATION safety margin (0.3%) — the "balanced set crushable even with Kings/MotW" bug.**
+   The user's screenshots pinned it: Optimize card said Balanced 102.47% Uncrush ✓, but the Live readout with that
+   set equipped showed 102.36% Crush ✗. **Not a gate-config bug** — it's a compute-parity gap: the optimizer/card
+   compute avoidance from summed RATINGS (dodge/18.92 etc.) while the Live readout reads the game sheet
+   (`GetDodgeChance`/`GetParryChance`/`GetBlockChance`, the game's exact combat-rating math); the two differ ~0.1%.
+   So the gate WAS enforced, just on the optimistic ratings number. Fix (user chose +0.3% margin): new
+   `CAPS.uncrushableSafetyMargin=0.3` + `crushSafeTargetFor = crushTargetFor + margin`. The reported `legal` flag
+   and the Optimize card ✓ now require the MARGINED target (102.7 normal / 102.1 Illidan); the **SOLVER is byte-for-
+   byte unchanged** (still selects toward the raw 102.4 cap) and the **Live readout stays raw 102.4** (true game
+   boundary). Wired: `constants.js`, `runner.js` (`certLegal` for the returned flag; `finalLegal` still raw for the
+   solver loops), `web/app.js` setCard, `bin/optimize.mjs`, addon `Constants.lua`/`Runner.lua`/`UI.lua`.
+   **Why cert-only, not solver-side:** I first tried margining the SOLVER (aim for 102.7); that perturbed the reclaim
+   gem distribution and exposed a latent JS↔Lua tie-break on a DEGENERATE synthetic runner-fixture case (raid set
+   over-cap at 103.39% — the spare def-gem could sit on `neck` or `hands` for identical stats, and the two engines
+   picked different-but-equivalent placements). Chased it a long way (1e-6 gate epsilon, itemId tie-breaks) before
+   switching to the cert-only design, which leaves the solver untouched → parity trivially holds. **Verified E2E:**
+   a Balanced set pushed to 102.55% now reports `legal:false` (raw cap would've said `true`). 150 JS + all 17 Lua
+   parity/syntax suites green; optimizer+runner fixtures regenerated; addon zip rebuilt (33 files) + the 4 changed
+   Lua files (`Constants/Optimizer/Runner/UI`) hand-copied to the live install. **Open follow-up (user's call):**
+   push the SOLVER toward the margined target so it AUTO-BUILDS a safe set instead of flagging the marginal one —
+   needs the degenerate-fixture parity resolved (deterministic gem-distribution tie-break, or a non-degenerate
+   fixture).
+
+Multi-task session (user's order: Brutallus → badge items → P3/4/5 mini-guide page → CurseForge prep).
+
+1. **RESOLVED the parked Brutallus "Crystalforge vs Iron Gauntlets" question.** Re-ran `bin/trace-brutallus.mjs`
+   against the live SavedVariables (`…#1/SavedVariables/TankadinGearSim.lua`), **injecting Iron Gauntlets of the
+   Maiden (28518) as a synthetic candidate** because it was ABSENT from the scan pool. Result: with Iron actually
+   available, the Brutallus set (`ehp:2/sta:1`) **PICKS Iron over Crystalforge**, gemmed 2× Solid Star of Elune —
+   Brutallus score **338.2 vs 312.1**, set EHP **36,791 vs 36,284** (+507 EHP / +28 stam). The decision **hinges on
+   gemming**: Iron *ungemmed* scores 266.2 and loses; two stamina gems flip it. **Root cause of the confusion:** the
+   set kept Crystalforge only because the last scan (`exportedAt 2026-07-11 21:37`) never contained Iron — its only
+   hands items were 30124 Crystalforge + 27880 Gladiator's Scaled Gauntlets. The gear tooltip re-evaluates any hovered
+   item regardless of ownership, so it correctly flagged Iron as an EHP gain; the optimizer just had a blind spot (a
+   stale/incomplete scan), NOT a scoring disagreement. **No code bug.** Fix = user re-scans with bags+bank open.
+   **CONFIRMED with the fresh scan** (`exportedAt 2026-07-13 12:12:39`): Iron is now in the pool and the REAL
+   Brutallus solve picks it (2× Solid Star of Elune) → **38,832 EHP / 1258 stam**, the tankiest set. (Live socket
+   bonus is +4 block rating, not the +4 stam I'd guessed for the trace — doesn't change the pick.) Temp
+   `bin/trace-brutallus.mjs` deleted; question fully closed.
+2. **Delivered the owed "why EHP doesn't weight defense/avoidance" writeup** (in-chat; the `character.js:34-45`
+   comment already states it). EHP = `health / (1 − armorDR) / damageTakenMult` — armor + flat DR only, because those
+   scale every hit; avoidance/defense are stochastic + spike-vulnerable (consecutive unavoided hits kill, not the
+   mean), so folding `1/(1−avoid)` into EHP would overstate survival exactly on spike fights like Brutallus. Avoidance
+   is valued in the weight scales instead. Offered a pure-pool Brutallus scale variant if the user wants literal EHP.
+3. **Badge-of-Justice vendor items folded into the BiS lists** (the recurring [[badge-vendor-bis-updates]] chore).
+   Source of truth this round = the installed **AtlasLootClassic_Collections** badge-vendor tables (data-tbc.lua:
+   `data["BadgeofJustice"]` / `["BadgeofJustice4"]` / `["BadgeofJusticeP5"]` / `["BCCSunmote"]`) — the user
+   pointed at AtlasLoot mid-task (screenshot of the P4/P5 vendor split). AtlasLoot carries IDs only, so stats were
+   pulled per-item from Wowhead's **tooltip JSON endpoint** `https://nether.wowhead.com/tbc/tooltip/item/<id>`
+   (the normal HTML pages are JS-rendered / refuse the fetcher; the tooltip endpoint returns clean stat text).
+   The earlier AtlasLoot BiS audit had already added most badge gear, so this filled 8 remaining tank pieces in
+   both `web/bis.js` (each with a Badge ⓘ note) and `web/bis-items.js` (stat blocks): **29387 Gnomeregan
+   Auto-Blocker 600** (block-value threat trinket → P1/P2/P3 trinket lists); **P4** 33522 Chestguard of the Stoic
+   Guardian, 33516 Bracers of the Ancient Phalanx, 33279 Iron-tusk Girdle; **P5** 34941 Chestplate of Stoicism,
+   34940 Girdle of the Fearless, 34946 Inscribed Legplates of the Aldor, 34939 Sunguard Legplates. **Excluded**
+   29268 Mazthoril Honor Shield (on the vendor but a caster shell — spell crit/SP, no defense). Kept the "badge
+   vendor persists" placement honest: P4 pieces in P4, P5 pieces in P5 (superseded later/earlier). Tests green
+   (bis-data + bis-equip invariant that `BIS_ITEM_DB` covers every `bis.js` id; full 150-test JS suite).
+   **Note for next phase:** the AtlasLoot tables above are the authoritative list to re-audit against.
+4. **P3–P5 encounter-gearing mini-guide → live site page (`guide-encounters.html`).** The in-chat arc from the
+   prior session (SESSION_LOG 2026-07-12 item 5) is now a standalone page: reuses `web/style.css` (no build/importmap
+   needed — pure static content + the Wowhead `power.js` widget), linked from index.html's header and footer.
+   Content: two hard gates → threat-max default (P2→P5); Illidan Shear 101.8% (miss excluded); P4 = badge
+   itemization jump; Sunwell Radiance −20% dodge/−5% miss + relaxed crush (only Sacrolash crushes); Brutallus
+   >20k-HP EHP wall; fight→preset table; consumables (flask/food/Scroll of Protection/Ironshield/Nightmare Seed)
+   flagged as player-side, not sim-modelled. Verified with `node bin/serve.mjs` (HTTP 200, style.css resolves,
+   index links present). Constants cited from `src/constants.js` (defenseSkillRaid 490, uncrushableCombined 102.4,
+   shearAvoidanceTarget 101.8, sunwellHitReduction 5 / sunwellDodgeReduction 20).
+5. **Prepped the addon for CurseForge (everything that isn't a user-only account step).** The pipeline was
+   already scaffolded (`.pkgmeta` + `.github/workflows/release.yml` via BigWigsMods/packager, tag-triggered);
+   **no tags exist yet — the release workflow has never run** (site serves the hand-committed
+   `addon/TankadinGearSim.zip`). What I did: (a) **Fixed `.pkgmeta` ignore gaps** — with `move-folders`, tracked
+   root paths not in the ignore list leak into the zip next to `TankadinGearSim/`; added `.github`, `docs`,
+   `research`, `coverage`, `guide-encounters.html`, `package-lock.json`, `LICENSE`. (b) **Refreshed the listing
+   copy** (`docs/curseforge.md`) — it advertised "four tuned sets"; now describes the 7 sets (4 core + Illidan/
+   Sunwell/Brutallus encounter presets) and the new gear tooltips, in both the short + long descriptions.
+   (c) **Verified the package is complete** — `.toc` references 32 files, all present, zero unreferenced/dead
+   `.lua` (scratch check); Version 0.8.45; Tooltip.lua listed; `## X-Curse-Project-ID` placeholder still commented
+   at line 12 ready to fill.
+   **REMAINING — user-only (I can't do these):** (1) create the CurseForge project → get its numeric Project ID →
+   uncomment + set `## X-Curse-Project-ID:` in the `.toc`; (2) create a CF API token → add as GitHub secret
+   `CF_API_KEY`; (3) **capture the screenshots** — `docs/assets/` is still empty (only `.gitkeep`), and the
+   listing copy references images that don't exist yet (see `docs/asset-checklist.md`, human-capture only);
+   (4) commit these changes, then tag+push `v0.8.45` (or a `-rc1` dry run first) to trigger the workflow. Until
+   `CF_API_KEY` + Project ID exist the workflow still runs but skips the CF upload (GitHub Release only).
+
+**Uncommitted at handoff:** all of tasks 1–4 are working-tree only (bis.js, bis-items.js, guide-encounters.html,
+index.html, .pkgmeta, docs/curseforge.md, CHANGELOG, SESSION_LOG, memory). The pre-commit hook runs
+`bin/stamp.mjs` → re-hashes the bis.js / bis-items.js importmap entries in index.html on commit. NOT yet
+committed/pushed (user hasn't asked).
+
+---
+
+## 2026-07-12 — Illidan gate → 101.8% (Shear), + SWP/BT gearing research
 
 A v0.8.45 batch (engine + addon + site), driven by the user watching Illidan/SWP tank guides and
 cross-checking Warcraft Logs. **Committed + pushed to `main` as `0f2822c`** — GitHub Pages redeploys the

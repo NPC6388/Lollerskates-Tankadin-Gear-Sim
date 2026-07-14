@@ -39,6 +39,15 @@ export const CAPS = {
   // (with Holy Shield) reaches 101.8%, slightly under the 102.4% crush table. So the Illidan gate uses
   // this lower target on illyAvoidance (miss excluded), not the crush constant. (community/Shear calc)
   shearAvoidanceTarget: 101.8,
+  // Safety margin CERTIFICATION requires over the crush cap (see crushSafeTargetFor). The optimizer computes
+  // avoidance from summed RATINGS (dodge rating / 18.92, etc.), while the in-game character sheet — the source
+  // the Live readout reads (GetDodgeChance/GetParryChance/GetBlockChance) — computes the same %s with the
+  // game's exact combat-rating math. The two disagree by ~0.1%, so a set scored at 102.47% can read 102.36%
+  // (crushable) once equipped. So the reported `legal` flag and the Optimize card's ✓ require avoidance ≥ cap
+  // + this margin; a set that clears the raw cap but not the margin is reported illegal (best-effort). The
+  // SOLVER still selects toward the raw cap (crushTargetFor), and the Live readout / evaluateSet's own
+  // `uncrushable`+`crushSurplus` flags stay on the raw 102.4 cap — the true in-game boundary.
+  uncrushableSafetyMargin: 0.3,
   // Encounter avoidance modifiers (see character.js evaluateSet): Illidan's Shear cannot miss, and
   // Sunwell Radiance gives the boss +5% hit (your miss -5) and -20% to your dodge.
   sunwellHitReduction: 5,   // Sunwell Radiance: chance to be missed reduced by 5
@@ -48,11 +57,24 @@ export const CAPS = {
   expertiseSoftCap: 26,     // eliminates boss dodge
 };
 
-// Uncrushable target for the crush gate, given the encounter. Illidan's Shear (miss excluded) is
-// avoided at 101.8%; every other case uses the 102.4% crush table. An explicit gates.uncrushableTarget
-// override (e.g. AOE trash relax) always wins. Single source of truth for JS + the addon mirror.
+// Uncrushable target for the crush gate, given the encounter. Illidan's Shear (miss excluded) is avoided
+// at 101.8%; every other case uses the 102.4% crush table. An explicit gates.uncrushableTarget override
+// (e.g. AOE trash relax) always wins. Single source of truth for JS + the addon mirror. This is the SOLVER's
+// target (what the optimizer selects/reclaims toward). CERTIFICATION (the reported `legal` flag and the
+// Optimize card's ✓) instead uses crushSafeTargetFor — see below.
 export const crushTargetFor = (enc, override) =>
   override ?? (enc === 'illidan' ? CAPS.shearAvoidanceTarget : CAPS.uncrushableCombined);
+
+// Certification target = the crush target PLUS a safety margin. The optimizer computes avoidance from
+// summed RATINGS (dodge rating / 18.92, etc.); the in-game character sheet — the source the Live readout
+// reads (GetDodgeChance/GetParryChance/GetBlockChance) — computes the same %s with the game's exact
+// combat-rating math, and the two disagree by ~0.1%. So a set the solver lands at 102.47% can read 102.36%
+// (crushable) once equipped. The Optimize card's ✓ and the reported `legal` flag require clearing this
+// margined target, so we never certify as uncrushable a set that would crush in-game. The SOLVER still
+// aims at the raw cap (crushTargetFor) — a set that clears the raw cap but not the margin is returned
+// flagged illegal (best-effort), the same as any other unreachable gate. The Live readout's own
+// `uncrushable`/`crushSurplus` flags (character.js) stay on the raw cap — they read the true game boundary.
+export const crushSafeTargetFor = (enc, override) => crushTargetFor(enc, override) + CAPS.uncrushableSafetyMargin;
 
 // --- Threat amplifiers (guide: #threat-system) ---
 export const THREAT = {

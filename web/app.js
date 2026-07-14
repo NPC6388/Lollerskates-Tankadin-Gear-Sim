@@ -12,7 +12,7 @@ import { SCROLLS } from '../src/scrolls.js';
 import { SCALES, PARTS } from '../src/weights.js';
 import { SET_BONUS_STATS } from '../src/sets.js';
 import { CHARACTER, TALENTS, BUFFS } from '../src/model.js';
-import { CAPS, BASE, RATING, THREAT, ARMOR_CONST, crushTargetFor } from '../src/constants.js';
+import { CAPS, BASE, RATING, THREAT, ARMOR_CONST, crushTargetFor, crushSafeTargetFor } from '../src/constants.js';
 import { BIS, BIS_PHASES } from './bis.js';
 import { BIS_ITEM_DB } from './bis-items.js';
 
@@ -1011,7 +1011,9 @@ function buffNote(b, agg) {
 function setCard(r) {
   const e = r.evald, a = r.agg;
   const crushReq = r.goal.gates.requireUncrushable !== false; // AOE trash drops the crush gate
-  const need = crushTargetFor(r.goal.enc, r.goal.gates.uncrushableTarget);
+  // Safety-margined target (crushSafeTargetFor): the card certifies "uncrushable in-game", so a set the
+  // solver landed just over the raw 102.4 cap but inside the ratings-vs-sheet gap shows ✗ (matches `legal`).
+  const need = crushSafeTargetFor(r.goal.enc, r.goal.gates.uncrushableTarget);
   // The gate measures the avoidance ITS OWN fight leaves you: Illidan drops miss (Shear), Sunwell cuts
   // miss+dodge (Radiance); every other set uses the normal combined figure. Matches the summary column.
   const crushShown = r.goal.enc === 'sunwell' ? e.swpAvoidance

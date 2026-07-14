@@ -85,10 +85,9 @@ end
 
 local function crushTarget(gates)
   gates = gates or {}
-  if gates.uncrushableTarget ~= nil then return gates.uncrushableTarget end
-  -- Illidan's Shear can't miss and is avoided at 101.8% (dodge+parry+block+HS), under the crush table.
-  if gates.enc == "illidan" then return CAPS.shearAvoidanceTarget end
-  return CAPS.uncrushableCombined
+  -- Solver target = crush cap (or Illidan's 101.8% Shear target / an explicit override) + the safety
+  -- margin (ratings-vs-sheet gap; see C.crushTargetFor). Live readout stays on the raw caps.
+  return C.crushTargetFor(gates.enc, gates.uncrushableTarget)
 end
 
 -- The avoidance the crush gate measures: normally the full combined figure; for the encounter presets

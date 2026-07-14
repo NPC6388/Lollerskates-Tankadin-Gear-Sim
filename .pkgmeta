@@ -20,8 +20,15 @@ ignore:
     - src
     - test
     - web
+    - .github
+    - docs
+    - research
+    - coverage
     - index.html
+    - guide-encounters.html
     - package.json
+    - package-lock.json
+    - LICENSE
     - .gitattributes
     - .gitignore
     - .nojekyll

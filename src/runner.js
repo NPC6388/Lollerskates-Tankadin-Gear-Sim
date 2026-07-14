@@ -17,7 +17,7 @@ import { buildPool, optimizeHeuristic, distinctOk } from './optimizer.js';
 import { professionPerks } from './professions.js';
 import { scrollStats } from './scrolls.js';
 import { libramStats } from './librams.js';
-import { RATING, crushTargetFor } from './constants.js';
+import { RATING, crushTargetFor, crushSafeTargetFor } from './constants.js';
 
 const HS = 30;                               // Holy Shield +30% block in the uncrushable check
 const CAP_SCALE = SCALES.survivalUncrushable; // gems that most cheaply buy avoidance/defense
@@ -406,12 +406,27 @@ function runGoal(goal, items, ctx, seed = {}) {
     return { plans, metas, added, gemChoices, agg, evald: evaluateSet(agg), items: itemList, selection: sel };
   };
 
-  // Does the FINAL (socket-bonus-aware) set still clear the goal's hard gates?
+  // Does the FINAL (socket-bonus-aware) set still clear the goal's hard gates? This is the SOLVER's check —
+  // it selects/reclaims toward the raw crush cap (crushTargetFor). The reported `legal` flag uses certLegal
+  // below, which requires the safety-margined target.
   const finalLegal = (e) => {
     const gt = goal.gates || {};
     const critOk = gt.raid === false ? e.heroicCritImmune : e.raidCritImmune;
     const need = crushTargetFor(enc, gt.uncrushableTarget);
     const crushOk = !gt.requireUncrushable || encAvoid(e, enc) + 1e-9 >= need;
+    const hpOk = !gt.minHealth || (e.health ?? 0) + 1e-9 >= gt.minHealth;
+    return critOk && crushOk && hpOk;
+  };
+
+  // CERTIFICATION. Same gates, but the crush check uses the safety-margined target (crushSafeTargetFor) so
+  // we never REPORT a set uncrushable that the in-game sheet would read as crushable (the ~0.1% ratings-vs-
+  // sheet gap). Used for the returned `legal` flag + the Optimize card only — never the solver loops above,
+  // so the gem search is unchanged (a set that clears the raw cap but not the margin comes back flagged
+  // illegal, best-effort, like any unreachable gate).
+  const certLegal = (e) => {
+    const gt = goal.gates || {};
+    const critOk = gt.raid === false ? e.heroicCritImmune : e.raidCritImmune;
+    const crushOk = !gt.requireUncrushable || encAvoid(e, enc) + 1e-9 >= crushSafeTargetFor(enc, gt.uncrushableTarget);
     const hpOk = !gt.minHealth || (e.health ?? 0) + 1e-9 >= gt.minHealth;
     return critOk && crushOk && hpOk;
   };
@@ -606,7 +621,7 @@ function runGoal(goal, items, ctx, seed = {}) {
   agg.spellPowerEquiv = spellPowerEquiv;
   agg.spellPowerEquivSource = equivSource;
   agg.spellPowerLiteral = Math.max(0, (agg.spellPower || 0) - spellPowerEquiv);
-  return { goal, selection: res.selection, items: res.items, legal: finalLegal(evald), evald, agg, gemChoices, metas, perSlot, buffImpact };
+  return { goal, selection: res.selection, items: res.items, legal: certLegal(evald), evald, agg, gemChoices, metas, perSlot, buffImpact };
 
   // Near-identical alternatives for a slot: OTHER owned items whose objective contribution is within
   // ALT_EPS of the chosen item AND that keep the set legal when swapped in. The objective is LINEAR

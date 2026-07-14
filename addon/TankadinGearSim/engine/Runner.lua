@@ -48,6 +48,10 @@ local function encAvoid(e, enc)
   if enc == "sunwell" then return e.swpAvoidance elseif enc == "illidan" then return e.illyAvoidance end
   return e.totalAvoidanceWithHS
 end
+-- Raw uncrushable flag (true 102.4 cap) for this encounter — matches src/runner.js encUncrush. This is
+-- only the trigger for the secondary max-HP recovery pass (solveGoal below): the optimizer's own repair
+-- already aims for the MARGINED target via crushTarget, and finalLegal certifies against it, so this just
+-- asks "is the set already past the real crush cap?" before spending effort on the max-HP reseed.
 local function encUncrush(e, enc)
   if enc == "sunwell" then return e.swpUncrushable elseif enc == "illidan" then return e.illyUncrushable end
   return e.uncrushable
@@ -487,9 +491,20 @@ local function runGoal(goal, items, ctx, seed)
     local gt = goal.gates or {}
     local critOk
     if gt.raid == false then critOk = e.heroicCritImmune else critOk = e.raidCritImmune end
-    local need = gt.uncrushableTarget
-    if need == nil then need = (enc == "illidan") and CAPS.shearAvoidanceTarget or CAPS.uncrushableCombined end
+    local need = C.crushTargetFor(enc, gt.uncrushableTarget) -- SOLVER target (raw cap); cert uses certLegal
     local crushOk = (not gt.requireUncrushable) or (encAvoid(e, enc) + 1e-9 >= need)
+    local hpOk = (not gt.minHealth) or ((e.health or 0) + 1e-9 >= gt.minHealth)
+    return critOk and crushOk and hpOk
+  end
+
+  -- CERTIFICATION (mirrors src/runner.js certLegal): same gates but the crush check uses the safety-margined
+  -- target so we never REPORT a set uncrushable that the in-game sheet would read as crushable. Used only for
+  -- the returned `legal` flag + the Optimize card — never the solver loops (those aim at the raw cap).
+  local function certLegal(e)
+    local gt = goal.gates or {}
+    local critOk
+    if gt.raid == false then critOk = e.heroicCritImmune else critOk = e.raidCritImmune end
+    local crushOk = (not gt.requireUncrushable) or (encAvoid(e, enc) + 1e-9 >= C.crushSafeTargetFor(enc, gt.uncrushableTarget))
     local hpOk = (not gt.minHealth) or ((e.health or 0) + 1e-9 >= gt.minHealth)
     return critOk and crushOk and hpOk
   end
@@ -749,7 +764,7 @@ local function runGoal(goal, items, ctx, seed)
   agg.spellPowerEquiv = spellPowerEquiv
   agg.spellPowerEquivSource = equivSource
   agg.spellPowerLiteral = math.max(0, (agg.spellPower or 0) - spellPowerEquiv)
-  return { goal = goal, selection = res.selection, items = res.items, legal = finalLegal(evald), evald = evald, agg = agg, gemChoices = gemChoices, metas = metas, perSlot = perSlot, buffImpact = buffImpact }
+  return { goal = goal, selection = res.selection, items = res.items, legal = certLegal(evald), evald = evald, agg = agg, gemChoices = gemChoices, metas = metas, perSlot = perSlot, buffImpact = buffImpact }
 end
 Runner.runGoal = runGoal
 

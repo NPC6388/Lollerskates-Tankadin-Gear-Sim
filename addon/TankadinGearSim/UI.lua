@@ -587,11 +587,15 @@ paintCards = function()
         + ((a._raw and a._raw.spellHitRating) or 0) / (ns.engine.Constants.RATING.spellHitPer1 or 12.62)
       -- Encounter sets show the reduced-avoidance figure THEIR gate uses; others the normal. Goals that
       -- don't require uncrushable (AOE trash, Brutallus) show it neutral — informational, not a gate.
+      -- ✓/✗ certifies against the safety-margined target (crushSafeTargetFor: cap + margin), NOT the raw
+      -- evald flags (those are the live-readout's true-102.4 boundary) — so a set the solver landed just over
+      -- 102.4 but inside the ~0.1% ratings-vs-sheet gap (crushable in-game) correctly shows ✗ here.
       local crushReq = r.goal.gates.requireUncrushable ~= false
-      local crushAv, crushOk
-      if r.goal.enc == "sunwell" then crushAv, crushOk = e.swpAvoidance, e.swpUncrushable
-      elseif r.goal.enc == "illidan" then crushAv, crushOk = e.illyAvoidance, e.illyUncrushable
-      else crushAv, crushOk = e.totalAvoidanceWithHS, e.uncrushable end
+      local crushAv
+      if r.goal.enc == "sunwell" then crushAv = e.swpAvoidance
+      elseif r.goal.enc == "illidan" then crushAv = e.illyAvoidance
+      else crushAv = e.totalAvoidanceWithHS end
+      local crushOk = crushAv + 1e-9 >= ns.engine.Constants.crushSafeTargetFor(r.goal.enc, r.goal.gates.uncrushableTarget)
       local crushColor = (not crushReq) and CYAN or (crushOk and GOOD or BAD)
       card.l2:SetText(
         color(GOLD, "SP/SH ") .. color(CYAN, num(a.spellPowerLiteral or a.spellPower))

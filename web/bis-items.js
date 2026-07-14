@@ -46,6 +46,7 @@ export const BIS_ITEM_DB = {
   29254: { name: 'Boots of the Righteous Path', slot: 'feet', stats: { armor: 955, defenseRating: 23, intellect: 26, spellDamage: 28, stamina: 34 } },
   29279: { name: 'Violet Signet of the Great Protector', slot: 'ring', stats: { armor: 392, defenseRating: 19, stamina: 37 } },
   29370: { name: 'Icon of the Silver Crescent', slot: 'trinket', stats: { spellDamage: 44 } }, // static +44 SP; on-use burst isn't modeled
+  29387: { name: 'Gnomeregan Auto-Blocker 600', slot: 'trinket', stats: { blockValue: 59 } }, // Badge of Justice; static +59 block value (on-use +200 for 20s not modeled)
   29388: { name: 'Libram of Repentance', slot: 'relic', stats: {  } },
   29925: { name: 'Phoenix-Wing Cloak', slot: 'back', stats: { armor: 108, defenseRating: 22, dodgeRating: 27, stamina: 37 } },
   29998: { name: 'Royal Gauntlets of Silvermoon', slot: 'hands', stats: { armor: 1080, defenseRating: 24, dodgeRating: 32, stamina: 57 }, sockets: { yellow: 1, blue: 1 } },
@@ -98,13 +99,16 @@ export const BIS_ITEM_DB = {
   32521: { name: 'Faceplate of the Impenetrable', slot: 'head', stats: { armor: 1532, blockValue: 45, blockRating: 29, defenseRating: 30, dodgeRating: 38, stamina: 82 }, sockets: { meta: 1, red: 1 } },
   32963: { name: 'Merciless Gladiator\'s Gavel', slot: 'weapon', stats: { intellect: 18, resilienceRating: 18, spellDamage: 225, spellHitRating: 15, stamina: 27 } },
   33054: { name: 'The Seal of Danzalar', slot: 'ring', stats: { armor: 295, resilienceRating: 21, spellDamage: 25, stamina: 33 } },
+  33279: { name: 'Iron-tusk Girdle', slot: 'waist', stats: { armor: 904, defenseRating: 21, dodgeRating: 33, stamina: 45 }, sockets: { blue: 1, yellow: 1 } }, // Badge of Justice (P4)
   33313: { name: 'Merciless Gladiator\'s Barrier', slot: 'offhand', stats: { armor: 5727, blockValue: 152, intellect: 19, resilienceRating: 27, spellDamage: 33, stamina: 27 } },
   33421: { name: 'Battleworn Tuskguard', slot: 'head', stats: { armor: 1355, blockValue: 51, defenseRating: 40, dodgeRating: 23, stamina: 60 }, sockets: { red: 1, yellow: 1, blue: 1 } },
   33473: { name: 'Chestguard of the Warlord', slot: 'chest', stats: { armor: 1668, defenseRating: 27, dodgeRating: 40, hitRating: 26, stamina: 60 }, sockets: { yellow: 1, red: 1, blue: 1 } },
   33481: { name: 'Pauldrons of Stone Resolve', slot: 'shoulder', stats: { armor: 1206, blockValue: 30, blockRating: 28, defenseRating: 20, stamina: 43 }, sockets: { blue: 2 } },
   33504: { name: 'Libram of Divine Purpose', slot: 'relic', stats: {  } },
   33515: { name: 'Unwavering Legguards', slot: 'legs', stats: { armor: 1406, blockValue: 59, blockRating: 30, defenseRating: 22, stamina: 73 }, sockets: { red: 1, yellow: 1, blue: 1 } },
+  33516: { name: 'Bracers of the Ancient Phalanx', slot: 'wrist', stats: { armor: 703, defenseRating: 23, expertiseRating: 22, stamina: 45 } }, // Badge of Justice (P4)
   33517: { name: 'Bonefist Gauntlets', slot: 'hands', stats: { armor: 1005, hitRating: 21, parryRating: 30, stamina: 51 }, sockets: { red: 1, blue: 1 } },
+  33522: { name: 'Chestguard of the Stoic Guardian', slot: 'chest', stats: { armor: 1607, defenseRating: 22, dodgeRating: 38, spellDamage: 35, stamina: 60 }, sockets: { red: 1, yellow: 1, blue: 1 } }, // Badge of Justice (P4)
   33523: { name: 'Sabatons of the Righteous Defender', slot: 'feet', stats: { armor: 1105, blockValue: 30, defenseRating: 18, spellDamage: 23, spellHitRating: 18, stamina: 45 }, sockets: { red: 1, blue: 1 } },
   33524: { name: 'Girdle of the Protector', slot: 'waist', stats: { armor: 904, defenseRating: 11, dodgeRating: 27, spellDamage: 23, spellHitRating: 18, stamina: 40 }, sockets: { blue: 1, yellow: 1 } },
   33593: { name: 'Slikk\'s Cloak of Placation', slot: 'back', stats: { armor: 346, defenseRating: 16, dodgeRating: 25, stamina: 37 } },
@@ -135,7 +139,11 @@ export const BIS_ITEM_DB = {
   34488: { name: 'Lightbringer Waistguard', slot: 'waist', stats: { armor: 1081, blockRating: 20, defenseRating: 28, dodgeRating: 30, spellDamage: 33, stamina: 64 }, sockets: { blue: 1 } },
   34560: { name: 'Lightbringer Stompers', slot: 'feet', stats: { armor: 1322, blockValue: 32, defenseRating: 23, dodgeRating: 30, spellDamage: 22, stamina: 58 }, sockets: { blue: 1 } },
   34888: { name: 'Ring of the Stalwart Protector', slot: 'ring', stats: { armor: 392, dodgeRating: 28, stamina: 45 } },
+  34939: { name: 'Sunguard Legplates', slot: 'legs', stats: { armor: 1544, defenseRating: 43, dodgeRating: 35, expertiseRating: 23, stamina: 78 }, sockets: { red: 1, blue: 1 } }, // Badge of Justice (P5)
+  34940: { name: 'Girdle of the Fearless', slot: 'waist', stats: { armor: 993, defenseRating: 34, expertiseRating: 22, hitRating: 23, stamina: 58 }, sockets: { red: 1 } }, // Badge of Justice (P5)
+  34941: { name: 'Chestplate of Stoicism', slot: 'chest', stats: { armor: 1765, blockValue: 39, defenseRating: 51, dodgeRating: 34, stamina: 78 }, sockets: { red: 1 } }, // Badge of Justice (P5)
   34945: { name: 'Shattrath Protectorate\'s Breastplate', slot: 'chest', stats: { armor: 1765, defenseRating: 26, spellDamage: 60, spellHitRating: 34, stamina: 78 }, sockets: { blue: 1 } },
+  34946: { name: 'Inscribed Legplates of the Aldor', slot: 'legs', stats: { armor: 1544, defenseRating: 25, dodgeRating: 43, spellDamage: 37, stamina: 78 }, sockets: { red: 1, yellow: 1 } }, // Badge of Justice (P5)
   34947: { name: 'Blue\'s Greaves of the Righteous Guardian', slot: 'feet', stats: { armor: 1213, blockRating: 34, spellDamage: 26, spellHitRating: 23, stamina: 58 }, sockets: { red: 1 } },
   34986: { name: 'Brutal Gladiator\'s Barrier', slot: 'offhand', stats: { armor: 6662, blockValue: 185, intellect: 25, resilienceRating: 27, spellDamage: 40, stamina: 37 } },
   35014: { name: 'Brutal Gladiator\'s Gavel', slot: 'weapon', stats: { intellect: 21, resilienceRating: 18, spellDamage: 266, spellHitRating: 19, stamina: 33 } },

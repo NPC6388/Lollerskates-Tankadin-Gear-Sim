@@ -1273,3 +1273,56 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   ">20k-HP **goal**" (a target, not a hard gate) across the sim + site.
 - **Shipped: the P3+ set rework, gear tooltips, pager and polish above went out as commit `0f2822c` (v0.8.45)**,
   deploying from `main` (site + addon-download zip).
+- **Site — Badge of Justice vendor items added to the BiS lists (no addon bump).** Cross-referenced the
+  installed **AtlasLootClassic_Collections** badge-vendor tables (`'Badge of Justice'` / `P4` / `P5`) against
+  `web/bis.js`; the prior AtlasLoot audit had already folded in most badge gear, so this fills the remaining
+  tank pieces (stats pulled per-item from Wowhead's tooltip JSON endpoint, verified). Added 8 items to
+  `bis.js` (with a Badge-of-Justice ⓘ note each) and their stat blocks to `bis-items.js`:
+  **Gnomeregan Auto-Blocker 600 (29387)** — block-value threat trinket, added to the P1/P2/P3 trinket lists
+  (static +59 block value; on-use +200 not modelled). **P4 plate:** Chestguard of the Stoic Guardian (33522,
+  chest), Bracers of the Ancient Phalanx (33516, wrist), Iron-tusk Girdle (33279, waist). **P5 plate:**
+  Chestplate of Stoicism (34941, chest), Girdle of the Fearless (34940, waist, hit/expertise threat belt),
+  Inscribed Legplates of the Aldor (34946, legs — top avoidance+SP), Sunguard Legplates (34939, legs,
+  defense/expertise). Deliberately excluded **Mazthoril Honor Shield (29268)** — on the vendor but a caster
+  shield (spell crit/SP, no defense), not a tank shield. `test/bis-data.test.js` + `test/bis-equip.test.js`
+  green (the BIS_ITEM_DB-covers-bis.js invariant holds; all new synthetic items are optimizer-ready); full
+  150-test JS suite passes.
+- **Site — P3–P5 Encounter Gearing mini-guide is now a live page (`guide-encounters.html`).** The
+  "when to swap off your threat set" arc that had only been delivered in chat is now a standalone page on the
+  site, reusing `web/style.css` (native dark theme, Wowhead tooltips) so it needs no build step or importmap.
+  Covers: the two hard gates (490 defense uncrittable, 102.4% uncrushable) then threat-max as the default P2→P5;
+  **Illidan** Shear (can't miss → dodge+parry+block ≥ 101.8%, bring the Illidan set); **P4 Zul'Aman** as a
+  badge-itemization jump (links the new P4 badge plate); **Sunwell Radiance** (−20% dodge / −5% miss, only
+  Sacrolash crushes so the crush gate relaxes → EHP-lean Sunwell set); **Brutallus** as the pure-EHP >20k-HP wall
+  (bring the Brutallus set — the one fight where a stamina-gemmed piece like Iron Gauntlets beats threat gloves);
+  a fight→preset at-a-glance table; and a consumables section (flask/food/Scroll of Protection/Ironshield/Nightmare
+  Seed) noted as on-the-player, not sim-modelled. Linked from the index header + footer. Verified served locally
+  (HTTP 200, stylesheet resolves, index links present).
+- **Addon — CurseForge pre-flight prep (no code/version change).** The packaging pipeline was already scaffolded
+  (`.pkgmeta` + `.github/workflows/release.yml`, BigWigsMods/packager, tag-triggered) but never run (no `v*` tags
+  exist; the site still serves the hand-committed `addon/TankadinGearSim.zip`). (1) **`.pkgmeta` ignore fix** — under
+  `move-folders`, tracked root paths not in the ignore list get zipped alongside `TankadinGearSim/`; added `.github`,
+  `docs`, `research`, `coverage`, `guide-encounters.html`, `package-lock.json`, `LICENSE`. (2) **Listing copy
+  refresh** (`docs/curseforge.md`) — replaced the stale "four tuned sets" with the current seven (4 core + Illidan/
+  Sunwell/Brutallus encounter presets) and documented the new gear tooltips, in both the short and long
+  descriptions. (3) **Package integrity verified** — `.toc` references 32 files, all present, no unreferenced/dead
+  `.lua`; Curse-Project-ID placeholder ready. Remaining steps are user-only (CurseForge project + Project ID, the
+  `CF_API_KEY` secret, the human-captured screenshots for `docs/assets/`, then a `v*` tag to release).
+- **Engine + Addon — uncrushable CERTIFICATION now uses a 0.3% safety margin (fixes a set shown uncrushable that
+  crushes in-game).** Root cause: the Optimize tab computes avoidance from summed RATINGS (dodge rating / 18.92,
+  etc.) while the Live readout reads the game character sheet (`GetDodgeChance`/`GetParryChance`/`GetBlockChance`,
+  the game's exact combat-rating math); the two disagree by ~0.1%, so a set the optimizer scored at 102.47% (✓)
+  reads 102.36% (✗ crushable) once equipped. Fix: new `CAPS.uncrushableSafetyMargin = 0.3` and
+  `crushSafeTargetFor(enc, override) = crushTargetFor + margin`. The **reported `legal` flag and the Optimize
+  card's ✓** now require clearing the margined target (102.7% normal / 102.1% Illidan), so a set that clears the
+  raw cap but not the margin is reported illegal/✗ (best-effort) instead of a false ✓. **The SOLVER is byte-for-
+  byte unchanged** — it still selects/reclaims toward the raw 102.4% cap (`crushTargetFor`), so the gem search and
+  all Lua↔JS parity are untouched (only the returned `legal` value shifts, identically in both engines). The
+  **Live readout stays on the raw 102.4%/101.8% caps** (`character.js`/`Evaluate.lua` `uncrushable` flags) — it
+  reads the true in-game boundary. Threaded through `src/constants.js`, `runner.js` (new `certLegal`, used for the
+  returned flag), `web/app.js` setCard, `bin/optimize.mjs`, and mirrored in the addon (`Constants.lua`
+  `crushSafeTargetFor` via `gen-lua`, `Runner.lua` `certLegal`, `UI.lua` card). Verified end-to-end: a Balanced set
+  pushed to 102.55% avoidance now reports `legal:false` where the raw cap said `true`. 150 JS tests + all 17 Lua
+  parity/syntax suites green; runner fixtures regenerated. NOTE: this makes the certification HONEST but the
+  optimizer still maximizes threat to the raw cap — it flags a marginal set rather than auto-building a
+  higher-avoidance one; an optional follow-up would push the solver itself toward the margined target.

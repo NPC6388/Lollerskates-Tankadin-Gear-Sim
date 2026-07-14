@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>P3–P5 Tankadin Encounter Gearing — TBC Prot Paladin</title>
+  <meta name="description" content="When to swap off your threat set: a Phase 3–5 Protection Paladin tank gearing mini-guide. Illidan's Shear, Sunwell Radiance, the Brutallus stamina wall, and which sim preset set to bring to each fight." />
+  <link rel="stylesheet" href="web/style.css" />
+  <script>if ('scrollRestoration' in history) history.scrollRestoration = 'manual';</script>
+  <!-- Wowhead tooltips: colour + icon + correct names on item links -->
+  <script>const whTooltips = { colorLinks: true, iconizeLinks: true, renameLinks: true };</script>
+  <script defer src="https://wow.zamimg.com/widgets/power.js"></script>
+  <style>
+    /* Page-specific styling layered on the sim's shared tokens (web/style.css). */
+    .mg-back { display: inline-block; margin: 4px 0 0; }
+    .mg-lead { color: var(--muted); max-width: 62ch; margin: 6px auto 0; }
+    .panel h3 { color: var(--text); font-size: 15px; margin: 18px 0 6px; }
+    .panel p, .panel li { color: var(--text); }
+    .panel .muted { color: var(--muted); }
+    .phase-tag {
+      display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .3px;
+      color: var(--bg); background: var(--gold); border-radius: 4px; padding: 1px 7px; margin-right: 8px;
+      vertical-align: middle;
+    }
+    .callout {
+      border-left: 3px solid var(--accent); background: var(--panel2); border-radius: 6px;
+      padding: 10px 14px; margin: 12px 0;
+    }
+    .callout.warn { border-left-color: var(--warn); }
+    .callout.stam { border-left-color: var(--good); }
+    .callout b { color: var(--gold); }
+    .fights { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+    .fights th, .fights td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .fights th { color: var(--gold); font-weight: 600; }
+    .fights td:first-child { white-space: nowrap; font-weight: 600; }
+    .set-pill { display: inline-block; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; color: var(--accent); }
+    .tbl-wrap { overflow-x: auto; }
+    .cta-row { margin-top: 8px; }
+    .cta-row a { margin-right: 14px; }
+    ul.tight { margin: 6px 0; padding-left: 20px; }
+    ul.tight li { margin: 3px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>P3–P5 Encounter Gearing</h1>
+    <p class="tag">TBC Protection Paladin — when to leave your threat set at the door.</p>
+    <p class="mg-lead">Once you're <strong>uncrittable</strong> and <strong>uncrushable</strong>, tanking TBC is a
+      threat race — you gear for threat and hold it from Phase&nbsp;2 all the way to the Sunwell. Only a
+      <em>handful</em> of fights make you deviate. This is the short list of when, why, and which set to bring.</p>
+    <p><a class="mg-back" href="index.html">← Back to the Gear Sim</a></p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>The default: your threat set</h2>
+      <p>Two hard gates come first, and they are non-negotiable — the sim enforces both:</p>
+      <ul class="tight">
+        <li><strong>Uncrittable</strong> — <strong>490 defense skill</strong> (or the resilience equivalent) so a
+          raid boss can't land a critical hit on you. Below this you take spike damage that gets tanks killed.</li>
+        <li><strong>Uncrushable</strong> — dodge + parry + block + miss (with <em>Holy Shield</em> up) ≥
+          <strong>102.4%</strong>, which pushes crushing blows off the attack table.</li>
+      </ul>
+      <p>Clear both and every remaining stat point goes to <strong>threat</strong>: spell power, spell hit,
+        expertise, hit, and block value. This threat set — the sim's <span class="set-pill">Raid Threat</span> and
+        <span class="set-pill">Balanced</span> presets — is what you wear for the large majority of bosses in
+        Black&nbsp;Temple, Hyjal, Zul'Aman and the Sunwell. You only step off it for the fights below.</p>
+      <div class="callout">
+        <b>Rule of thumb:</b> don't swap gear because a boss <em>hits hard</em>. Swap only when a mechanic
+        <em>changes the math</em> — strips your avoidance, or removes block/threat from the equation entirely.
+        There are exactly three of those in P3–P5.
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2><span class="phase-tag">Phase 3</span> Black Temple &amp; Mount Hyjal</h2>
+      <h3>Illidan Stormrage — the Shear check</h3>
+      <p>Illidan's <strong>Shear</strong> is a single melee special that <strong>cannot miss</strong>. Because it
+        can't be missed, <em>miss rating does nothing for it</em> — the only way to fully avoid it is with the
+        rest of the table: <strong>dodge + parry + block (+ Holy Shield) ≥ 101.8%</strong>. That's a touch under
+        the normal 102.4% crush cap, precisely because the miss slice is off the table.</p>
+      <div class="callout">
+        <b>Bring the <span class="set-pill">Illidan</span> preset.</b> It re-targets the uncrushable gate to
+        101.8% measured on dodge/parry/block only (miss excluded), then leans any surplus back into threat. If
+        your gear can't reach 101.8% the set is honestly flagged illegal — that's a gear check, not a bug.
+      </div>
+      <p class="muted">Everything else in P3 (Council, Mother, Bloodboil, the Hyjal bosses) is a normal threat
+        fight — wear your threat set.</p>
+    </section>
+
+    <section class="panel">
+      <h2><span class="phase-tag">Phase 4</span> Zul'Aman</h2>
+      <p>No special avoidance mechanics here — <strong>threat set throughout</strong>. What Phase&nbsp;4 really is,
+        for a tankadin, is an <strong>itemization jump from the Badge of Justice vendor</strong>. The P4 badge wave
+        adds several tank plate pieces worth chasing while you wait on drops — they're in the sim's
+        &ldquo;also&nbsp;viable&rdquo; lists so you can &ldquo;pretend I own this&rdquo; and see the delta:</p>
+      <ul class="tight">
+        <li><a href="https://www.wowhead.com/tbc/item=33522" target="_blank" rel="noopener">Chestguard of the Stoic Guardian</a> — three-socket avoidance + spell-power chest.</li>
+        <li><a href="https://www.wowhead.com/tbc/item=33279" target="_blank" rel="noopener">Iron-tusk Girdle</a> — defense + dodge belt.</li>
+        <li><a href="https://www.wowhead.com/tbc/item=33516" target="_blank" rel="noopener">Bracers of the Ancient Phalanx</a> — expertise-leaning threat bracer.</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2><span class="phase-tag">Phase 5</span> Sunwell Plateau</h2>
+
+      <h3>Sunwell Radiance — avoidance gets gutted</h3>
+      <p>The Sunwell aura, <strong>Sunwell Radiance</strong>, reduces your chance to be <strong>missed by 5%</strong>
+        and your <strong>dodge by 20%</strong>. That guts avoidance-stacking across the whole tier. The saving
+        grace: of the Sunwell bosses, <strong>only Lady Sacrolash actually crushes</strong>, and a solid core
+        survival set already covers her — so the crush gate is <em>relaxed</em> for the tier. You stop chasing the
+        102.4% wall you can no longer reach and instead <strong>lean EHP while keeping the avoidance you can</strong>.</p>
+      <div class="callout">
+        <b>Bring the <span class="set-pill">Sunwell</span> preset</b> for the general tier: crush gate relaxed,
+        EHP-focused but avoidance-retaining, with the Radiance-adjusted numbers shown for the Sacrolash reference.
+      </div>
+
+      <h3>Brutallus — the stamina wall</h3>
+      <p>Brutallus is the one fight in TBC that throws out the usual playbook. Meteor Slash &amp; melee land for
+        roughly <strong>~12k physical</strong>, there are no adds, and <strong>block value is worthless</strong>
+        against hits that size. Threat is trivial. What keeps you standing is raw <strong>Effective HP</strong> —
+        a big health pool behind your armor. Aim for a <strong>&gt;20k HP</strong> pool and take every stamina and
+        armor point you can.</p>
+      <div class="callout stam">
+        <b>Bring the <span class="set-pill">Brutallus</span> preset</b> — a max-EHP set (crush gate relaxed, no
+        threat weight). This is the one place the solver will pick a pure-stamina piece over a spell-power one:
+        e.g. <a href="https://www.wowhead.com/tbc/item=28518" target="_blank" rel="noopener">Iron Gauntlets of the Maiden</a>
+        gemmed for stamina beats your threat gloves here, even though they'd lose on every other fight.
+      </div>
+
+      <h3>Everything else in the Sunwell</h3>
+      <p class="muted">Kalecgos, Felmyst, the Eredar Twins (Alythess), M'uru and Kil'jaeden are threat/EHP-lean
+        fights with no gear swap — Radiance is in effect, so you're on the Sunwell set, but there's no per-boss
+        change beyond that. New P5 badge legs/belt/chest are in the sim's lists to plug gaps
+        (<a href="https://www.wowhead.com/tbc/item=34946" target="_blank" rel="noopener">Inscribed Legplates of the Aldor</a>,
+        <a href="https://www.wowhead.com/tbc/item=34941" target="_blank" rel="noopener">Chestplate of Stoicism</a>, and friends).</p>
+    </section>
+
+    <section class="panel">
+      <h2>Fight → set, at a glance</h2>
+      <div class="tbl-wrap">
+        <table class="fights">
+          <thead>
+            <tr><th>Fight</th><th>Why it's different</th><th>Set to bring</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Almost everything, P2→P5</td><td>Normal — uncrit + uncrush, then maximize threat.</td><td><span class="set-pill">Raid Threat</span> / <span class="set-pill">Balanced</span></td></tr>
+            <tr><td>Illidan (P3)</td><td>Shear can't miss → miss is dead; need dodge+parry+block ≥ 101.8%.</td><td><span class="set-pill">Illidan</span></td></tr>
+            <tr><td>Sunwell, general (P5)</td><td>Radiance −20% dodge / −5% miss; only Sacrolash crushes, so the crush gate relaxes → lean EHP, keep avoidance.</td><td><span class="set-pill">Sunwell</span></td></tr>
+            <tr><td>Brutallus (P5)</td><td>~12k hits, no block value, no threat need → pure EHP wall, &gt;20k HP.</td><td><span class="set-pill">Brutallus</span></td></tr>
+            <tr><td>Trash / AOE packs</td><td>Multi-target threat; uncrushable can relax.</td><td><span class="set-pill">AOE Trash</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">All five presets are always on in the sim — <a href="index.html">load your gear</a> and it
+        solves every one at once, each crit/crush-capped for its own fight and gemmed/enchanted to its weights.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Consumables (on you, not the sim)</h2>
+      <p>The optimizer scores <em>gear</em> — it deliberately doesn't model consumables or procs. On the
+        deviation fights above, these are yours to bring and they matter:</p>
+      <ul class="tight">
+        <li><strong>Flask of Fortification</strong> — +500 HP, +10 defense, all night. The baseline raid-tank flask.</li>
+        <li><strong>Stamina food</strong> — Fisherman's Feast (+30 sta) or Dirge's Kickin' Chimaerok Chops.</li>
+        <li><strong>Scroll of Protection</strong> — cheap armor before a physical pull.</li>
+        <li><strong>Ironshield Potion</strong> — big temporary armor for a spike window (e.g. a Brutallus burn).</li>
+        <li><strong>Nightmare Seed</strong> — the P5 panic button; an instant self-heal to survive an over-lap.</li>
+      </ul>
+      <p class="muted">Rule of thumb: on Brutallus, stack everything HP/armor; on Illidan, the flask's +10 defense
+        and any avoidance food help you clear the 101.8% Shear gate.</p>
+    </section>
+
+    <section class="panel">
+      <h2>The short version</h2>
+      <ul class="tight">
+        <li><strong>Get uncrittable + uncrushable, then gear threat.</strong> That set carries P2→P5.</li>
+        <li><strong>Illidan (P3):</strong> Shear can't miss — bring the set built to 101.8% dodge/parry/block.</li>
+        <li><strong>Sunwell (P5):</strong> Radiance guts dodge; only Sacrolash crushes, so lean EHP, keep avoidance.</li>
+        <li><strong>Brutallus (P5):</strong> pure stamina wall, &gt;20k HP, block value is dead weight.</li>
+        <li><strong>Everything else:</strong> threat set. Don't swap for &ldquo;hits hard&rdquo; — swap for a mechanic that changes the math.</li>
+      </ul>
+      <div class="cta-row">
+        <a class="mg-back" href="index.html">← Back to the Gear Sim</a>
+        <a class="guide-link" href="https://npc6388.github.io/wow-tbc-prot-paladin-guide/" target="_blank" rel="noopener">📖 Full Prot Paladin Tanking Guide</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Client-side. Your gear data never leaves your browser. ·
+      <a class="guide-link" href="https://npc6388.github.io/wow-tbc-prot-paladin-guide/" target="_blank" rel="noopener">Prot Paladin Guide</a> ·
+      <a href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim">Source on GitHub</a></p>
+  </footer>
+</body>
+</html>

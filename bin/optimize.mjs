@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { parseExport, equippableItems } from '../src/import.js';
 import { toExportText } from '../src/savedvars.js';
 import { optimizeSets, spellHitPct } from '../src/runner.js';
-import { crushTargetFor } from '../src/constants.js';
+import { crushSafeTargetFor } from '../src/constants.js';
 
 // ---- config -----------------------------------------------------------------
 const PROFESSIONS = ['Enchanting']; // gear-relevant professions
@@ -53,10 +53,13 @@ for (const r of results) {
 
 for (const r of results) {
   const e = r.evald, a = r.agg;
-  const need = crushTargetFor(r.goal.enc, r.goal.gates.uncrushableTarget);
+  const need = crushSafeTargetFor(r.goal.enc, r.goal.gates.uncrushableTarget);
   const crushReq = r.goal.gates.requireUncrushable !== false;
+  // Avoidance THIS goal's gate measures (Illidan drops miss, Sunwell cuts miss+dodge), vs the margined
+  // solver target — matches web setCard, not the raw evald.uncrushable (that's the true-102.4 live flag).
+  const crushShown = r.goal.enc === 'sunwell' ? e.swpAvoidance : r.goal.enc === 'illidan' ? e.illyAvoidance : e.totalAvoidanceWithHS;
   console.log(`\n========== ${r.goal.name} (${r.goal.focus}) ==========`);
-  console.log(`legal:${r.legal}  uncrit:${e.raidCritImmune} (${e.critReduction.toFixed(2)}%)  uncrush:${crushReq ? `${e.uncrushable} (${e.totalAvoidanceWithHS.toFixed(1)}% / ${need}%)` : `${e.totalAvoidanceWithHS.toFixed(1)}% (not required)`}`);
+  console.log(`legal:${r.legal}  uncrit:${e.raidCritImmune} (${e.critReduction.toFixed(2)}%)  uncrush:${crushReq ? `${crushShown + 1e-9 >= need} (${crushShown.toFixed(1)}% / ${need}%)` : `${crushShown.toFixed(1)}% (not required)`}`);
   console.log(`EHP ${Math.round(e.ehpPhysical).toLocaleString()}   SP ${Math.round(a.spellPower)}   spellHit ${spellHitPct(a).toFixed(2)}%   spellCrit ${Math.round(a.spellCritRating || 0)}rtg   stam ${Math.round(a.stamina)}   armor ${Math.round(a.armor).toLocaleString()}   def ${a.defenseSkill.toFixed(0)}   resil ${Math.round(a.resilienceRating)}`);
   for (const k of ORDER) { const it = r.selection[k]; if (it) console.log(`  ${k.padEnd(9)} ${it.name || it.itemId}${it.itemLevel ? ' (i' + it.itemLevel + ')' : ''}${it._gem === 'cap' ? '  [def-gemmed]' : ''}${it._gem === 'locked' ? '  [kept]' : ''}`); }
   const gc = {}; for (const g of r.gemChoices) gc[g.name] = (gc[g.name] || 0) + 1;

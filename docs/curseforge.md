@@ -19,8 +19,10 @@ A live tank readout and in-game gear optimizer for WoW TBC Classic (Anniversary)
 
 Tankadin Gear Sim shows your uncrittable / uncrushable / EHP status live off your
 character sheet and recomputes as you swap gear. Its in-game Optimize tab reads your bags
-and bank and builds four tuned tank sets you can preview and equip from a minimap button —
-same math as the companion website and the tanking guide it's built on.
+and bank and builds seven tuned tank sets — four for everyday content plus dedicated
+Illidan, Sunwell, and Brutallus encounter sets — that you can preview and equip from a
+minimap button, and gear tooltips show the threat / EHP change vs the item you'd replace.
+Same math as the companion website and the tanking guide it's built on.
 
 ## Long description
 
@@ -41,16 +43,28 @@ uses. It auto-detects your faction and professions.
 ![Optimize tab with sliders](docs/assets/addon-optimize-tab.png)
 
 **Optimize without leaving the game.** The Optimize tab reads your bags and bank and
-builds four tuned sets, each honoring the hard tank caps (uncrittable always; uncrushable
-per goal):
+builds seven tuned sets, each honoring the hard tank caps (uncrittable always; uncrushable
+per goal). Four everyday sets:
 
 - **Raid Threat** — max threat while staying capped for a raid boss.
 - **Survival** — lean into effective health and avoidance for single-target progression.
 - **AOE Trash** — built for holding packs of mobs.
 - **Balanced** — a middle-ground set for general content.
 
+…plus three **encounter sets** built for the fights that break the usual rules:
+
+- **Illidan** — Shear can't miss, so this set targets the lower 101.8% dodge/parry/block gate.
+- **Sunwell** — Radiance guts your dodge, so this leans effective health while keeping the
+  avoidance it can.
+- **Brutallus** — the pure-EHP wall (no threat, no block value), for the >20k-HP check.
+
 Per-goal **EHP↔Threat** and **minimum-HP** sliders let you nudge each set toward your own
 priorities and re-solve.
+
+**Gear tooltips that show the trade.** Hover any piece of gear and the tooltip appends the
+**Threat** (spell-power-equivalent) and **Effective HP** change versus the item you'd
+replace — so you can see at a glance whether a drop is an upgrade for your tank set, without
+opening the optimizer.
 
 ![Minimap flyout equipping a set](docs/assets/addon-minimap-flyout.gif)
 
