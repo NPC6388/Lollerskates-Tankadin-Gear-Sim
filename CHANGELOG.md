@@ -1357,3 +1357,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   `addon/TankadinGearSim/CHANGELOG.md` in the `ignore` block — the packager then falls back to the
   checkout-path copy, which survives the move (documented in `.pkgmeta`; the zip just doesn't carry
   CHANGELOG.md, which is standard). Re-tagged `v0.8.45-rc5`.
+- **Addon — `v0.8.45-rc5` PASSED: first successful end-to-end run of the release pipeline.** GitHub
+  Release created with the curated changelog as the body and a clean zip (33 addon files under
+  `TankadinGearSim/`, no site files, matches the `.toc`). One last footgun found and fixed: the packager
+  classifies tags by keyword and only `alpha`/`beta` mark a pre-release — `-rc5` published as a FULL
+  stable release (with a CurseForge key set it would have shipped as the latest download) and was flipped
+  to pre-release by hand. `addon/PUBLISHING.md` dry-run guidance corrected (`-betaN`, never `-rcN`).
+  Pipeline is now verified up to the CurseForge upload itself, which needs the user-only Project ID +
+  `CF_API_KEY`; then a clean `v0.8.45` tag cuts the real release.

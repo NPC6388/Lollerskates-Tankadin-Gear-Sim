@@ -37,9 +37,12 @@ is wired up.
    git tag v0.8.2
    git push origin v0.8.2
    ```
-   The tag name (minus the leading `v`) becomes the release version. Use a pre-release suffix for a
-   **dry run** (e.g. `v0.8.2-rc1`) — the packager marks it a pre-release and it won't go out as the
-   "latest" download.
+   The tag name (minus the leading `v`) becomes the release version. For a **dry run**, the
+   pre-release suffix MUST contain `alpha` or `beta` (e.g. `v0.8.2-beta1`) — those are the only
+   two keywords the packager recognizes (`release.sh` tag classification). Anything else,
+   including `-rc1`, is packaged as a **full stable release** and would go to CurseForge as the
+   latest download. (Found out the hard way: `v0.8.45-rc5` published as stable and had to be
+   flipped to pre-release by hand.)
 3. Watch the **Actions** tab. On success you get a GitHub Release with the zip attached, and (if
    `CF_API_KEY` + Project ID are set) a new CurseForge file.
 
