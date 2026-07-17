@@ -1335,3 +1335,10 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   have excluded the addon files from the copy once the move was fixed) for its three non-addon siblings
   (`addon/README.md`, `addon/PUBLISHING.md`, `addon/TankadinGearSim.zip`). Dotfiles (`.pkgmeta`, `.github`, …)
   are auto-pruned by the packager's copy. Re-tagged `v0.8.45-rc2` to verify.
+- **Addon — release workflow passed the GitHub token under the wrong env name (`v0.8.45-rc2` packaged
+  cleanly but created no GitHub Release).** packager's `release.sh` reads `GITHUB_OAUTH` (or
+  `GITHUB_API_TOKEN`) — not `GITHUB_TOKEN` — and `upload_github()` silently no-ops without it (the tell:
+  the run log prints `GitHub: <slug>` without the `[token set]` suffix). Renamed the env in
+  `release.yml`. The rc2 log otherwise validated the pkgmeta fix end-to-end: all 33 addon files copied,
+  moved to the zip root as `TankadinGearSim/`, website fully ignored, archive built as
+  `TankadinGearSim-v0.8.45-rc2-bcc.zip` with an auto-generated changelog. Re-tagged `v0.8.45-rc3`.

@@ -31,4 +31,6 @@ jobs:
         uses: BigWigsMods/packager@master
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # packager's release.sh reads GITHUB_OAUTH (or GITHUB_API_TOKEN) — NOT GITHUB_TOKEN.
+          # With the wrong name it packages fine but silently skips creating the GitHub Release.
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
