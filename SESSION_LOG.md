@@ -4,7 +4,45 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-13 (latest) — Attempted "margin the SOLVER" (parked follow-up) → backed out to cert-only
+## 2026-07-16 (latest) — CurseForge release pipeline: dry-run debugged end-to-end (rc1→rc5 PASS)
+
+Kicked off the parked CurseForge publish. Strategy: dry-run tag first (works without any CurseForge
+setup — packager skips the CF upload without `CF_API_KEY`). The rehearsal caught FOUR pipeline bugs,
+each one layer deeper; all fixed + committed + pushed, with root causes documented in CHANGELOG.md:
+
+1. **rc1 — `.pkgmeta` `move-folders` was backwards.** Keys are `<package-as>/<path-in-repo>`, value =
+   destination; a slash-free value is what registers the subfolder TOC root at all. Also swapped the
+   blanket `- addon` ignore for the three non-addon siblings. (`46839b8`)
+2. **rc2 — workflow passed the token as `GITHUB_TOKEN`; packager only reads `GITHUB_OAUTH` /
+   `GITHUB_API_TOKEN`** → packaged fine but silently skipped creating the GitHub Release (tell: log
+   prints `GitHub: <slug>` without `[token set]`). (`c403d4f`)
+3. **rc3 — release body >125k chars (422).** No previous tag ⇒ packager changelog = ENTIRE git history.
+   Fix: curated player-facing `addon/TankadinGearSim/CHANGELOG.md` + `manual-changelog` in `.pkgmeta`.
+   (`898c1c1`)
+4. **rc4 — packager edge case: manual changelog inside a `move-folders` source** — it prefers the
+   in-package copy's path for the release body, but the move relocates it before upload → dangling path
+   → empty body → 400. Workaround: ALSO ignore the changelog in the copy, forcing the checkout-path
+   fallback (deliberate double-entry documented in `.pkgmeta`). (`c68e501`)
+
+**rc5 PASSED**: GitHub Release created, body = curated changelog, zip verified (33 files under
+`TankadinGearSim/`, matches the `.toc`, zero site files). Final footgun: packager only treats
+`alpha`/`beta` tag keywords as pre-releases — **`-rcN` publishes as FULL STABLE** (would have gone to
+CurseForge as latest!); rc5 flipped to pre-release by hand, PUBLISHING.md corrected to mandate
+`-betaN` for dry runs. (`b79fc4a`)
+
+### Pick up here next (user-only account steps, then the real release)
+1. **User:** create the CurseForge WoW-addon project → note the numeric **Project ID**; generate a
+   CurseForge **API token** → add as repo secret **`CF_API_KEY`**. Screenshots for the listing
+   (`docs/assets/` checklist) still wanted.
+2. **Me, once Project ID arrives:** set `## X-Curse-Project-ID:` in the `.toc` (uncomment the last
+   header line), commit, tag **`v0.8.45`** (clean, no suffix) → real release. Consider deleting the
+   rc5 tag/release afterwards to keep the release list tidy.
+3. **After CF flows:** repoint the site download button at the latest GitHub Release asset and retire
+   the hand-committed `addon/TankadinGearSim.zip` (note in PUBLISHING.md).
+
+---
+
+## 2026-07-13 — Attempted "margin the SOLVER" (parked follow-up) → backed out to cert-only
 
 Picked up the parked follow-up from the uncrushable-cert-margin work below: make the SOLVER target the
 safety-MARGINED crush cap (102.7 / 102.1) so it AUTO-BUILDS a certifiable set instead of just flagging a
