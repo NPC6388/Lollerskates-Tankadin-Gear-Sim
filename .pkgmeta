@@ -15,6 +15,14 @@ package-as: TankadinGearSim
 # ported to Ace3 (Phase B UI), add the externals block below and flip this as needed.
 enable-nolib-creation: no
 
+# Player-facing release notes: used as the GitHub Release body + CurseForge file changelog, and
+# shipped in the zip. Without this the packager generates the changelog from git history — and
+# with no previous release tag that meant EVERY commit, which blew GitHub's 125k-char release-body
+# limit (422 "body is too long") on the first release attempt.
+manual-changelog:
+    filename: addon/TankadinGearSim/CHANGELOG.md
+    markup-type: markdown
+
 move-folders:
     TankadinGearSim/addon/TankadinGearSim: TankadinGearSim
 

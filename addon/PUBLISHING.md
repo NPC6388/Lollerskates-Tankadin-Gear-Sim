@@ -28,6 +28,10 @@ is wired up.
 ## Cutting a release
 
 1. Bump `## Version:` in the `.toc` and update `CHANGELOG.md` (and `SESSION_LOG.md`).
+   Also update the **player-facing** `addon/TankadinGearSim/CHANGELOG.md` — it becomes the
+   GitHub Release body and the CurseForge file changelog (`manual-changelog` in `.pkgmeta`).
+   Don't remove that setting: without it the packager builds the notes from raw git history,
+   which exceeded GitHub's 125k-char release-body limit on the first release.
 2. Commit, then tag and push:
    ```
    git tag v0.8.2

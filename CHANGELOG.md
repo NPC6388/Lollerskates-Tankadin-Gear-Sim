@@ -1342,3 +1342,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   `release.yml`. The rc2 log otherwise validated the pkgmeta fix end-to-end: all 33 addon files copied,
   moved to the zip root as `TankadinGearSim/`, website fully ignored, archive built as
   `TankadinGearSim-v0.8.45-rc2-bcc.zip` with an auto-generated changelog. Re-tagged `v0.8.45-rc3`.
+- **Addon — release notes now come from a shipped player-facing changelog (`v0.8.45-rc3` failed at the
+  GitHub-release step: 422 "body is too long").** With `GITHUB_OAUTH` fixed, the packager got as far as
+  creating the release — but with no previous release tag it auto-generated the body from the ENTIRE
+  commit history, blowing GitHub's 125k-char release-body limit. Fix: new curated
+  `addon/TankadinGearSim/CHANGELOG.md` (player-facing, ships in the zip) wired via `manual-changelog`
+  (`filename` + `markup-type: markdown`) in `.pkgmeta`; it becomes the GitHub Release body and the
+  CurseForge file changelog. `addon/PUBLISHING.md` release steps updated to include it. Re-tagged
+  `v0.8.45-rc4`.
