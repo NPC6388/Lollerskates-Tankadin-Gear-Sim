@@ -1326,3 +1326,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   parity/syntax suites green; runner fixtures regenerated. NOTE: this makes the certification HONEST but the
   optimizer still maximizes threat to the raw cap — it flags a marginal set rather than auto-building a
   higher-avoidance one; an optional follow-up would push the solver itself toward the margined target.
+- **Addon — first real run of the release pipeline; `.pkgmeta` move-folders was backwards (dry-run tag
+  `v0.8.45-rc1` failed with "Could not find an addon TOC file").** Per packager's `release.sh`, a `move-folders`
+  KEY is `<package-as>/<path in repo>` and the VALUE is the destination folder in the zip; a slash-free value is
+  also what registers the repo path as a TOC root (how the packager finds a TOC outside the repo root at all).
+  Ours was inverted (`TankadinGearSim: addon/TankadinGearSim`), so no TOC root was ever registered. Fixed to
+  `TankadinGearSim/addon/TankadinGearSim: TankadinGearSim`, and swapped the blanket `- addon` ignore (which would
+  have excluded the addon files from the copy once the move was fixed) for its three non-addon siblings
+  (`addon/README.md`, `addon/PUBLISHING.md`, `addon/TankadinGearSim.zip`). Dotfiles (`.pkgmeta`, `.github`, …)
+  are auto-pruned by the packager's copy. Re-tagged `v0.8.45-rc2` to verify.

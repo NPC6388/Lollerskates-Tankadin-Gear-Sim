@@ -3,6 +3,11 @@
 # website (src/, web/, index.html, …). move-folders lifts the addon to the package root and the
 # ignore list drops everything that isn't the addon, so the released zip extracts cleanly as
 # AddOns/TankadinGearSim/.
+#
+# move-folders format (per packager's release.sh): the KEY is `<package-as>/<path in repo>`,
+# the VALUE is the destination folder name in the zip. A slash-free value also registers the
+# repo path as a TOC root, which is how the packager finds our TOC in the subfolder at all —
+# getting this backwards fails the build with "Could not find an addon TOC file".
 
 package-as: TankadinGearSim
 
@@ -11,10 +16,12 @@ package-as: TankadinGearSim
 enable-nolib-creation: no
 
 move-folders:
-    TankadinGearSim: addon/TankadinGearSim
+    TankadinGearSim/addon/TankadinGearSim: TankadinGearSim
 
 ignore:
-    - addon
+    - addon/README.md
+    - addon/PUBLISHING.md
+    - addon/TankadinGearSim.zip
     - bin
     - scripts
     - src
