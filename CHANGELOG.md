@@ -1350,3 +1350,10 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   (`filename` + `markup-type: markdown`) in `.pkgmeta`; it becomes the GitHub Release body and the
   CurseForge file changelog. `addon/PUBLISHING.md` release steps updated to include it. Re-tagged
   `v0.8.45-rc4`.
+- **Addon — `v0.8.45-rc4` failed on a packager edge case: `manual-changelog` inside a `move-folders`
+  source.** The packager prefers the processed in-package copy of the changelog for the release body, but
+  `move-folders` relocates it before the upload step, so the remembered path dangles ("No such file or
+  directory" → empty `body` → 400 "Problems parsing JSON"). Workaround: also list
+  `addon/TankadinGearSim/CHANGELOG.md` in the `ignore` block — the packager then falls back to the
+  checkout-path copy, which survives the move (documented in `.pkgmeta`; the zip just doesn't carry
+  CHANGELOG.md, which is standard). Re-tagged `v0.8.45-rc5`.

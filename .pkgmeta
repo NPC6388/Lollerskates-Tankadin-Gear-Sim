@@ -15,10 +15,16 @@ package-as: TankadinGearSim
 # ported to Ace3 (Phase B UI), add the externals block below and flip this as needed.
 enable-nolib-creation: no
 
-# Player-facing release notes: used as the GitHub Release body + CurseForge file changelog, and
-# shipped in the zip. Without this the packager generates the changelog from git history — and
-# with no previous release tag that meant EVERY commit, which blew GitHub's 125k-char release-body
-# limit (422 "body is too long") on the first release attempt.
+# Player-facing release notes: used as the GitHub Release body + CurseForge file changelog.
+# Without this the packager generates the changelog from git history — and with no previous
+# release tag that meant EVERY commit, which blew GitHub's 125k-char release-body limit
+# (422 "body is too long") on the first release attempt.
+#
+# NOTE the file is ALSO in the ignore list below. That's deliberate, not an accident: if the
+# packager finds a processed copy inside the package it uses that path for the release body,
+# but move-folders relocates it before upload → dangling path → empty body → 400 "Problems
+# parsing JSON". Ignoring it forces the fallback to the checkout path, which survives the move.
+# (Cost: the zip itself doesn't carry CHANGELOG.md; GitHub/CurseForge display the notes anyway.)
 manual-changelog:
     filename: addon/TankadinGearSim/CHANGELOG.md
     markup-type: markdown
@@ -30,6 +36,7 @@ ignore:
     - addon/README.md
     - addon/PUBLISHING.md
     - addon/TankadinGearSim.zip
+    - addon/TankadinGearSim/CHANGELOG.md
     - bin
     - scripts
     - src
