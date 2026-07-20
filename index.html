@@ -57,7 +57,7 @@
 
       <div class="eco-lead">
         <div class="eco-lead-copy">
-          <span class="eco-badge">Addon v0.8.45</span>
+          <span class="eco-badge">Addon v0.8.46</span>
           <h3>Start in the game — the addon does the heavy lifting</h3>
           <p><strong>Tankadin Gear Sim</strong> (<code>/tgs</code>) is the front door. It gives you a
             <strong>live tank readout</strong> off your character sheet, an in-game <strong>Optimize</strong>
@@ -68,10 +68,15 @@
             <a class="dl-addon" href="addon/TankadinGearSim.zip" download>&#8595; Download the addon (ZIP)</a>
             <a class="eco-repo" href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim" target="_blank" rel="noopener">Source on GitHub</a>
           </p>
-          <p class="dl-note muted"><strong>New in v0.8.45:</strong> gear <strong>tooltips</strong> now show
-            <strong>Threat</strong> and <strong>EHP</strong> deltas vs the item you'd replace. The threat number is
-            <em>spell-power-equivalent</em> — the sim's threat weights (spell power + spell&nbsp;hit + expertise +
-            hit + block value) applied to the stat change, so a hit/expertise piece counts, not just raw spell power.</p>
+          <p class="dl-note muted"><strong>New in v0.8.46:</strong> two fixes that could make a solved set come back
+            <em>worse</em> than the gear you were already wearing. <strong>Proc trinkets</strong> are now scored
+            instead of counting as an empty slot — the game reports no stats at all for
+            <strong>Tome of Fiery Redemption</strong>, so it was treated as a dead slot, and because the
+            locked-trinket dropdowns default to what you have equipped, every set carried that dead weight. Its
+            +290 spell-damage proc is now valued at its measured raid uptime (~66 spell power), which ranks it
+            ahead of Eye of Magtheridon for single-target threat. And <strong>re-gemming</strong> can no longer
+            suggest a downgrade: the solver now compares against the gems already in your gear and keeps whichever
+            is better.</p>
         </div>
         <figure class="eco-shot">
           <img src="docs/assets/addon-optimize-tab.png" alt="The in-game Optimize tab: four tuned Protection Paladin sets with per-goal EHP-to-Threat and Min-HP sliders." loading="lazy" />
