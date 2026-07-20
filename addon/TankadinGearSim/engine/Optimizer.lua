@@ -137,10 +137,23 @@ local function objectiveFn(goal)
   error("Unknown objective: " .. tostring(obj))
 end
 
--- items are collected order-independently (aggregate/score are sums, so slot order can't change them).
+-- Items are collected in SORTED SLOT ORDER, never raw `pairs()` order. aggregate/score are sums, so
+-- slot order is mathematically irrelevant — but floating-point addition is NOT associative, so a
+-- different traversal order shifts the total by an ULP, and Lua 5.2+ seeds its string hash per state,
+-- making `pairs()` order vary run to run. That was enough to flip exactly-tied gems and items between
+-- runs (the intermittent runner_parity failures: Solid Star of Elune vs Subtle Living Ruby, a ring2
+-- id flip). JS iterates `Object.values(selection)` in stable insertion order, so only Lua drifted.
+-- Sorting the slot keys makes every sum reproducible. (Runner.lua's gemSet already walks `order` for
+-- the same reason.)
 local function selItems(selection)
+  local keys = {}
+  for k in pairs(selection) do keys[#keys + 1] = k end
+  table.sort(keys)
   local items = {}
-  for _, it in pairs(selection) do if it then items[#items + 1] = it end end
+  for _, k in ipairs(keys) do
+    local it = selection[k]
+    if it then items[#items + 1] = it end
+  end
   return items
 end
 

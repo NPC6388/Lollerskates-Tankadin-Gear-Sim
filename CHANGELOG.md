@@ -1395,7 +1395,13 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   - **Net effect on the reported case:** Raid Threat goes from 752 SP (a downgrade) to 818 SP — which
     is the player's equipped set correctly valued, i.e. the tool now confirms the set instead of
     telling them to make it worse. Site and addon agree exactly.
-  - **Known, not fixed:** `test/lua/runner_parity.lua` is FLAKY — it intermittently fails on a
-    nondeterministic tie-break between equally-scored gems/items (observed as
-    `Solid Star of Elune/Subtle Living Ruby` and a `ring2` id flip). Pre-existing (reproduces on a
-    clean tree); the Lua solver needs a deterministic tiebreak the way the unique-gem sort already has.
+  - **Follow-up — the flaky `runner_parity` was the same class of bug, now fixed.** It failed ~28% of
+    runs (7/25) on nondeterministic tie-breaks between equally-scored gems/items. Root cause: Lua 5.2+
+    seeds its string hash PER STATE, so `pairs()` traversal order varies run to run — and since float
+    addition is not associative, summing a dot product or a stat block in hash order shifted totals by
+    an ULP, which was enough to flip exact ties. JS was never affected (`Object.keys`/`Object.values`
+    are insertion-ordered). Two sites fixed: `Optimizer.selItems` now walks SORTED slot keys instead of
+    raw `pairs()` (its old comment claimed order could not matter — true in exact arithmetic, false in
+    floating point), and `Scoring.score` sums over a sorted, per-table memoized key list. Measured:
+    7/25 runs failing before, 0/40 after; 0/12 with any harness failing.
+

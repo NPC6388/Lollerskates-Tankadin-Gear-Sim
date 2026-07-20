@@ -10,12 +10,30 @@ local W = ns.engine.Weights
 local Scoring = {}
 ns.engine.Scoring = Scoring
 
--- score(stats, weights) = sum(stats[k] * weights[k]) over the weight's keys.
+-- Weight-key order, sorted and memoized per weights table. `pairs()` order is NOT stable in Lua 5.2+
+-- (the string hash is seeded per state), and float addition is not associative, so summing a dot
+-- product in hash order makes score() vary by an ULP between runs — enough to flip exactly-tied gems.
+-- The scales are long-lived tables (W.SCALES) so the cache hits; blendScale's fresh tables are held
+-- weakly and collected with them.
+local keyOrder = setmetatable({}, { __mode = "k" })
+local function orderedKeys(weights)
+  local ks = keyOrder[weights]
+  if not ks then
+    ks = {}
+    for k in pairs(weights) do ks[#ks + 1] = k end
+    table.sort(ks)
+    keyOrder[weights] = ks
+  end
+  return ks
+end
+
+-- score(stats, weights) = sum(stats[k] * weights[k]) over the weight's keys, summed in a fixed
+-- (sorted) key order so the result is bit-identical run to run.
 function Scoring.score(stats, weights)
   local total = 0
-  for key, w in pairs(weights) do
+  for _, key in ipairs(orderedKeys(weights)) do
     local v = stats[key]
-    if type(v) == "number" then total = total + v * w end
+    if type(v) == "number" then total = total + v * weights[key] end
   end
   return total
 end

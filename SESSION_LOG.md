@@ -2350,11 +2350,15 @@ agreeing exactly; 818 IS the equipped set correctly valued, so the tool now conf
 set rather than telling them to downgrade it.
 
 ### Open
-- **`test/lua/runner_parity.lua` is FLAKY** (pre-existing, reproduces on a clean tree): intermittent
-  failures on nondeterministic tie-breaks between equally-scored gems/items — seen as
-  `Solid Star of Elune/Subtle Living Ruby` and a `ring2` id flip. Passed 5/5 and 3/3 on reruns.
-  Needs a deterministic tiebreak in the Lua solver, like the unique-gem sort's explicit pool-order
-  fallback. Do NOT trust a single green runner-parity run as proof a change is parity-safe.
+- **`test/lua/runner_parity.lua` flake — FIXED (same session).** Measured the baseline first: 7/25
+  runs failed. Root cause was NOT the tiebreak comparisons but the SUMMATION ORDER feeding them —
+  Lua 5.2+ seeds its string hash per state, so `pairs()` order varies run to run, and float addition
+  is not associative, so totals shifted by an ULP and flipped exact ties. JS never drifted
+  (`Object.keys`/`Object.values` are insertion-ordered). Fixed `Optimizer.selItems` (sorted slot
+  keys; its comment had explicitly asserted order was irrelevant — true in exact arithmetic, false in
+  IEEE754) and `Scoring.score` (sorted, weak-memoized key order). 0/40 runs failed after; 0/12 with
+  any harness failing. LESSON: an "order-independent sum" comment is a smell in floating point.
+
 - The gem solver itself is still only locally optimal — the guard is a FLOOR, not a cure. On this
   character it now wins every time, meaning re-gem never actually improves on hand-picked gems.
 - Uptime numbers are per-player/per-fight; `src/procs.js` records the source of each so they can be
