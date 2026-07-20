@@ -90,3 +90,73 @@ test('re-gemming never returns a set weaker than the gems already in the gear', 
       `re-gem ${JSON.stringify(variant)} scored ${s.toFixed(2)}, below keeping the current gems (${keptScore.toFixed(2)})`);
   }
 });
+
+// --- the equipped set as baseline and floor ------------------------------------------------------
+// Same real 17-piece set. With the site/addon default locks (the trinkets it is wearing), the
+// optimizer used to return 5906.5 while the worn set — fully feasible under those locks — scored
+// 5944.6. A recommendation below the gear you already have is not a recommendation.
+test('a solved set never scores below the equipped set it could have kept', () => {
+  const parsed = parseExport(REAL_EXPORT);
+  const items = equippableItems(parsed);
+  const raid = GOAL_PRESETS.find((g) => g.id === 'raid');
+  const goal = { ...raid, ratio: { ehp: 1, threat: 4 }, gates: { ...raid.gates, minHealth: 11500 } };
+  const objScale = blendScale(goal.ratio);
+  const opts = {
+    buff: 'raid', professions: ['Enchanting'], talentRanks: parsed.talentRanks,
+    maxPhase: 2, useImbuedMeta: true, goals: [goal],
+  };
+  // The worn set, kept exactly as equipped, is the number to beat.
+  const wornIds = new Set(items.filter((i) => i.equipped).map((i) => i.itemId));
+  const worn = optimizeSets(items.filter((i) => wornIds.has(i.itemId)), {
+    ...opts, trinketLocks: {}, keepGemsEnchants: { itemIds: [...wornIds], ignoreCompleteness: true },
+  })[0];
+  const wornScore = score(worn.agg._raw, objScale);
+
+  // Locks defaulted to the equipped trinkets — the case that shipped the downgrade (5906.5 vs 5944.6).
+  // The guarantee is the SCORE invariant; whether it's met by seeding from the worn set or by the
+  // floor swapping it in is an implementation detail, so don't assert which one did it here.
+  const locked = optimizeSets(items, { ...opts, trinketLocks: { icon: 29370, eye: 30447 } })[0];
+  assert.ok(score(locked.agg._raw, objScale) >= wornScore - 1e-6,
+    `locked solve scored ${score(locked.agg._raw, objScale).toFixed(1)} vs equipped ${wornScore.toFixed(1)}`);
+
+  // With the locks freed there IS a genuinely better set, so the floor must NOT fire.
+  const freed = optimizeSets(items, { ...opts, trinketLocks: {} })[0];
+  assert.ok(score(freed.agg._raw, objScale) > wornScore, 'freed locks should beat the worn set');
+  assert.ok(!freed.equippedIsBest, 'a real improvement must not be reported as "already best"');
+});
+
+test('when nothing beats the worn set, the result IS the worn set and says so', () => {
+  const parsed = parseExport(REAL_EXPORT);
+  const items = equippableItems(parsed);
+  // Stock Raid Threat preset with the locks defaulting to the trinkets actually being worn.
+  const r = optimizeSets(items, {
+    buff: 'raid', professions: ['Enchanting'], talentRanks: parsed.talentRanks, maxPhase: 2,
+    useImbuedMeta: true, trinketLocks: { icon: 29370, eye: 30447 },
+  }).find((x) => x.goal.id === 'raid');
+  assert.equal(r.equippedIsBest, true, 'raid goal should report the equipped set as already best');
+  const wornIds = new Set(items.filter((i) => i.equipped).map((i) => i.itemId));
+  for (const it of Object.values(r.selection)) {
+    if (it) assert.ok(wornIds.has(it.itemId), `${it.name} is not part of the equipped set`);
+  }
+});
+
+test('the equipped floor respects a pin for gear the player is not wearing', () => {
+  // Pinning is an explicit choice. Returning the worn set (which lacks the pinned item) would
+  // silently discard it — the same class of mistake as the trinket lock that started this.
+  // The fixture is equipped-only, so add one unworn cloak to pin (an `I:` line = in bags, not worn).
+  const spare = 'I:item:24259::::::::70::::::::::|INVTYPE_CLOAK|ilvl=115;ITEM_MOD_STAMINA_SHORT=25;'
+    + 'ITEM_MOD_SPELL_POWER=28|ITEM_MOD_STAMINA_SHORT=25;ITEM_MOD_SPELL_POWER=28||Spare Threat Cloak';
+  const parsed = parseExport(REAL_EXPORT.trimEnd() + '\n' + spare + '\n');
+  const items = equippableItems(parsed);
+  const raid = GOAL_PRESETS.find((g) => g.id === 'raid');
+  const goal = { ...raid, ratio: { ehp: 1, threat: 4 }, gates: { ...raid.gates, minHealth: 11500 } };
+  const notWorn = items.find((i) => !i.equipped && i.slot === 'back');
+  assert.ok(notWorn, 'fixture needs an unworn back piece');
+  const r = optimizeSets(items, {
+    buff: 'raid', professions: ['Enchanting'], talentRanks: parsed.talentRanks, maxPhase: 2,
+    useImbuedMeta: true, goals: [goal], trinketLocks: { icon: 29370, eye: 30447 },
+    pins: { raid: { back: notWorn.itemId } },
+  })[0];
+  assert.ok(!r.equippedIsBest, 'floor must stand down when it would drop a pinned item');
+  assert.equal(r.selection.back.itemId, notWorn.itemId, 'the pinned item must survive');
+});

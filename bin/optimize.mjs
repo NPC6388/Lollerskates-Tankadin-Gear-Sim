@@ -60,6 +60,9 @@ for (const r of results) {
   const crushShown = r.goal.enc === 'sunwell' ? e.swpAvoidance : r.goal.enc === 'illidan' ? e.illyAvoidance : e.totalAvoidanceWithHS;
   console.log(`\n========== ${r.goal.name} (${r.goal.focus}) ==========`);
   console.log(`legal:${r.legal}  uncrit:${e.raidCritImmune} (${e.critReduction.toFixed(2)}%)  uncrush:${crushReq ? `${crushShown + 1e-9 >= need} (${crushShown.toFixed(1)}% / ${need}%)` : `${crushShown.toFixed(1)}% (not required)`}`);
+  // Nothing in the collection beats the gear on your back for this goal — say so plainly, rather
+  // than presenting the set you're already wearing as if it were a new recommendation.
+  if (r.equippedIsBest) console.log('  ** your EQUIPPED set is already the best this collection allows for this goal — no change needed **');
   console.log(`EHP ${Math.round(e.ehpPhysical).toLocaleString()}   SP ${Math.round(a.spellPower)}   spellHit ${spellHitPct(a).toFixed(2)}%   spellCrit ${Math.round(a.spellCritRating || 0)}rtg   stam ${Math.round(a.stamina)}   armor ${Math.round(a.armor).toLocaleString()}   def ${a.defenseSkill.toFixed(0)}   resil ${Math.round(a.resilienceRating)}`);
   for (const k of ORDER) { const it = r.selection[k]; if (it) console.log(`  ${k.padEnd(9)} ${it.name || it.itemId}${it.itemLevel ? ' (i' + it.itemLevel + ')' : ''}${it._gem === 'cap' ? '  [def-gemmed]' : ''}${it._gem === 'locked' ? '  [kept]' : ''}`); }
   const gc = {}; for (const g of r.gemChoices) gc[g.name] = (gc[g.name] || 0) + 1;

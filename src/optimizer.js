@@ -42,7 +42,7 @@ function objectiveFn(goal) {
 // Build a slot pool from a flat item list: group by slot, expand paired ring/trinket slots
 // (returning the distinct-groups that must hold different items), exclude 2H weapons, and
 // apply locks. `lock` maps a slot key to an itemId (or item) to force into that slot.
-const PAIRS = { ring: ['ring1', 'ring2'], trinket: ['trinket1', 'trinket2'] };
+export const PAIRS = { ring: ['ring1', 'ring2'], trinket: ['trinket1', 'trinket2'] };
 export function buildPool(items, { lock = {}, exclude2H = true } = {}) {
   const grouped = {};
   for (const it of items) {

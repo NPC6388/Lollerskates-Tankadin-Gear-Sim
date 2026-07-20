@@ -3,6 +3,15 @@
 This is the player-facing changelog shipped with the addon (and used as the release notes on
 GitHub/CurseForge). The full development log lives in the repo's root `CHANGELOG.md`.
 
+## v0.8.47
+
+- **Your equipped set is now the baseline every goal is measured against.** The optimizer starts its
+  search from the gear you are actually wearing, and will never hand back a set that scores worse
+  than it. If nothing you own beats what is on your back for a goal, the card now says so outright
+  ("already equipped - best available") instead of showing a sidegrade that looks like an upgrade.
+- Locked trinkets and pinned slots still win: if you asked for a piece you are not currently wearing,
+  the optimizer honors that choice rather than quietly falling back to your equipped set.
+
 ## v0.8.46
 
 - **Proc trinkets are now scored instead of counting as an empty slot.** The game reports no stats

@@ -1405,3 +1405,33 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     floating point), and `Scoring.score` sums over a sorted, per-table memoized key list. Measured:
     7/25 runs failing before, 0/40 after; 0/12 with any harness failing.
 
+- **The equipped set is now the baseline every goal is measured against (`src/runner.js`).** Player
+  report: "I haven't yet used the addon or site where it produced a better set than what I have —
+  they're good, just not as good." Measured on their real collection, on the Raid Threat objective:
+  equipped **5944.6**, optimizer with the default (equipped) trinket locks **5906.5**, optimizer with
+  locks freed **5950.5**. So the default answer scored 0.64% BELOW a set that was fully feasible under
+  its own constraints — the player's own gear — while the best it could ever do was beat them by 0.1%.
+  - **Diagnosis first:** hill-climbing the optimizer's answer with single-slot swaps found NO
+    improvement once locks were freed, so the item search is a genuine local optimum and not simply
+    weak. (An earlier probe suggested a 96-point gain and local-optimum trapping; that was an artifact
+    of comparing runs under DIFFERENT lock settings — re-run with one settings block, the trapping
+    disappeared. Cross-configuration comparisons are not evidence.)
+  - **Fix, same argument as the gem monotonicity guard one level up:** the set you are wearing is
+    always attainable, so it is both the natural SEED for the search and a FLOOR on the answer.
+    `solveGoal` now seeds from the equipped selection (`equippedSeed`, paired slots in scan order) and,
+    if the worn set still scores higher on the goal's own objective, returns it flagged
+    `equippedIsBest`. In practice the SEED does most of the work — it alone lifts the locked Raid
+    Threat answer from 5906.5 to 5944.6 — and the floor is the guarantee behind it.
+  - **The floor stands down when it would override the player:** if the worn set fails the goal's
+    gates, or violates a trinket LOCK or a slot PIN the player set, the solved answer is returned
+    instead. (The pin case was a bug in the first cut of this — caught while building fixture
+    coverage. Silently dropping a pinned item would have been the same mistake as the trinket lock
+    that started this whole investigation.)
+  - **Surfaced in all three UIs** rather than left as a silent flag: the CLI prints a "no change
+    needed" line, the site shows "You're already wearing the best set your collection allows", and the
+    addon card reads "already equipped - best available".
+  - **Coverage:** the runner fixtures previously contained ZERO equipped items, so this path would
+    have been invisible to parity — a worn set + a 5th option set were added (24 → 31 goal results),
+    and `equippedIsBest` is now part of the compared summary. The JS regression fixture was widened
+    from the 17 equipped pieces to the full 209-line collection, since "is anything better than what
+    I'm wearing?" cannot be tested against a pool with no alternatives. 158/158 JS tests, all parity green.

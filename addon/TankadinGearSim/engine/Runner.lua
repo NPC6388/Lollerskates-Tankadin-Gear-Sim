@@ -378,6 +378,48 @@ local function resolveMetas(plans, objScale, ctx)
   return metas
 end
 
+-- --- The equipped set as the baseline every goal is measured against (mirrors runner.js) ---------
+-- The set you are WEARING is always feasible, so it is both the natural place to start the search and
+-- a floor on the answer: a recommendation scoring below your current gear is not a recommendation.
+local PAIRS = { ring = { "ring1", "ring2" }, trinket = { "trinket1", "trinket2" } }
+
+-- Equipped items -> a seed the heuristic understands ({ poolSlot = itemId }). Paired slots fill in
+-- scan order (ring1 then ring2), matching buildPool's layout.
+local function equippedSeed(items)
+  local seed, used = {}, {}
+  for _, it in ipairs(items) do
+    if it.equipped and it.slot then
+      local pair = PAIRS[it.slot]
+      if not pair then
+        seed[it.slot] = it.itemId
+      else
+        local n = used[it.slot] or 0
+        if n < #pair then
+          seed[pair[n + 1]] = it.itemId
+          used[it.slot] = n + 1
+        end
+      end
+    end
+  end
+  return seed
+end
+
+-- Does the equipped gear satisfy the constraints the PLAYER set for this goal — trinket locks and
+-- pinned slots? If they locked or pinned an item they aren't wearing, the worn set violates a choice
+-- they made explicitly, so it must NOT become the floor: honoring the pin matters more than the score.
+local function equippedMeetsConstraints(items, goal, locks, pins)
+  local worn = {}
+  for _, it in ipairs(items) do if it.equipped then worn[it.itemId] = true end end
+  for _, ref in pairs(lockFor(goal, locks)) do
+    local id = (type(ref) == "table") and ref.itemId or ref
+    if not worn[id] then return false end
+  end
+  for _, id in pairs((pins or {})[goal.id] or {}) do
+    if not worn[tonumber(id) or id] then return false end
+  end
+  return true
+end
+
 local function runGoal(goal, items, ctx, seed)
   tick()
   seed = seed or {}
@@ -831,8 +873,34 @@ function Runner.optimizeSets(items, options)
   end
   local goals = options.goals or Runner.GOAL_PRESETS
 
-  local function solveGoal(g, gseed)
+  -- The as-worn set, solved as its own single-candidate pool so it runs the SAME evaluation path as
+  -- any other answer — kept exactly as equipped, never re-gemmed. Memoized per goal; nil when nothing
+  -- is flagged equipped.
+  local wornItems = {}
+  for _, it in ipairs(items) do if it.equipped then wornItems[#wornItems + 1] = it end end
+  local wornSeed = equippedSeed(items)
+  local wornCache = {}
+  local function wornSet(g)
+    if #wornItems == 0 then return nil end
+    if wornCache[g] ~= nil then
+      local c = wornCache[g]
+      if c == false then return nil end
+      return c
+    end
+    local wctx = {}
+    for k, v in pairs(ctx) do wctx[k] = v end
+    wctx.keep = function() return true end
+    wctx.keepIgnoreCompleteness = true
+    local ok, out = pcall(runGoal, g, wornItems, wctx, {}) -- a partial worn set must never break the solve
+    wornCache[g] = ok and out or false
+    return ok and out or nil
+  end
+
+  local function solveGoalRaw(g, gseed)
     gseed = gseed or {}
+    -- Seed from the EQUIPPED set when the caller gave no seed, so the search starts from a known-good
+    -- set rather than the per-slot greedy pick.
+    if next(gseed) == nil then gseed = wornSeed end
     local r = runGoal(g, items, ctx, gseed)
     local floor = (g.gates and g.gates.minHealth) or 0
     local crushReq = (not g.gates) or (g.gates.requireUncrushable ~= false)
@@ -879,6 +947,25 @@ function Runner.optimizeSets(items, options)
     for k, v in pairs(best) do out[k] = v end
     out.goal = g
     out.legal = best.legal and (floor == 0 or best.agg.health + 1e-9 >= floor)
+    return out
+  end
+
+  -- EQUIPPED FLOOR (mirrors runner.js). A recommendation scoring below the gear you already have is
+  -- not a recommendation: return the worn set and flag it (`equippedIsBest`) instead of surfacing a
+  -- sidegrade the player reads as an upgrade. Skipped when the worn set can't legally stand in —
+  -- it fails this goal's gates, it violates trinket locks the player set, or the solved answer is
+  -- itself illegal (a flagged near-miss is the honest output there).
+  local function solveGoal(g, gseed)
+    local r = solveGoalRaw(g, gseed)
+    local worn = wornSet(g)
+    if not worn or not worn.legal or not r.legal then return r end
+    if not equippedMeetsConstraints(items, g, ctx.locks, ctx.pins) then return r end
+    local objScale = Scoring.blendScale(g.ratio)
+    if Scoring.score(worn.agg._raw, objScale) <= Scoring.score(r.agg._raw, objScale) + 1e-9 then return r end
+    local out = {}
+    for k, v in pairs(worn) do out[k] = v end
+    out.goal = g
+    out.equippedIsBest = true
     return out
   end
 

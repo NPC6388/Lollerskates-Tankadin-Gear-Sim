@@ -581,6 +581,9 @@ paintCards = function()
       local e, a = r.evald, r.agg
       local legalTxt = r.legal and "" or color(BAD, " illegal")
       if r.hpBestEffort then legalTxt = color(BAD, " HP unreachable") end
+      -- Nothing owned beats what's on your back for this goal: label it so the card doesn't read as a
+      -- recommendation to change gear you are already wearing.
+      if r.equippedIsBest then legalTxt = color(GOOD, " already equipped - best available") end
       card.head:SetText(color(GOLD, r.goal.name) .. "   " .. mark(r.legal) .. legalTxt
         .. color(DIM, "   " .. (r.goal.focus or "")))
       local sh = (ns.engine.CharacterData.TALENTS.precisionSpellHitPct or 3)

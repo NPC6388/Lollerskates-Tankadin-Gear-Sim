@@ -2363,3 +2363,63 @@ set rather than telling them to downgrade it.
   character it now wins every time, meaning re-gem never actually improves on hand-picked gems.
 - Uptime numbers are per-player/per-fight; `src/procs.js` records the source of each so they can be
   re-measured.
+
+## 2026-07-20 — the equipped set as baseline; CurseForge still pending
+
+Follow-on from the proc-trinket / re-gem session. The player's actual complaint, once stated plainly:
+**"I haven't yet used the addon or site where it produced a better set than what I have. They are
+good, just not as good."** That reframes the problem from presentation to search quality.
+
+### Measured (real collection, Raid Threat objective EHP 1:4, Min-HP 11.5k)
+| set | objective |
+| --- | --- |
+| equipped (as worn) | 5944.6 |
+| optimizer, default locks (= equipped trinkets) | 5906.5 |
+| optimizer, locks freed | 5950.5 |
+
+So the DEFAULT answer scored 0.64% below the player's own gear — which was fully feasible under those
+very locks — and the best possible answer beat them by 0.1%.
+
+### Diagnosis discipline (worth repeating)
+- Hill-climbed the optimizer's answer with single-slot swaps: with locks freed, NO swap improved it.
+  The item search is a real local optimum, not simply weak.
+- A first probe appeared to show a 96-point gain and local-optimum trapping. It was an ARTIFACT: the
+  climb ran under different lock settings than the baseline, so it was "winning" by breaking a
+  constraint. Re-run with a single settings block for every candidate, the trapping vanished.
+  **Cross-configuration comparisons are not evidence.**
+
+### Fix
+Same argument as the gem monotonicity guard, one level up: the set you are wearing is always
+attainable, so it is both the SEED and a FLOOR. `solveGoal` seeds from the equipped selection and
+returns the worn set (flagged `equippedIsBest`) when it still wins. The SEED does most of the work —
+alone it lifts the locked answer 5906.5 -> 5944.6; the floor is the guarantee behind it. Floor stands
+down when the worn set fails the goal's gates or violates a trinket LOCK or slot PIN the player set
+(the pin case was a bug in the first cut, caught while building fixture coverage). Surfaced in CLI,
+site, and addon card. Ported to `engine/Runner.lua`.
+
+### Coverage traps hit TWICE now
+The runner fixtures had ZERO equipped items, so the whole feature would have been invisible to parity
+(exactly like `Procs.lua` last session, which passed parity only because no fixture item was a proc).
+Added a worn set + a 5th option set (24 -> 31 goal results) and put `equippedIsBest` in the compared
+summary. Also widened the JS fixture from 17 equipped pieces to the full 209-line collection — "is
+anything better than what I'm wearing?" is untestable against a pool with no alternatives.
+**Before trusting a green parity run on new code, check the fixtures actually exercise it.**
+
+### PICK UP HERE NEXT — CurseForge (not started)
+The release pipeline is verified end-to-end (rc5 dry run, see the 2026-07-19 entry) but the addon has
+NEVER been published. Blocked on USER-ONLY steps, per `addon/PUBLISHING.md`:
+1. Create the CurseForge project, put its Project ID in `TankadinGearSim.toc`
+   (`## X-Curse-Project-ID:`, currently commented out with `000000`) and in `.pkgmeta`.
+2. Add the `CF_API_KEY` repo secret.
+3. Tag a clean `v0.8.47` (NOT `-rcN` — the packager only treats `alpha`/`beta` keywords as
+   pre-releases, so an `-rc` tag publishes as a FULL stable release; use `-betaN` to dry-run).
+The player is deliberately holding off: **"not fully satisfied with the addon"** yet. Open gaps they
+may want closed before publishing (from reading UI.lua/ItemPool.lua this session, NOT yet discussed
+in detail):
+- The in-game optimizer cannot RE-GEM at all — `UI.Optimize` hardcodes keep-as-is for every item and
+  points at the website for re-gem/phase options.
+- Bank gear is only visible while the bank frame is open; solving elsewhere silently uses a partial
+  pool with no warning.
+- The gem solver is still only locally optimal — the monotonicity guard wins every time on this
+  character, i.e. re-gemming never actually improves on hand-picked gems. Needs a real
+  socket-bonus/meta-aware search; this is the biggest remaining quality gap.

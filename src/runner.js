@@ -13,7 +13,7 @@ import { bestEnchant, ENCHANTS } from './enchants.js';
 import { score } from './scoring.js';
 import { SCALES, blendScale } from './weights.js';
 import { planItemGems, reassignForBonus, bonusEarnedAsTagged } from './gemsolver.js';
-import { buildPool, optimizeHeuristic, distinctOk } from './optimizer.js';
+import { buildPool, optimizeHeuristic, distinctOk, PAIRS } from './optimizer.js';
 import { professionPerks } from './professions.js';
 import { scrollStats } from './scrolls.js';
 import { libramStats } from './librams.js';
@@ -306,6 +306,38 @@ function enableMeta(M, counts, recolorable, gemOpt, gemOptDual, objScale) {
   cands.sort((a, b) => a.cost - b.cost);
   const recolors = cands.slice(0, deficit);
   return { cost: recolors.reduce((a, r) => a + r.cost, 0), recolors };
+}
+
+// --- The equipped set as the baseline every goal is measured against ----------------------------
+// The set you are WEARING is always feasible — you are wearing it. So it is both the natural place to
+// start the search and a floor on the answer: a recommendation that scores below your current gear is
+// not a recommendation. (Same argument as the gem monotonicity guard, one level up: there it was
+// "these gems are already in the item", here it is "these items are already on the character".)
+
+// Equipped items -> a seed the heuristic understands ({ poolSlot: itemId }). Paired slots fill in
+// scan order (ring1 then ring2), which is how buildPool lays them out.
+function equippedSeed(items) {
+  const seed = {}, used = {};
+  for (const it of items) {
+    if (!it.equipped || !it.slot) continue;
+    const pair = PAIRS[it.slot];
+    if (!pair) { seed[it.slot] = it.itemId; continue; }
+    const n = used[it.slot] || 0;
+    if (n < pair.length) { seed[pair[n]] = it.itemId; used[it.slot] = n + 1; }
+  }
+  return seed;
+}
+
+// Does the equipped gear satisfy the constraints the PLAYER set for this goal — trinket locks and
+// pinned slots? If they locked or pinned an item they aren't wearing, the worn set violates a choice
+// they made explicitly, so it must NOT become the floor: honoring their pin matters more than the
+// objective. (Getting this wrong would repeat the trinket-lock bug that started all this.)
+function equippedMeetsConstraints(items, goal, locks, pins = {}) {
+  const wornIds = new Set(items.filter((it) => it.equipped).map((it) => it.itemId));
+  const lock = lockFor(goal, locks);
+  const lockOk = Object.values(lock).every((ref) => wornIds.has(typeof ref === 'object' ? ref.itemId : ref));
+  if (!lockOk) return false;
+  return Object.values(pins[goal.id] || {}).every((id) => wornIds.has(Number(id)));
 }
 
 function runGoal(goal, items, ctx, seed = {}) {
@@ -745,13 +777,31 @@ export function optimizeSets(items, options = {}) {
     items = items.filter((it) => !ex.has(it.itemId));
   }
   const goals = options.goals || GOAL_PRESETS;
+  // The as-worn set, solved as its own (single-candidate) pool so it runs the SAME evaluation path as
+  // any other answer — kept exactly as equipped, no re-gemming. Computed once per goal and memoized;
+  // null when nothing is flagged equipped (a hand-built export, or the demo profile).
+  const wornItems = items.filter((it) => it.equipped);
+  const wornSeed = equippedSeed(items);
+  const wornCache = new Map();
+  const wornSet = (g) => {
+    if (!wornItems.length) return null;
+    if (wornCache.has(g)) return wornCache.get(g);
+    let out = null;
+    try {
+      out = runGoal(g, wornItems, { ...ctx, keep: () => true, keepIgnoreCompleteness: true }, {});
+    } catch { out = null; } // a partial/odd worn set must never break the solve
+    wornCache.set(g, out);
+    return out;
+  };
   // Solve one goal at a given seed (incl. the Min-HP floor-recovery fallback). Factored out so the
   // Balanced goal can be solved from more than one seed and keep the best (see below).
-  const solveGoal = (g, gseed) => {
+  const solveGoalRaw = (g, gseed) => {
     // Live slider drags pass the PREVIOUS result's per-slot selection as a seed, so each nudge climbs
     // from the adjacent (good) set instead of restarting cold — this kills the heuristic's small
     // non-monotonic wiggles (an SP dip when the slider should only rise) as you sweep the dial.
-    const r = runGoal(g, items, ctx, gseed);
+    // Seed from the EQUIPPED set when the caller gave no seed of its own, so the search starts from a
+    // set that is known-good rather than from the per-slot greedy pick.
+    const r = runGoal(g, items, ctx, Object.keys(gseed).length ? gseed : wornSeed);
     const floor = (g.gates && g.gates.minHealth) || 0;
     const crushReq = !g.gates || g.gates.requireUncrushable !== false;
     const floorMet = !floor || r.agg.health + 1e-9 >= floor;
@@ -785,6 +835,24 @@ export function optimizeSets(items, options = {}) {
     if (!cands.length) return r; // no legal set reachable with this gear/keep-settings — keep the best-effort (flagged illegal)
     const best = cands.reduce((a, b) => (score(b.agg._raw, objScale) > score(a.agg._raw, objScale) ? b : a));
     return { ...best, goal: g, legal: best.legal && (!floor || best.agg.health + 1e-9 >= floor) };
+  };
+
+  // EQUIPPED FLOOR. A recommendation that scores below the gear you already have is not a
+  // recommendation. The worn set is always attainable, so if it beats the solved one on THIS goal's
+  // own objective, return it and say so (`equippedIsBest`) rather than surfacing a sidegrade the
+  // player would read as an upgrade. Skipped when the worn set can't legally stand in for the answer:
+  //   - it fails the goal's gates (uncrit / uncrush / Min-HP) — a threat set can't answer Survival;
+  //   - it violates a lock or pin the player set (they asked for gear they aren't wearing);
+  //   - the solved answer is itself illegal/best-effort, where a flagged near-miss is the honest
+  //     output and silently swapping in the worn set would hide that the gates are unreachable.
+  const solveGoal = (g, gseed) => {
+    const r = solveGoalRaw(g, gseed);
+    const worn = wornSet(g);
+    if (!worn || !worn.legal || !r.legal) return r;
+    if (!equippedMeetsConstraints(items, g, ctx.locks, ctx.pins)) return r;
+    const objScale = blendScale(g.ratio);
+    if (score(worn.agg._raw, objScale) <= score(r.agg._raw, objScale) + 1e-9) return r;
+    return { ...worn, goal: g, equippedIsBest: true };
   };
   // The web UI builds the Balanced goal's ratio by blending the Survival and Raid ratios (its slider
   // slides between the two sets), so the engine stays generic — every goal is just a ratio + gates.

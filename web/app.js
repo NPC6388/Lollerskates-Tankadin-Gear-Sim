@@ -1036,6 +1036,11 @@ function setCard(r) {
   const hpNote = r.hpBestEffort
     ? `<div class="metawarn">⚠ Min HP ${fmt(minHp)} isn't reachable with this gear/settings (keep-mode keeps your worn gems) — showing the tankiest set achievable (best effort).</div>`
     : '';
+  // Nothing you own beats what you're wearing for this goal. Say it outright — otherwise the card
+  // looks like a recommendation and the player re-equips gear they already had on.
+  const wornNote = r.equippedIsBest
+    ? `<div class="socketnote">✓ <strong>You're already wearing the best set your collection allows for this goal.</strong> Nothing here to change — every alternative scored lower.</div>`
+    : '';
   const noId = [...new Set(Object.values(r.perSlot).filter((ps) => ps.enchant && !ps.enchant.effectId).map((ps) => ps.enchant.name))];
   const exportNote = noId.length ? `<div class="metawarn">Export: no Sixty Upgrades ID for ${noId.join(', ')} — omitted from the string.</div>` : '';
   // The export carries the gems, but their socket placement isn't always right on import.
@@ -1089,6 +1094,7 @@ function setCard(r) {
       </div>
     </div>
     ${buffNote(r.buffImpact, r.agg)}
+    ${wornNote}
     ${doll}
     ${socketNote}
     ${surplusNote}
