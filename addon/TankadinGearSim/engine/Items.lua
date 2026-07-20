@@ -121,6 +121,21 @@ function Items.build(raw)
       item.baseStats = base
     end
   end
+  -- Proc/on-use trinkets carry value in a temporary buff GetItemStats reports as nothing. Add the
+  -- uptime-averaged equivalent so the slot is scored honestly (mirrors import.js). ADDITIVE, and
+  -- applied to base too so re-gemming doesn't drop it. Lazy reference, like Librams above.
+  local Procs = ns.engine.Procs
+  if Procs then
+    local proc = Procs.procStats(item)
+    if proc then
+      item.procStats = proc
+      item.stats = item.stats or {}
+      for k, v in pairs(proc) do
+        item.stats[k] = (item.stats[k] or 0) + v
+        if item.baseStats then item.baseStats[k] = (item.baseStats[k] or 0) + v end
+      end
+    end
+  end
   return item
 end
 

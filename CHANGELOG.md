@@ -1365,3 +1365,37 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   to pre-release by hand. `addon/PUBLISHING.md` dry-run guidance corrected (`-betaN`, never `-rcN`).
   Pipeline is now verified up to the CurseForge upload itself, which needs the user-only Project ID +
   `CF_API_KEY`; then a clean `v0.8.45` tag cuts the real release.
+- **Optimizer recommended a WORSE threat set than the player already had equipped — two independent
+  causes, both fixed.** Reported in-game: the addon's Raid Threat set came back at 748 SP / 9.10%
+  spell hit against an equipped 752 SP / 9.18%, and the website (fed the same SavedVariables) was
+  lower still at 743 SP. Reproduced end-to-end against the live export.
+  - **Cause 1 — proc trinkets scored as dead slots (`src/procs.js`, new).** `GetItemStats` returns
+    NOTHING for Tome of Fiery Redemption, so it exported with an empty stat block and the model
+    valued the slot at zero. Both UIs default their two locked-trinket dropdowns to whatever is
+    EQUIPPED, so every solved set force-carried a slot worth 0 and could do no better than the
+    player's own gear. New proc DB models a proc/on-use trinket as its UPTIME-AVERAGED equivalent in
+    stats the scales already use — the same trick `librams.js` uses for libram equip effects, but
+    ADDITIVE (a proc trinket can also carry real passive stats) rather than an override. Tome of
+    Fiery Redemption: +290 spell damage at a measured 22.69% raid uptime = 66 effective SP, which
+    correctly puts it ahead of Eye of Magtheridon (+41 passive) for single-target threat — with the
+    locks freed the optimizer now PICKS it. Applied in `import.js` (owned gear), `web/app.js`
+    (synthetic BiS planning items), and the addon's `engine/Items.build`; generated to
+    `engine/ProcsData.lua` + hand-ported `engine/Procs.lua`, covered by items parity (469 checks).
+  - **Cause 2 — "re-gem everything" could return a set weaker than the gems already socketed
+    (`src/runner.js`).** The per-socket picker is greedy and its socket-bonus / meta-color
+    interactions are only locally optimal, so on a well-gemmed character it landed BELOW the as-worn
+    configuration: on the player's real 17-piece set, same items and same objective, keeping the
+    existing gems scored 5944.6 versus 5908.4 re-gemmed (it overshot the crush cap to 103.96% against
+    a 102.7% requirement while giving up 36 stamina). Every socketed gem is by definition attainable —
+    it is already in the item — so keeping them is always a legal candidate. Added a MONOTONICITY
+    GUARD that scores the as-worn gemming against the solved one and takes the better, making re-gem
+    a true improvement operator. Needed `_wornStats` on each item variant: focus/cap variants
+    overwrite `stats` with SIMULATED gemming, so the guard had to read the real resolved stats.
+    Ported to `engine/Runner.lua`; runner parity re-based and green.
+  - **Net effect on the reported case:** Raid Threat goes from 752 SP (a downgrade) to 818 SP — which
+    is the player's equipped set correctly valued, i.e. the tool now confirms the set instead of
+    telling them to make it worse. Site and addon agree exactly.
+  - **Known, not fixed:** `test/lua/runner_parity.lua` is FLAKY — it intermittently fails on a
+    nondeterministic tie-break between equally-scored gems/items (observed as
+    `Solid Star of Elune/Subtle Living Ruby` and a `ring2` id flip). Pre-existing (reproduces on a
+    clean tree); the Lua solver needs a deterministic tiebreak the way the unique-gem sort already has.

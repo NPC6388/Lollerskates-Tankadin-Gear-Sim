@@ -8,6 +8,7 @@ import { GEMS, META_GEMS } from '../src/gems.js';
 import { detectFaction } from '../src/enchants.js';
 import { missChance } from '../src/combat.js';
 import { libramStats } from '../src/librams.js';
+import { procStats } from '../src/procs.js';
 import { SCROLLS } from '../src/scrolls.js';
 import { SCALES, PARTS } from '../src/weights.js';
 import { SET_BONUS_STATS } from '../src/sets.js';
@@ -101,6 +102,15 @@ function buildSyntheticItem(id) {
   };
   const lib = libramStats(item); // model a libram's threat effect, like import.js does for owned gear
   if (lib) { item.stats = lib; item.baseStats = { ...lib }; }
+  // ...and a proc trinket's uptime-averaged buff, also like import.js (ADDITIVE, not an override).
+  const proc = procStats(item);
+  if (proc) {
+    item.procStats = proc;
+    for (const [k, v] of Object.entries(proc)) {
+      item.stats[k] = (item.stats[k] || 0) + v;
+      item.baseStats[k] = (item.baseStats[k] || 0) + v;
+    }
+  }
   return item;
 }
 // The optimizer pool = owned gear + any planning items. Owned `items` stays owned-only (drives the
@@ -458,7 +468,7 @@ function renderLogic() {
     <ul>
       <li><strong>Equip</strong> any item (the pick, an "≈ also viable" alternate, or an owned item from the BiS list) to force it into a slot and re-optimize the rest around it.</li>
       <li><strong>Keep gems/enchants</strong> to preserve committed pieces across sets; <strong>lock trinkets</strong> the model can't score (procs/on-use).</li>
-      <li>Each slot's dropdown also lists a <strong>community BiS</strong> reference (Wowhead's per-phase tank lists) for the selected Content phase — a "what to chase" pointer, independent of your gear and never auto-selected. Owned BiS items can be equipped; the rest just link out. (Hand-curated exceptions the model can't score, like Tome of Fiery Redemption's threat proc, are flagged with a note.)</li>
+      <li>Each slot's dropdown also lists a <strong>community BiS</strong> reference (Wowhead's per-phase tank lists) for the selected Content phase — a "what to chase" pointer, independent of your gear and never auto-selected. Owned BiS items can be equipped; the rest just link out. (Hand-curated exceptions the auto-scrape misses, like Tome of Fiery Redemption — whose threat proc <em>is</em> scored, at its measured raid uptime — are flagged with a note.)</li>
       <li>The stat-weight scales above are the same valuations, exported for Sixty Upgrades — but the sim enforces the caps as gates, which a flat weight list can't.</li>
     </ul>
 

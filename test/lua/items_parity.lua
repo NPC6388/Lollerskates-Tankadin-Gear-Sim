@@ -14,6 +14,8 @@ loadEngine("CharacterData.lua") -- Items needs STAT_KEYS
 loadEngine("ItemsData.lua")
 loadEngine("LibramsData.lua") -- Items.build applies the libram effective-stat override
 loadEngine("Librams.lua")
+loadEngine("ProcsData.lua") -- ...and adds modeled proc-trinket stats on top
+loadEngine("Procs.lua")
 loadEngine("Items.lua")
 local Items = ns.engine.Items
 

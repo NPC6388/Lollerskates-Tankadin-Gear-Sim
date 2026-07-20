@@ -115,8 +115,10 @@ local function hasSockets(it)
   local s = it.sockets or {}
   return (s.red or s.yellow or s.blue or s.meta) and true or false
 end
-local function lockedDelta(it)
-  local base, res = baseOf(it), it.stats or {}
+-- `worn` forces the AS-SOCKETED stats (`_wornStats`) rather than a variant's simulated gemming —
+-- used by the monotonicity guard, which prices the gems literally sitting in the gear today.
+local function lockedDelta(it, worn)
+  local base, res = baseOf(it), (worn and it._wornStats or it.stats) or {}
   local out = {}
   for _, k in ipairs(STAT_KEYS) do
     local d = (res[k] or 0) - (base[k] or 0)
@@ -206,6 +208,10 @@ local function itemVariants(it, objScale, ctx)
     for k, v in pairs(it) do o[k] = v end
     o.stats = stats
     o._gem = tag
+    -- `_wornStats` preserves the item's REAL resolved stats (gems + enchant as actually socketed);
+    -- focus/cap variants overwrite `stats` with SIMULATED gemming, so the monotonicity guard's
+    -- keep-all baseline reads this instead.
+    o._wornStats = it.stats or {}
     return o
   end
   if ctx.keep and ctx.keep(it)
@@ -408,7 +414,8 @@ local function runGoal(goal, items, ctx, seed)
   local res = Optimizer.optimizeHeuristic(pool, order, oGoal, { distinct = distinct, locked = locked, seed = seed })
 
   local gateAware = false
-  local function gemSet(scaleOfFn, sel, uniqueOverrides)
+  -- `keepAll` treats EVERY item as locked (kept as worn) — the baseline the monotonicity guard scores.
+  local function gemSet(scaleOfFn, sel, uniqueOverrides, keepAll)
     sel = sel or res.selection
     local itemList = {}
     for _, slot in ipairs(order) do local v = sel[slot]; if v then itemList[#itemList + 1] = v end end
@@ -417,8 +424,8 @@ local function runGoal(goal, items, ctx, seed)
     local gemOpts = gateAware and { gateScale = CAP_SCALE } or {}
     local plans = {}
     for _, v in ipairs(itemList) do
-      if v._gem == "locked" then
-        plans[#plans + 1] = { v = v, scale = nil, locked = true, plan = { choices = {}, stats = lockedDelta(v), metaCount = 0 } }
+      if keepAll or v._gem == "locked" then
+        plans[#plans + 1] = { v = v, scale = nil, locked = true, plan = { choices = {}, stats = lockedDelta(v, keepAll), metaCount = 0 } }
       else
         local sc = scaleOfFn(v)
         plans[#plans + 1] = { v = v, scale = sc, plan = GemSolver.planItemGems(v, sc, perks, maxPhase, gemOpts) }
@@ -715,6 +722,16 @@ local function runGoal(goal, items, ctx, seed)
         g = best.trial
       end
     end
+  end
+
+  -- MONOTONICITY GUARD. Re-gemming must never hand back a set WEAKER than the gems already sitting in
+  -- the gear. The per-socket picker is greedy and its socket-bonus / meta-color interactions are only
+  -- locally optimal, so on a well-gemmed character it can land below the as-worn configuration. Every
+  -- currently-socketed gem is by definition attainable — it's already in the item — so keeping them is
+  -- always a legal candidate: score it and take it when it wins. Skipped in keep mode (g already IS it).
+  if not ctx.keep then
+    local keepG = gemSet(scFn, res.selection, nil, true)
+    if finalLegal(keepG.evald) and objScoreOf(keepG) > objScoreOf(g) then g = keepG end
   end
 
   local plans, metas, added, gemChoices, agg, evald = g.plans, g.metas, g.added, g.gemChoices, g.agg, g.evald

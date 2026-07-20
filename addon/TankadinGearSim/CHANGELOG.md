@@ -3,6 +3,19 @@
 This is the player-facing changelog shipped with the addon (and used as the release notes on
 GitHub/CurseForge). The full development log lives in the repo's root `CHANGELOG.md`.
 
+## v0.8.46
+
+- **Proc trinkets are now scored instead of counting as an empty slot.** The game reports no stats
+  at all for Tome of Fiery Redemption, so the optimizer treated it as a dead slot — and because the
+  locked-trinket dropdowns default to what you have equipped, every solved set carried that dead
+  slot and could never beat your current gear. Its +290 spell-damage proc is now valued at its
+  measured raid uptime (~66 spell power on average), which correctly ranks it ahead of Eye of
+  Magtheridon for single-target threat.
+- **Re-gemming can no longer suggest a downgrade.** The gem solver could return a configuration
+  scoring below the gems already sitting in your gear (it overshot the uncrushable cap and gave up
+  stamina). It now always compares against your current gems and keeps whichever is better, so a
+  solved set is never worse than what you are already wearing.
+
 ## v0.8.45 — initial public release
 
 The companion addon for [Lollerskate's Tankadin Gear Sim](https://npc6388.github.io/Lollerskates-Tankadin-Gear-Sim/):

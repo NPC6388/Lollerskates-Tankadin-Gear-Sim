@@ -66,6 +66,21 @@ items.push({
   itemLevel: 100, resolved: { ITEM_MOD_BLOCK_VALUE: 12 }, base: { ITEM_MOD_BLOCK_VALUE: 12 }, socketBonus: '',
 });
 
+// Proc trinket by ID (Tome of Fiery Redemption, 30447): GetItemStats reports NOTHING for it, so the
+// modeled proc value (spellDamage 66) is ADDED to an empty stat block — stats AND baseStats.
+// Exercises the procStats wiring in Items.build (additive, unlike the libram override above).
+items.push({
+  itemString: 'item:30447:0:0:0:0:0:0', equipLoc: 'INVTYPE_TRINKET', name: 'Tome of Fiery Redemption', equipped: true,
+  itemLevel: 128, resolved: {}, base: {}, socketBonus: '',
+});
+
+// Proc trinket by NAME, ON TOP of real passive stats — id doesn't match, the name substring drives
+// it, and the modeled spellDamage 66 must ADD to the item's own 43 (not replace it) -> 109.
+items.push({
+  itemString: 'item:41000:0:0:0:0:0:0', equipLoc: 'INVTYPE_TRINKET', name: 'Tome of Fiery Redemption (Heroic)', equipped: false,
+  itemLevel: 141, resolved: { ITEM_MOD_SPELL_POWER: 43 }, base: { ITEM_MOD_SPELL_POWER: 43 }, socketBonus: '',
+});
+
 // Build the synthetic export and get the golden item objects.
 const seg = (t) => Object.entries(t).map(([k, val]) => `${k}=${val}`).join(';');
 const lines = ['TGS11', 'C:'];

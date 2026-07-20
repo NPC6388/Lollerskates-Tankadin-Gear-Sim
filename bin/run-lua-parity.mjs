@@ -55,6 +55,8 @@ const PATHS = [
   'addon/TankadinGearSim/engine/Professions.lua',
   'addon/TankadinGearSim/engine/LibramsData.lua',
   'addon/TankadinGearSim/engine/Librams.lua',
+  'addon/TankadinGearSim/engine/ProcsData.lua',
+  'addon/TankadinGearSim/engine/Procs.lua',
   'addon/TankadinGearSim/engine/ScrollsData.lua',
   'addon/TankadinGearSim/engine/Scrolls.lua',
   'addon/TankadinGearSim/engine/GemSolver.lua',

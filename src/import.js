@@ -84,6 +84,7 @@ export function parseItemString(s) {
 }
 
 import { libramStats } from './librams.js';
+import { procStats } from './procs.js';
 import { STAT_KEYS } from './model.js';
 
 // socket-count stat keys -> color, for exposing a per-item socket layout
@@ -206,6 +207,18 @@ export function parseExport(text) {
         // damage). Override with the modeled effective stats so the libram is valued correctly.
         const lib = libramStats(item);
         if (lib) { item.stats = lib; item.baseStats = { ...lib }; }
+        // Proc/on-use trinkets carry value in a temporary buff GetItemStats reports as nothing (Tome
+        // of Fiery Redemption exports an EMPTY stat block). Add the uptime-averaged equivalent so the
+        // slot is scored honestly. ADDITIVE, unlike librams: the passive stats on the item are real
+        // and already parsed. Applied to base too, so re-gemming doesn't drop the proc's value.
+        const proc = procStats(item);
+        if (proc) {
+          item.procStats = proc;
+          for (const [k, v] of Object.entries(proc)) {
+            item.stats[k] = (item.stats[k] || 0) + v;
+            if (item.baseStats) item.baseStats[k] = (item.baseStats[k] || 0) + v;
+          }
+        }
       }
       out.items.push(item);
     }

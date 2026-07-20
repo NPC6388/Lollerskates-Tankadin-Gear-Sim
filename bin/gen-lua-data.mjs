@@ -21,6 +21,7 @@ import { GEMS, META_GEMS, FITS, CURRENT_PHASE } from '../src/gems.js';
 import { ENCHANTS } from '../src/enchants.js';
 import { PROFESSIONS, PROFESSION_NAMES } from '../src/professions.js';
 import { LIBRAMS } from '../src/librams.js';
+import { PROCS } from '../src/procs.js';
 import { SCROLLS } from '../src/scrolls.js';
 import { SET_DB, SET_BONUS_STATS } from '../src/sets.js';
 
@@ -34,6 +35,7 @@ const gemsFile = resolve(engineDir, 'GemsData.lua');
 const enchantsFile = resolve(engineDir, 'EnchantsData.lua');
 const professionsFile = resolve(engineDir, 'ProfessionsData.lua');
 const libramsFile = resolve(engineDir, 'LibramsData.lua');
+const procsFile = resolve(engineDir, 'ProcsData.lua');
 const scrollsFile = resolve(engineDir, 'ScrollsData.lua');
 const setsFile = resolve(engineDir, 'SetsData.lua');
 
@@ -319,6 +321,15 @@ writeFileSync(libramsFile,
   nsHeader('D', 'LibramsData') + '\n' +
   `-- Each: ids (canonical) + nameMatch (lowercase literal substrings) -> effective stat override.\nD.LIBRAMS = ${luaValue(librams)}\n\nreturn D\n`);
 console.log(`Wrote ${libramsFile}`);
+
+// engine/ProcsData.lua — modeled proc/on-use trinket stats (src/procs.js). Regex `match` is dropped;
+// the port matches on ids + `nameMatch` literal substrings (kept in sync in procs.js).
+const procs = PROCS.map((P) => ({ ids: P.ids, nameMatch: P.nameMatch, stats: P.stats }));
+writeFileSync(procsFile,
+  dataBanner('src/procs.js', 'Modeled proc-trinket stats (engine/Procs.lua); procStats logic is hand-ported there.') +
+  nsHeader('D', 'ProcsData') + '\n' +
+  `-- Each: ids (canonical) + nameMatch (lowercase literal substrings) -> ADDITIVE effective stats.\nD.PROCS = ${luaValue(procs)}\n\nreturn D\n`);
+console.log(`Wrote ${procsFile}`);
 
 // engine/ScrollsData.lua — consumable scroll stats (src/scrolls.js).
 writeFileSync(scrollsFile,

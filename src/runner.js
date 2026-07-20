@@ -74,8 +74,10 @@ const hasSockets = (it) => { const s = it.sockets || {}; return !!(s.red || s.ye
 // For LOCKED items the solver leaves the currently-socketed gems + applied enchant in place. The
 // resolved item.stats already fold those in (plus any active socket bonus), so a locked item just
 // contributes resolved-minus-base (the gem/enchant delta) on top of baseStats — no re-gemming.
-const lockedDelta = (it) => {
-  const base = baseOf(it), res = it.stats || {};
+// `worn` forces the AS-SOCKETED stats (`_wornStats`) rather than a variant's simulated gemming —
+// used by the monotonicity guard, which prices the gems literally sitting in the gear today.
+const lockedDelta = (it, worn = false) => {
+  const base = baseOf(it), res = (worn ? it._wornStats : it.stats) || {};
   const out = {};
   for (const k of STAT_KEYS) { const d = (res[k] || 0) - (base[k] || 0); if (d) out[k] = d; }
   return out;
@@ -167,7 +169,10 @@ function buildVariant(it, gemScale, enchScale, ctx) {
 }
 
 function itemVariants(it, objScale, ctx) {
-  const mk = (tag, stats) => ({ ...it, stats, _gem: tag });
+  // `_wornStats` preserves the item's REAL resolved stats (gems + enchant as actually socketed).
+  // A focus/cap variant overwrites `stats` with its SIMULATED gemming, so anything that wants the
+  // as-worn configuration — the monotonicity guard's keep-all baseline — must read this instead.
+  const mk = (tag, stats) => ({ ...it, stats, _gem: tag, _wornStats: it.stats || {} });
   // Locked items can't be re-gemmed/-enchanted, so there's a single variant scored on the item's
   // current (resolved) stats — no focus/cap split (the cap variant only exists to re-gem for defense).
   // Only items the player WANTS kept AND that are actually complete (no empty socket / missing
@@ -333,13 +338,14 @@ function runGoal(goal, items, ctx, seed = {}) {
   // socket-bonus worth-it test priced on the cap scale, so focus pieces KEEP gate-stat bonuses they'd
   // otherwise forfeit for a sliver of threat — the cheapest avoidance back toward the cap.
   let gateAware = false;
-  const gemSet = (scaleOf, sel = res.selection, uniqueOverrides = null) => {
+  const gemSet = (scaleOf, sel = res.selection, uniqueOverrides = null, keepAll = false) => {
     const itemList = Object.values(sel).filter(Boolean);
     const baseStatsList = itemList.map((v) => ({ stats: baseOf(v) }));
     const gemOpts = gateAware ? { gateScale: CAP_SCALE } : {};
     // Locked items keep their current gems/enchant: no re-gem, just the resolved-minus-base delta.
-    const plans = itemList.map((v) => v._gem === 'locked'
-      ? { v, scale: null, locked: true, plan: { choices: [], stats: lockedDelta(v), metaCount: 0 } }
+    // `keepAll` treats EVERY item that way — the as-worn baseline the monotonicity guard scores.
+    const plans = itemList.map((v) => (keepAll || v._gem === 'locked')
+      ? { v, scale: null, locked: true, plan: { choices: [], stats: lockedDelta(v, keepAll), metaCount: 0 } }
       : { v, scale: scaleOf(v), plan: planItemGems(v, scaleOf(v), perks, maxPhase, gemOpts) });
     // UNIQUE-GEM overrides (from the placement pass below): swap specific focus sockets to a
     // one-per-character unique/epic gem, then recompute that item's gem stats from scratch (all gems +
@@ -578,6 +584,18 @@ function runGoal(goal, items, ctx, seed = {}) {
       usedSocket.add(best.itemId + ':' + best.idx);
       g = best.trial;
     }
+  }
+
+  // MONOTONICITY GUARD. Re-gemming must never hand back a set WEAKER than the gems already sitting
+  // in the gear. The per-socket picker is greedy and its socket-bonus / meta-color interactions are
+  // only locally optimal, so on a well-gemmed character it can land below the as-worn configuration
+  // (measured: a real 17-piece set scored 5680 kept vs 5644 re-gemmed on the same objective). Every
+  // currently-socketed gem is by definition attainable — it's already in the item — so keeping them
+  // is always a legal candidate. Score it and take it when it wins, making "re-gem everything" a
+  // true improvement operator rather than a coin flip. Skipped in keep mode (g already IS this set).
+  if (!ctx.keep) {
+    const keepG = gemSet(scFn, res.selection, null, true);
+    if (finalLegal(keepG.evald) && objScoreOf(keepG) > objScoreOf(g)) g = keepG;
   }
 
   const { plans, metas, added, gemChoices, agg, evald } = g;

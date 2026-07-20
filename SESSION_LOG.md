@@ -2307,3 +2307,55 @@ WA does not. Pushed: `d5693b2`.
   pass/fail, just the honest EHP number.
 - **Ace3 deferred:** MVP UI is native frames so it loads on a bare folder-copy; Ace3 comes with
   the packager that embeds its libs (Phase B).
+
+## 2026-07-19 — "the optimizer told me to downgrade": proc trinkets + re-gem monotonicity
+
+Picked up a crashed investigation: the addon's Raid Threat set came back WORSE than the player's
+equipped threat set (748 SP / 9.10% spell hit vs 752 / 9.18%), and the website — fed the same
+SavedVariables — was lower still (743 SP). Re-derived from source (no notes survived the crash) and
+reproduced both against the live SavedVariables via `bin/optimize.mjs` plus throwaway scripts in
+`scratchpad/` (gitignored: `dbg-configs`, `dbg-minhp`, `dbg-trinket`, `dbg-regem2`, `dbg-sockets`).
+
+### Diagnosis
+Two INDEPENDENT causes, both confirmed by isolation rather than inspection:
+1. **Tome of Fiery Redemption scored as a zero slot.** `GetItemStats` reports nothing for it, so it
+   exports with an empty stat block. Both UIs default the locked-trinket dropdowns to the EQUIPPED
+   trinkets, so every set force-carried a dead slot. Measured: locks Icon+Tome = 752 SP, Icon+Eye =
+   806, no locks = 811. The lock cost ~55 SP and pinned the result to the player's own gear.
+2. **Re-gem could score BELOW the gems already socketed.** Isolated by restricting the pool to the
+   exact 17 chosen pieces so gemming was the ONLY variable: kept 5680.6 vs re-gemmed 5644.4 on the
+   same objective. The greedy per-socket picker overshot the crush cap (103.96% vs a 102.7%
+   requirement) and gave up 36 stamina. NOTE: a first isolation attempt via `pins` was WRONG —
+   `pins` is keyed by slot, so ring1/ring2 and trinket1/trinket2 collide and only one of each pins.
+
+### Fixes
+- `src/procs.js` (new): proc/on-use trinket DB, modeled as UPTIME-AVERAGED equivalent stats. Mirrors
+  `librams.js` but ADDITIVE (proc trinkets can also carry real passive stats). Tome = +290 SP at a
+  measured 22.69% uptime over a 4h raid -> 66 SP. Wired into `import.js`, `web/app.js`
+  (`buildSyntheticItem`, for BiS planning items), and the addon's `engine/Items.build`. Generated
+  `engine/ProcsData.lua` + hand-ported `engine/Procs.lua`; added to the TOC and the parity harness.
+- `src/runner.js`: MONOTONICITY GUARD — score the as-worn gemming against the solved one, take the
+  better. Required `_wornStats` on each variant, since focus/cap variants overwrite `stats` with
+  SIMULATED gemming (this is why the guard silently did nothing on the first attempt). Ported to
+  `engine/Runner.lua`; runner goldens re-based.
+- Corrected the now-stale "the model can't score this proc" notes in `web/bis.js` / `web/app.js`.
+
+### Verification
+155/155 JS tests (5 new in `test/procs.test.js`), all Lua parity green (items parity 469 checks, now
+covering the proc path on both sides). The re-gem regression test is backed by a REAL fixture
+(`test/fixtures/threat-set-export.txt`, the player's 17 equipped pieces) — synthetic gear with the
+crush gate relaxed does NOT reproduce it, confirmed by disabling the guard and watching the
+synthetic test still pass while the real one failed. Net: Raid Threat 752 -> 818 SP, site and addon
+agreeing exactly; 818 IS the equipped set correctly valued, so the tool now confirms the player's
+set rather than telling them to downgrade it.
+
+### Open
+- **`test/lua/runner_parity.lua` is FLAKY** (pre-existing, reproduces on a clean tree): intermittent
+  failures on nondeterministic tie-breaks between equally-scored gems/items — seen as
+  `Solid Star of Elune/Subtle Living Ruby` and a `ring2` id flip. Passed 5/5 and 3/3 on reruns.
+  Needs a deterministic tiebreak in the Lua solver, like the unique-gem sort's explicit pool-order
+  fallback. Do NOT trust a single green runner-parity run as proof a change is parity-safe.
+- The gem solver itself is still only locally optimal — the guard is a FLOOR, not a cure. On this
+  character it now wins every time, meaning re-gem never actually improves on hand-picked gems.
+- Uptime numbers are per-player/per-fight; `src/procs.js` records the source of each so they can be
+  re-measured.
