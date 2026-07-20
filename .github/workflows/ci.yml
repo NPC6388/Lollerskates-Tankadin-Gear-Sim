@@ -60,10 +60,19 @@ jobs:
         # Compare the committed zip's CONTENTS (not its bytes) against the addon source — deflate output
         # isn't byte-stable across zlib/Node versions, so a byte diff would false-fail on a runner bump.
         run: |
+          version="$(sed -n 's/^## *Version: *//p' addon/TankadinGearSim/TankadinGearSim.toc | tr -d '\r')"
+          zip="addon/TankadinGearSim-v${version}.zip"
+          # Exactly one zip, named for the .toc version — a leftover from the previous version would
+          # still be served by GitHub Pages.
+          found="$(ls addon/*.zip)"
+          [ "$found" = "$zip" ] \
+          || { echo "::error::expected exactly ${zip}, found: ${found} — run 'npm run build-addon' and commit the rename."; exit 1; }
+          grep -q "addon/TankadinGearSim-v${version}.zip" index.html \
+          || { echo "::error::index.html's download link doesn't point at ${zip} — run 'npm run build-addon' and commit."; exit 1; }
           tmp="$(mktemp -d)"
-          unzip -q addon/TankadinGearSim.zip -d "$tmp"
+          unzip -q "$zip" -d "$tmp"
           diff -r --strip-trailing-cr "$tmp/TankadinGearSim" addon/TankadinGearSim \
-          || { echo "::error::addon/TankadinGearSim.zip is out of sync with addon/TankadinGearSim/ — run 'npm run build-addon' and commit (the site serves the committed zip)."; exit 1; }
+          || { echo "::error::${zip} is out of sync with addon/TankadinGearSim/ — run 'npm run build-addon' and commit (the site serves the committed zip)."; exit 1; }
 
       - name: Install Lua 5.1 (WoW's Lua version)
         run: sudo apt-get update && sudo apt-get install -y lua5.1

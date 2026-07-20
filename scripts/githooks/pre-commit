@@ -67,5 +67,9 @@ fi
 # so a no-op change re-stages identical bytes.)
 if git diff --cached --name-only | grep -qE '^(addon/TankadinGearSim/|bin/build-addon-zip\.mjs)'; then
   node bin/build-addon-zip.mjs || exit 1
-  git add addon/TankadinGearSim.zip
+  # -A: the zip's name carries the .toc version, so a bump ADDS one file and DELETES the old one, and
+  # the builder repoints index.html's download link at the new name. Stage all three.
+  # Quote the pattern so GIT expands it (a shell glob only matches files that still exist on disk,
+  # which would miss the deleted old zip).
+  git add -A -- 'addon/*.zip' index.html
 fi

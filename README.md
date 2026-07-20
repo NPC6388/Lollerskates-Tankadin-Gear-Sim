@@ -139,7 +139,8 @@ and the website never disagree. For what's landed milestone by milestone, see
   [BigWigsMods/packager](https://github.com/BigWigsMods/packager) → GitHub Release, and
   CurseForge once configured): [`addon/PUBLISHING.md`](addon/PUBLISHING.md).
 - The website's "Download the addon" button serves the committed
-  `addon/TankadinGearSim.zip`; rebuild it whenever the `.lua`/`.toc` changes (see
+  `addon/TankadinGearSim-v<version>.zip` (named for the `.toc` version); rebuild it with
+  `npm run build-addon` whenever the `.lua`/`.toc` changes (see
   `addon/README.md`).
 
 ---

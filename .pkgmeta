@@ -35,7 +35,7 @@ move-folders:
 ignore:
     - addon/README.md
     - addon/PUBLISHING.md
-    - addon/TankadinGearSim.zip
+    - addon/*.zip
     - addon/TankadinGearSim/CHANGELOG.md
     - bin
     - scripts

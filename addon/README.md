@@ -56,12 +56,16 @@ get a fallback.
 
 ## Packaging (one-click download)
 
-The site's "Download the addon" button serves `addon/TankadinGearSim.zip` (the folder zipped so it
-extracts as `AddOns/TankadinGearSim/`). **Rebuild it whenever the .lua/.toc changes**, e.g. on Windows:
+The site's "Download the addon" button serves `addon/TankadinGearSim-v<version>.zip` (the folder
+zipped so it extracts as `AddOns/TankadinGearSim/`, named for the `## Version` in the .toc so a
+downloaded file identifies itself). **Rebuild it whenever the .lua/.toc changes**:
 
-    Compress-Archive -Path addon/TankadinGearSim -DestinationPath addon/TankadinGearSim.zip -Force
+    npm run build-addon
 
-(or `cd addon && zip -r TankadinGearSim.zip TankadinGearSim` on a unix shell), then commit the zip.
+That writes the zip for the current .toc version, deletes the previous version's zip (only one is
+ever committed), and repoints `index.html`'s download links at the new filename — commit all three.
+The pre-commit hook does this automatically for commits touching `addon/TankadinGearSim/`, and CI
+fails if the committed zip's name, contents, or the site link are out of sync.
 
 ## Releasing (CurseForge + GitHub)
 

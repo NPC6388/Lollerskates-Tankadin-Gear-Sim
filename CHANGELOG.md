@@ -1435,3 +1435,16 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     and `equippedIsBest` is now part of the compared summary. The JS regression fixture was widened
     from the 17 equipped pieces to the full 209-line collection, since "is anything better than what
     I'm wearing?" cannot be tested against a pool with no alternatives. 158/158 JS tests, all parity green.
+
+- **The downloadable addon zip is now named for its version (`bin/build-addon-zip.mjs`).** The site
+  served a fixed `addon/TankadinGearSim.zip`, so a downloaded file was anonymous — nothing in the
+  filename said which build it was, and a browser cache serving a stale copy looked identical to the
+  new one. The builder now reads `## Version` from the `.toc` and writes
+  `addon/TankadinGearSim-v<version>.zip`. Because the name moves on every bump, the same script also
+  (a) deletes the previous version's zip, so GitHub Pages can never serve two, and (b) rewrites the
+  two download links in `index.html` — a static link would otherwise 404 the moment the version
+  changed. CI's zip guard now checks all three (exactly one zip, named for the current `.toc`
+  version; the site link points at it; contents match the source), and the pre-commit hook stages
+  the add + the delete + `index.html` via a git-expanded `'addon/*.zip'` pathspec. `.pkgmeta` ignores
+  `addon/*.zip` so the CurseForge package is unaffected; tagged releases keep getting their zip name
+  from BigWigsMods/packager as before.

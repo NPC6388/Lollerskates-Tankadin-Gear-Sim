@@ -1,20 +1,35 @@
 #!/usr/bin/env node
-// Build addon/TankadinGearSim.zip DETERMINISTICALLY from addon/TankadinGearSim/, so the website's
-// "Download the addon" link (which serves the COMMITTED zip via GitHub Pages) always ships the latest
-// addon files. Determinism (fixed timestamps + sorted entries) lets CI run this and `git diff
-// --exit-code` the zip to catch a stale commit — the same guard the generated Lua/fixtures use.
+// Build addon/TankadinGearSim-v<version>.zip DETERMINISTICALLY from addon/TankadinGearSim/, so the
+// website's "Download the addon" link (which serves the COMMITTED zip via GitHub Pages) always ships
+// the latest addon files. Determinism (fixed timestamps + sorted entries) lets CI run this and `git
+// diff --exit-code` the zip to catch a stale commit — the same guard the generated Lua/fixtures use.
+//
+// The filename carries the ## Version from the .toc so a downloaded zip is self-identifying (users
+// paste "which version are you on?" from the filename, and a stale browser cache is obvious). That
+// makes the name move on every version bump, so this script also retires the previous versioned zip
+// and rewrites the site's download links — see rewriteLinks() below.
 //
 // Pure Node, no deps (the repo stays dependency-free): a hand-written ZIP container + zlib deflate +
 // a CRC32 table (zlib.crc32 isn't available on the Node 20 CI runner). Entries live under a
 // "TankadinGearSim/" root so it unzips straight into Interface\AddOns\TankadinGearSim\.
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { deflateRawSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, relative, join, sep } from 'node:path';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const srcDir = resolve(repo, 'addon/TankadinGearSim');
-const outZip = resolve(repo, 'addon/TankadinGearSim.zip');
+const addonDir = resolve(repo, 'addon');
+
+// The .toc's ## Version is the single source of truth for the zip's name.
+const toc = readFileSync(resolve(srcDir, 'TankadinGearSim.toc'), 'utf8');
+const version = (toc.match(/^##\s*Version:\s*(.+)$/m) || [])[1]?.trim();
+if (!version) {
+  console.error('build-addon-zip: no "## Version:" line in addon/TankadinGearSim/TankadinGearSim.toc');
+  process.exit(1);
+}
+const zipName = `TankadinGearSim-v${version}.zip`;
+const outZip = resolve(addonDir, zipName);
 
 // All files under the addon, sorted for a reproducible entry order.
 function walk(dir) {
@@ -93,5 +108,24 @@ eocd.writeUInt16LE(files.length, 8); eocd.writeUInt16LE(files.length, 10);
 eocd.writeUInt32LE(centralPart.length, 12); eocd.writeUInt32LE(localPart.length, 16);
 
 writeFileSync(outZip, Buffer.concat([localPart, centralPart, eocd]));
+
+// Exactly one addon zip is ever committed: drop the previous version's (and the historical
+// unversioned TankadinGearSim.zip) so the repo can't serve a stale download alongside the new one.
+for (const name of readdirSync(addonDir)) {
+  if (name !== zipName && /^TankadinGearSim(-v.+)?\.zip$/.test(name)) unlinkSync(join(addonDir, name));
+}
+
+// The site's download links are static HTML, so point them at the new filename here — otherwise a
+// version bump would ship a 404 button. CI re-runs this script and diffs, which catches a miss.
+function rewriteLinks(file) {
+  const full = resolve(repo, file);
+  const before = readFileSync(full, 'utf8');
+  const after = before.replace(/addon\/TankadinGearSim(-v[^"']+)?\.zip/g, `addon/${zipName}`);
+  if (after !== before) writeFileSync(full, after);
+  return after !== before;
+}
+const relinked = ['index.html'].filter(rewriteLinks);
+
 const kb = (localPart.length + centralPart.length + eocd.length) / 1024;
-console.log(`Built ${relative(repo, outZip).replace(/\\/g, '/')} — ${files.length} files, ${kb.toFixed(1)} KB (deterministic)`);
+console.log(`Built addon/${zipName} — ${files.length} files, ${kb.toFixed(1)} KB (deterministic)`);
+if (relinked.length) console.log(`Repointed download links in ${relinked.join(', ')}`);

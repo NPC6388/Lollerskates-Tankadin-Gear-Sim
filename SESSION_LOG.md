@@ -4,7 +4,24 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-16 (latest) — CurseForge release pipeline: dry-run debugged end-to-end (rc1→rc5 PASS)
+## 2026-07-20 (latest) — Versioned addon download filename
+
+The website's download button served a fixed `addon/TankadinGearSim.zip`, so the file a user ended up
+with said nothing about which build it was. `npm run build-addon` now names the zip from the `.toc`
+`## Version` — `addon/TankadinGearSim-v0.8.47.zip`.
+
+Consequences of a moving filename, all handled in the one script so nothing can drift:
+- the previous version's zip is deleted (only ever one committed, so Pages can't serve a stale one);
+- `index.html`'s two download links are rewritten to the new name (a static href would 404 on bump);
+- CI checks all three invariants; the pre-commit hook stages add + delete + `index.html`.
+
+Verified by bumping the `.toc` to a throwaway 0.9.99, rebuilding, and confirming the old zip vanished
+and both links repointed — then restoring 0.8.47. Tagged CurseForge releases are untouched (the
+packager names those); `.pkgmeta` now ignores `addon/*.zip`.
+
+---
+
+## 2026-07-16 — CurseForge release pipeline: dry-run debugged end-to-end (rc1→rc5 PASS)
 
 Kicked off the parked CurseForge publish. Strategy: dry-run tag first (works without any CurseForge
 setup — packager skips the CF upload without `CF_API_KEY`). The rehearsal caught FOUR pipeline bugs,

@@ -59,8 +59,8 @@ smoke-test.
 - **Interface version.** `## Interface: 20504` goes stale each Anniversary content patch (addon
   shows "out of date"). Bump it when the client updates; consider listing multiple `## Interface:`
   values if we start supporting more than one build.
-- **The website download button** currently serves the hand-committed `addon/TankadinGearSim.zip`
-  (rebuilt via `Compress-Archive`, see `addon/README.md`). Once CurseForge releases are flowing,
+- **The website download button** currently serves the committed `addon/TankadinGearSim-v<version>.zip`
+  (rebuilt via `npm run build-addon`, see `addon/README.md`). Once CurseForge releases are flowing,
   we can repoint it at the latest GitHub Release asset and retire the committed zip.
 - **Ace3 UI is deferred.** The MVP UI uses native frames so the addon loads on a plain folder-copy
   with zero libs (good for in-game iteration). When it moves to Ace3, uncomment the `externals:`
