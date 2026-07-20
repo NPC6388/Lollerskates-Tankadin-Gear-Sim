@@ -4,7 +4,28 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-20 (latest) — Versioned addon download filename
+## 2026-07-20 (latest) — Card SP said 818, character sheet said 752
+
+Player screenshot: the addon's Raid Threat card showed 818 spell power for the set they were wearing,
+their paper doll showed 752. Read their live SavedVariables straight off disk and reconciled: the
+equipped items sum to exactly 752 of tooltip spell power, and the 66-point gap is exactly `procs.js`'s
+model for Tome of Fiery Redemption (+290 SP at 22.69% measured uptime). Not a bad number — a modeled
+number displayed as if it were a real one.
+
+`spellPowerLiteral` already existed for precisely this, added when a libram's Consecration equivalent
+had the same problem; proc trinkets were simply never folded into it. Fixed in `src/runner.js` and the
+Lua port, and `spellPowerEquivSource` now names all contributors instead of the last one. The
+objective still scores the full value, so no set changed — only what the UIs print. Addon card reads
+`SP/SH 752+66` (modeled part dim); v0.8.48.
+
+Method note worth keeping: the discrepancy was resolvable in minutes because the live export is
+readable off disk (see the savedvars memory) — sum `ITEM_MOD_SPELL_POWER` over the `E:` lines and
+compare against the `C:` header's `spellPower=`. The fixture `test/fixtures/threat-set-export.txt` is
+this same character, so its header carries the real 752 and the regression test asserts against it.
+
+---
+
+## 2026-07-20 — Versioned addon download filename
 
 The website's download button served a fixed `addon/TankadinGearSim.zip`, so the file a user ended up
 with said nothing about which build it was. `npm run build-addon` now names the zip from the `.toc`

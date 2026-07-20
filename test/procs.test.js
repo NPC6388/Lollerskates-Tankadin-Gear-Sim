@@ -160,3 +160,28 @@ test('the equipped floor respects a pin for gear the player is not wearing', () 
   assert.ok(!r.equippedIsBest, 'floor must stand down when it would drop a pinned item');
   assert.equal(r.selection.back.itemId, notWorn.itemId, 'the pinned item must survive');
 });
+
+// --- the modeled proc must not inflate the DISPLAYED spell power ---------------------------------
+// The proc's value is a buff averaged over uptime, not a stat: it is scored for threat but never
+// appears on the character sheet. The same fixture player, wearing this exact set, reads 752 SP in
+// game (the export's own `C:` line says so) while the addon card claimed 818 — the 66 the model adds
+// for the Tome. A card the player cannot reconcile against their own paper doll reads as the sim
+// inflating its numbers, so the equivalent is split out exactly the way a libram's already is.
+test('the displayed spell power of the worn set matches the in-game character sheet', () => {
+  const parsed = parseExport(REAL_EXPORT);
+  const items = equippableItems(parsed);
+  const sheetSP = Number(REAL_EXPORT.match(/spellPower=(\d+)/)[1]); // what the game reports: 752
+  const worn = items.filter((i) => i.equipped);
+  assert.ok(worn.some((i) => i.itemId === 30447), 'fixture must have the proc trinket equipped');
+
+  // Solve over the worn set alone, kept exactly as equipped — so the answer IS what they're wearing.
+  const r = optimizeSets(worn, {
+    buff: 'raid', professions: ['Enchanting'], talentRanks: parsed.talentRanks, trinketLocks: {},
+    keepGemsEnchants: { itemIds: worn.map((i) => i.itemId), ignoreCompleteness: true },
+  }).find((x) => x.goal.id === 'raid');
+
+  assert.equal(r.agg.spellPowerLiteral, sheetSP, 'displayed SP = the character sheet');
+  assert.equal(r.agg.spellPowerEquiv, 66, 'the proc is surfaced separately, not folded in');
+  assert.match(r.agg.spellPowerEquivSource, /Tome of Fiery Redemption/, 'and names its source');
+  assert.equal(r.agg.spellPower, sheetSP + 66, 'the objective still scores the full value');
+});

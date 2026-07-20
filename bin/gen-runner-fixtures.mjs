@@ -61,6 +61,10 @@ const ITEMS = [
   it({ equipped: true, itemId: 29370, slot: 'trinket', equipLoc: 'INVTYPE_TRINKET', name: 'Icon of the Silver Crescent', stats: { spellDamage: 43, spellHitRating: 10 } }),
   it({ equipped: true, itemId: 28789, slot: 'trinket', equipLoc: 'INVTYPE_TRINKET', name: 'Eye of Magtheridon', stats: { spellDamage: 40, spellCritRating: 22 } }),
   it({ itemId: 60112, slot: 'trinket', equipLoc: 'INVTYPE_TRINKET', name: 'Defensive Trinket', stats: { defenseRating: 40, resilienceRating: 30, stamina: 40 } }),
+  // Proc trinket (Tome of Fiery Redemption, 30447): its modeled +66 spell damage must land in
+  // spellPowerEquiv, NOT in the displayed spellPowerLiteral — same split the libram below gets. Stats
+  // carry the proc already (import.js adds it at parse time; this pool is hand-built, so add it here).
+  it({ itemId: 30447, slot: 'trinket', equipLoc: 'INVTYPE_TRINKET', name: 'Tome of Fiery Redemption', stats: { spellDamage: 66 }, procStats: { spellDamage: 66 } }),
   // weapons: 1H (kept) + 2H (excluded)
   it({ equipped: true, itemId: 60120, slot: 'weapon', equipLoc: 'INVTYPE_WEAPONMAINHAND', name: 'Mace', stats: { spellDamage: 55, hitRating: 12, stamina: 20 } }),
   it({ itemId: 60121, slot: 'weapon', equipLoc: 'INVTYPE_2HWEAPON', name: 'Big Mace', stats: { spellDamage: 95, stamina: 30 } }),

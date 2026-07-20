@@ -666,9 +666,10 @@ const GLOSSARY = {
 };
 const term = (label, key, cls = '') => `<abbr class="term ${cls}" title="${GLOSSARY[key]}">${label}</abbr>`;
 const fmt = (n) => Math.round(n).toLocaleString();
-// Displayed spell damage = LITERAL gear spell power (what Sixty Upgrades reconciles against). A modeled
-// libram's Consecration effect is valued as equivalent spell damage for THREAT scoring, but isn't real
-// +spell-power on the tooltip, so it's shown separately (see agg.spellPowerEquiv), not in this number.
+// Displayed spell damage = LITERAL gear spell power (what your character sheet and Sixty Upgrades
+// read). A modeled libram's Consecration effect and a proc trinket's uptime-averaged buff are valued
+// as equivalent spell damage for THREAT scoring, but neither is real +spell-power on the tooltip, so
+// they're shown separately (see agg.spellPowerEquiv), not folded into this number.
 const litSP = (a) => (a.spellPowerLiteral != null ? a.spellPowerLiteral : a.spellPower);
 const yesno = (b) => `<span class="badge ${b ? 'yes' : 'no'}">${b ? 'yes' : 'no'}</span>`;
 const wh = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/tbc/item=${id}" target="_blank" rel="noopener">${text}</a>`;
@@ -751,7 +752,7 @@ function render(results) {
   $('summary').innerHTML = `<table><thead><tr>
       <th>Set</th><th>${term('EHP', 'ehp')}</th><th>Spell&nbsp;dmg</th><th><abbr class="tip" title="Spell-hit cap vs a level-${BASE.raidBossLevel} raid boss is ${CAPS.spellHitCapPct}%. Below it, spell hit recovers missed spell threat; at it, more gives nothing. Hover a set's Spell panel for how far that set is below.">Spell&nbsp;hit</abbr></th><th>Stam</th><th>${term('Uncrush', 'uncrush')}${encName}</th><th>${term('Uncrit', 'uncrit')}</th>
     </tr></thead><tbody>${results.map((r, i) => `<tr class="${i === activeTab ? 'sel' : ''}">
-      <td>${r.goal.name}</td><td>${fmt(r.evald.ehpPhysical)}</td><td>${fmt(litSP(r.agg))}${r.agg.spellPowerEquiv ? `<abbr class="equiv" title="+${fmt(r.agg.spellPowerEquiv)} threat-equivalent spell damage from ${r.agg.spellPowerEquivSource || 'a relic effect'} (e.g. +Consecration damage). Not literal spell power — Sixty Upgrades won't show it.">+${fmt(r.agg.spellPowerEquiv)}</abbr>` : ''}</td>
+      <td>${r.goal.name}</td><td>${fmt(r.evald.ehpPhysical)}</td><td>${fmt(litSP(r.agg))}${r.agg.spellPowerEquiv ? `<abbr class="equiv" title="+${fmt(r.agg.spellPowerEquiv)} threat-equivalent spell damage from ${r.agg.spellPowerEquivSource || 'a relic effect'} (a libram's +Consecration damage, or a proc trinket's buff averaged over its uptime). Not literal spell power — your character sheet and Sixty Upgrades won't show it.">+${fmt(r.agg.spellPowerEquiv)}</abbr>` : ''}</td>
       <td>${sh(r).toFixed(2)}%</td><td>${fmt(r.agg.stamina)}</td>
       <td>${crushVal(r).toFixed(1)}%</td><td>${yesno(r.evald.raidCritImmune)}</td>
     </tr>`).join('')}</tbody></table>`;
@@ -1065,7 +1066,7 @@ function setCard(r) {
   const panels = `<div class="panels">
     ${panel('Primary', [['Health', fmt(a.health)], ['Stamina', fmt(a.stamina)], ['Strength', fmt(a.strength)], ['Agility', fmt(a.agility)], ['Intellect', fmt(a.intellect)]])}
     ${panel('Spell', [['Spell Damage', fmt(litSP(a))],
-      ...(a.spellPowerEquiv ? [[`<abbr class="term" title="The libram's +Consecration damage, converted to its threat-equivalent spell power so the threat scales value it. Not literal +spell-power on the tooltip — Sixty Upgrades won't show it, so it's listed separately here.">Relic effect (≈SP)</abbr>`, '+' + fmt(a.spellPowerEquiv)]] : []),
+      ...(a.spellPowerEquiv ? [[`<abbr class="term" title="${a.spellPowerEquivSource ? a.spellPowerEquivSource + ': its' : 'A libram\'s +Consecration damage or a proc trinket\'s buff'} effect converted to threat-equivalent spell power so the threat scales value it. Not literal +spell-power on the tooltip — your character sheet and Sixty Upgrades won't show it, so it's listed separately here.">Effect (≈SP)</abbr>`, '+' + fmt(a.spellPowerEquiv)]] : []),
       [spellHitLabel(a), spellHitPct(a).toFixed(2) + '%'], ['Block Value', fmt(a.blockValue)]])}
     ${panel('Defense', [[armorLabel(a.armor), fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)], ['Resilience', fmt(a.resilienceRating)], ['Block', a.blockPct.toFixed(2) + '%'], [missLabel(), missChance(a.defenseSkill).toFixed(2) + '%'], ['Dodge', a.dodgePct.toFixed(2) + '%'], ['Parry', a.parryPct.toFixed(2) + '%'], ['Total Avoidance', e.totalAvoidanceNoHS.toFixed(2) + '%']])}
     ${panel('Survival', [[term('EHP', 'ehp') + ' (health pool)', fmt(e.ehpPhysical)], [term('Uncrushable', 'uncrush') + ' (w/ HS)', e.totalAvoidanceWithHS.toFixed(1) + '%'], ['Crit reduction', e.critReduction.toFixed(2) + '%']])}

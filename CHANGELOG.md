@@ -1448,3 +1448,26 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   the add + the delete + `index.html` via a git-expanded `'addon/*.zip'` pathspec. `.pkgmeta` ignores
   `addon/*.zip` so the CurseForge package is unaffected; tagged releases keep getting their zip name
   from BigWigsMods/packager as before.
+
+- **A proc trinket's modeled spell damage no longer inflates the DISPLAYED spell power
+  (`src/runner.js`, `addon/.../Runner.lua`, `UI.lua`, `web/app.js`).** Player report: the addon's Raid
+  Threat card read **818 SP** while their character sheet read **752**. Reconciled against their live
+  SavedVariables export: the equipped items sum to exactly 752 of tooltip spell power, and the 66-point
+  gap is precisely `procs.js`'s model for Tome of Fiery Redemption (+290 spell damage at 22.69%
+  measured uptime ≈ 66 average). So the number was not wrong — it was the sum of a real stat and a
+  modeled one, presented as if it were the stat.
+  - **Same argument the libram split already made, one case short of finished.** `spellPowerLiteral`
+    was introduced so a libram's Consecration-damage equivalent wouldn't show as tooltip spell power
+    (Sixty Upgrades, scoring off real item stats, can't see it). A proc trinket's uptime-averaged buff
+    is the identical kind of quantity, and it was being left in. Both now feed `spellPowerEquiv`, and
+    `spellPowerEquivSource` names every contributor rather than the last one seen.
+  - **The objective is untouched** — selection and threat ranking still score the full `agg._raw`, so
+    the Tome still wins the threat sets. This is purely what the three UIs display.
+  - **Surfaced, not hidden:** the addon card now reads `SP/SH 752+66`, with the modeled part dim; the
+    site's tooltip explains both sources. A player must be able to check the headline number against
+    their own paper doll — a figure they can't reconcile reads as the sim inflating itself, which is
+    exactly how this was reported.
+  - **Coverage:** the runner parity pool gained the Tome (30447), so 4 of the 31 goal results now
+    carry a two-source equivalent (35 libram + 66 proc = 101) and the Lua port's join is compared. The
+    JS regression asserts the strongest available invariant — the worn set's displayed SP equals the
+    `spellPower=752` the game itself recorded in the fixture's own export header. 159/159 JS tests.

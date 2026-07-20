@@ -25,7 +25,7 @@
       "./src/optimizer.js": "./src/optimizer.js?v=5ef46354",
       "./src/procs.js": "./src/procs.js?v=f8fb2ab4",
       "./src/professions.js": "./src/professions.js?v=b09ec45a",
-      "./src/runner.js": "./src/runner.js?v=8186ba87",
+      "./src/runner.js": "./src/runner.js?v=93803c2e",
       "./src/savedvars.js": "./src/savedvars.js?v=7f013127",
       "./src/scoring.js": "./src/scoring.js?v=c28687d8",
       "./src/scrolls.js": "./src/scrolls.js?v=82c926c6",
@@ -57,7 +57,7 @@
 
       <div class="eco-lead">
         <div class="eco-lead-copy">
-          <span class="eco-badge">Addon v0.8.47</span>
+          <span class="eco-badge">Addon v0.8.48</span>
           <h3>Start in the game — the addon does the heavy lifting</h3>
           <p><strong>Tankadin Gear Sim</strong> (<code>/tgs</code>) is the front door. It gives you a
             <strong>live tank readout</strong> off your character sheet, an in-game <strong>Optimize</strong>
@@ -65,14 +65,14 @@
             own EHP&#8596;Threat and Min-HP sliders, a <strong>minimap flyout</strong> to preview and equip any
             set in one click (gems and enchants kept), and <strong>one-click export</strong> to this site.</p>
           <p>
-            <a class="dl-addon" href="addon/TankadinGearSim-v0.8.47.zip" download>&#8595; Download the addon (ZIP)</a>
+            <a class="dl-addon" href="addon/TankadinGearSim-v0.8.48.zip" download>&#8595; Download the addon (ZIP)</a>
             <a class="eco-repo" href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim" target="_blank" rel="noopener">Source on GitHub</a>
           </p>
-          <p class="dl-note muted"><strong>New in v0.8.47:</strong> the set you are <strong>already wearing</strong> is now the
-            baseline every goal is measured against. The optimizer starts from it and never returns a set that scores
-            worse — and when nothing you own beats your current gear for a goal, it now <em>tells you that</em> rather than
-            presenting a sidegrade as an upgrade. Locked trinkets and pinned slots still take priority. (v0.8.46 fixed
-            proc trinkets scoring as an empty slot, and re-gemming being able to suggest a downgrade.)</p>
+          <p class="dl-note muted"><strong>New in v0.8.48:</strong> the <strong>spell power on each set card</strong> is now the
+            number your character sheet will show. A proc trinket's modeled value (Tome of Fiery Redemption) and a
+            libram's Consecration damage are still scored for threat, but they are temporary buffs rather than stats,
+            so they no longer inflate the displayed figure &mdash; they trail it as a dim &ldquo;+N&rdquo;. (v0.8.47 made the set
+            you are already wearing the baseline every goal is measured against.)</p>
         </div>
         <figure class="eco-shot">
           <img src="docs/assets/addon-optimize-tab.png" alt="The in-game Optimize tab: four tuned Protection Paladin sets with per-goal EHP-to-Threat and Min-HP sliders." loading="lazy" />
@@ -127,7 +127,7 @@
       </div>
       <details class="how" id="ownGear">
         <summary>Use your own gear — install the addon &amp; upload</summary>
-        <p><a class="dl-addon" href="addon/TankadinGearSim-v0.8.47.zip" download>⬇ Download the TankadinGearSim addon (ZIP)</a></p>
+        <p><a class="dl-addon" href="addon/TankadinGearSim-v0.8.48.zip" download>⬇ Download the TankadinGearSim addon (ZIP)</a></p>
         <ol>
           <li><strong>Install:</strong> unzip it into your WoW <code>Interface\AddOns</code> folder — e.g.
             <code>World of Warcraft\_anniversary_\Interface\AddOns\</code> — so you end up with an
@@ -276,6 +276,6 @@
       <a href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim">Source on GitHub</a></p>
   </footer>
 
-  <script type="module" src="web/app.js?v=141672e1"></script>
+  <script type="module" src="web/app.js?v=81f4f042"></script>
 </body>
 </html>

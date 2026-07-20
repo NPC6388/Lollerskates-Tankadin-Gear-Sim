@@ -601,7 +601,12 @@ paintCards = function()
       local crushOk = crushAv + 1e-9 >= ns.engine.Constants.crushSafeTargetFor(r.goal.enc, r.goal.gates.uncrushableTarget)
       local crushColor = (not crushReq) and CYAN or (crushOk and GOOD or BAD)
       card.l2:SetText(
+        -- LITERAL spell power only: what your character sheet reads with this gear on. A libram's
+        -- Consecration damage / a proc trinket's uptime-averaged buff are scored for threat but never
+        -- show on the sheet, so they trail as a dim "+N" instead of inflating the number the player
+        -- can check in game.
         color(GOLD, "SP/SH ") .. color(CYAN, num(a.spellPowerLiteral or a.spellPower))
+        .. ((a.spellPowerEquiv or 0) > 0 and color(DIM, "+" .. num(a.spellPowerEquiv)) or "")
         .. color(DIM, " / ") .. color(CYAN, pct(sh))
         .. color(GOLD, "   Uncrush ") .. color(crushColor, pct(crushAv))
         .. color(GOLD, "   Crit ") .. color(e.raidCritImmune and GOOD or BAD, pct(e.critReduction)))

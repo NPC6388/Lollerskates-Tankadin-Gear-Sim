@@ -3,6 +3,16 @@
 This is the player-facing changelog shipped with the addon (and used as the release notes on
 GitHub/CurseForge). The full development log lives in the repo's root `CHANGELOG.md`.
 
+## v0.8.48
+
+- **The spell power on each set card is now the number your character sheet will show.** Tome of
+  Fiery Redemption's proc is valued at its average uptime (~66 spell damage) so the optimizer scores
+  it honestly — but that is a temporary buff, not a stat, and it was being added into the card's
+  displayed Spell Power. A card claiming 818 while your paper doll read 752 looked like the sim
+  inventing numbers. The card now shows your literal, on-the-sheet spell power, with any modeled
+  effect (a proc trinket's buff, a libram's Consecration damage) trailing separately as a dim "+N".
+  Set selection and threat ranking are unchanged — the full value is still what the optimizer scores.
+
 ## v0.8.47
 
 - **Your equipped set is now the baseline every goal is measured against.** The optimizer starts its

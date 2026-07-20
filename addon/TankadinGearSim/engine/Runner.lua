@@ -20,6 +20,7 @@ local Optimizer = ns.engine.Optimizer
 local Professions = ns.engine.Professions
 local Scrolls = ns.engine.Scrolls
 local Librams = ns.engine.Librams
+local Procs = ns.engine.Procs
 local C = ns.engine.Constants
 local D = ns.engine.CharacterData
 local CAPS, RATING = C.CAPS, C.RATING
@@ -815,13 +816,24 @@ local function runGoal(goal, items, ctx, seed)
     end
   end
 
-  local spellPowerEquiv, equivSource = 0, nil
+  -- Effects valued as EQUIVALENT spell damage (a libram's Consecration damage; a proc trinket's buff
+  -- averaged over its measured uptime) are NOT on the character sheet, so they're split out of the
+  -- displayed number — see src/runner.js for the full reasoning. The objective still uses the full agg.
+  local spellPowerEquiv, equivSources = 0, {}
   for _, v in ipairs(res.items) do
     local lib = Librams.libramStats(v)
-    if lib and lib.spellDamage then spellPowerEquiv = spellPowerEquiv + lib.spellDamage; equivSource = v.name or "relic effect" end
+    if lib and lib.spellDamage then
+      spellPowerEquiv = spellPowerEquiv + lib.spellDamage
+      equivSources[#equivSources + 1] = v.name or "relic effect"
+    end
+    local proc = Procs and Procs.procStats(v)
+    if proc and proc.spellDamage then
+      spellPowerEquiv = spellPowerEquiv + proc.spellDamage
+      equivSources[#equivSources + 1] = v.name or "trinket proc"
+    end
   end
   agg.spellPowerEquiv = spellPowerEquiv
-  agg.spellPowerEquivSource = equivSource
+  agg.spellPowerEquivSource = (#equivSources > 0) and table.concat(equivSources, " + ") or nil
   agg.spellPowerLiteral = math.max(0, (agg.spellPower or 0) - spellPowerEquiv)
   return { goal = goal, selection = res.selection, items = res.items, legal = certLegal(evald), evald = evald, agg = agg, gemChoices = gemChoices, metas = metas, perSlot = perSlot, buffImpact = buffImpact }
 end
