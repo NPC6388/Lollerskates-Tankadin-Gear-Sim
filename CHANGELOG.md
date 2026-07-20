@@ -1471,3 +1471,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     carry a two-source equivalent (35 libram + 66 proc = 101) and the Lua port's join is compared. The
     JS regression asserts the strongest available invariant — the worn set's displayed SP equals the
     `spellPower=752` the game itself recorded in the fixture's own export header. 159/159 JS tests.
+  - **The Lua parity harness caught a wiring bug in the port, which is the whole point of it.** The
+    first cut captured `local Procs = ns.engine.Procs` at Runner.lua's top; `runner_parity.lua` (and
+    `async_parity.lua`) never loaded Procs, so that was nil and the defensive `Procs and ...` guard
+    silently dropped the proc — Lua reported 35 where JS reported 101. In game the TOC loads Procs
+    first so it would have worked, which is exactly the kind of "works on my client" gap the harness
+    exists to close. Now referenced LAZILY at the call site (the pattern `Items.build` already uses
+    for the same two optional modules), and both harnesses load Procs. Run locally with
+    `npm run test:lua:wasm` — wasmoon, no native interpreter needed.

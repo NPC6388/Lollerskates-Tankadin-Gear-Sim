@@ -20,7 +20,6 @@ local Optimizer = ns.engine.Optimizer
 local Professions = ns.engine.Professions
 local Scrolls = ns.engine.Scrolls
 local Librams = ns.engine.Librams
-local Procs = ns.engine.Procs
 local C = ns.engine.Constants
 local D = ns.engine.CharacterData
 local CAPS, RATING = C.CAPS, C.RATING
@@ -819,6 +818,10 @@ local function runGoal(goal, items, ctx, seed)
   -- Effects valued as EQUIVALENT spell damage (a libram's Consecration damage; a proc trinket's buff
   -- averaged over its measured uptime) are NOT on the character sheet, so they're split out of the
   -- displayed number — see src/runner.js for the full reasoning. The objective still uses the full agg.
+  -- Procs is referenced LAZILY here, the same way Items.build does it: a top-level `local Procs =
+  -- ns.engine.Procs` captures nil for any caller that loads Runner without it (the parity harnesses
+  -- did exactly that), and silently drops the proc's contribution instead of failing.
+  local Procs = ns.engine.Procs
   local spellPowerEquiv, equivSources = 0, {}
   for _, v in ipairs(res.items) do
     local lib = Librams.libramStats(v)

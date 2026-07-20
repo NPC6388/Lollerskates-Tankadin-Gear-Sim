@@ -18,6 +18,15 @@ Lua port, and `spellPowerEquivSource` now names all contributors instead of the 
 objective still scores the full value, so no set changed — only what the UIs print. Addon card reads
 `SP/SH 752+66` (modeled part dim); v0.8.48.
 
+Follow-up, same session: `npm run test:lua:wasm` (wasmoon — no native Lua needed on Windows; winget
+only ships 5.4 and the addon needs 5.1) FAILED the runner parity 4/31 on this change — Lua computed
+`spellPowerEquiv` 35 where JS said 101. Cause: `local Procs = ns.engine.Procs` at Runner.lua's top,
+while `runner_parity.lua`/`async_parity.lua` never loaded Procs — nil, and the `Procs and ...` guard
+swallowed it. In game the TOC load order would have hidden this entirely. Fixed by referencing Procs
+lazily at the call site (the pattern `Items.build` already uses) and loading it in both harnesses.
+Lesson: reach for `npm run test:lua:wasm` on every Lua-port change — it is cheap and it caught a bug
+that JS tests structurally cannot see.
+
 Method note worth keeping: the discrepancy was resolvable in minutes because the live export is
 readable off disk (see the savedvars memory) — sum `ITEM_MOD_SPELL_POWER` over the `E:` lines and
 compare against the `C:` header's `spellPower=`. The fixture `test/fixtures/threat-set-export.txt` is

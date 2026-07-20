@@ -13,7 +13,7 @@ local function loadEngine(file) return assert(loadfile(ENGINE .. file))("Tankadi
 for _, f in ipairs({
   "Constants.lua", "Combat.lua", "Evaluate.lua", "Weights.lua", "Scoring.lua",
   "CharacterData.lua", "Model.lua", "GemsData.lua", "Gems.lua", "EnchantsData.lua", "Enchants.lua",
-  "ProfessionsData.lua", "Professions.lua", "LibramsData.lua", "Librams.lua",
+  "ProfessionsData.lua", "Professions.lua", "LibramsData.lua", "Librams.lua", "ProcsData.lua", "Procs.lua",
   "ScrollsData.lua", "Scrolls.lua", "GemSolver.lua", "SetsData.lua", "Sets.lua", "Optimizer.lua", "Runner.lua",
 }) do loadEngine(f) end
 local Runner = ns.engine.Runner
