@@ -925,7 +925,7 @@ function Runner.optimizeSets(items, options)
   -- keep-mode ctx: an encounter goal's as-worn answer often needs that sweep to clear its harder
   -- avoidance gate, and a floor computed by the plain solve would come back illegal and be skipped.
   local asIsSeed -- forward declaration (defined below; solveGoalRaw and asIsSet call each other)
-  local function solveGoalRaw(g, gseed, useCtx)
+  local function solveGoalRaw(g, gseed, useCtx, certGate)
     useCtx = useCtx or ctx
     gseed = gseed or {}
     -- Seed from the EQUIPPED set when the caller gave no seed — or better, in re-gem mode, from the
@@ -936,8 +936,22 @@ function Runner.optimizeSets(items, options)
     local r = runGoal(g, items, useCtx, gseed)
     local floor = (g.gates and g.gates.minHealth) or 0
     local crushReq = (not g.gates) or (g.gates.requireUncrushable ~= false)
+    local enc = g.enc or useCtx.encounter or nil
     local floorMet = (floor == 0) or (r.agg.health + 1e-9 >= floor)
-    local crushMet = (not crushReq) or encUncrush(r.evald, g.enc or useCtx.encounter or nil)
+    -- Default: trigger on the RAW crush cap (the SOLVER's gate, crushTargetFor). certGate raises the
+    -- trigger to the margined CERTIFICATION target (crushSafeTargetFor), so a set stuck in the ratings-vs-
+    -- sheet dead zone (raw cap cleared but not cap+margin — e.g. 102.54 vs a 102.70 cert) ALSO triggers the
+    -- sweep. certGate is used only by solveGoal's last-resort call, which fires when no legal set was found
+    -- any other way, so a currently-legal answer is never perturbed. The candidate filter below (c.legal) is
+    -- always the margined cert, so the swept set is certifiable regardless of certGate. (Mirrors src/runner.js.)
+    local crushMet
+    if not crushReq then
+      crushMet = true
+    elseif certGate then
+      crushMet = encAvoid(r.evald, enc) + 1e-9 >= C.crushSafeTargetFor(enc, g.gates and g.gates.uncrushableTarget)
+    else
+      crushMet = encUncrush(r.evald, enc)
+    end
     if floorMet and crushMet then return r end
     local maxHpGoal = {}
     for k, v in pairs(g) do maxHpGoal[k] = v end
@@ -1030,6 +1044,19 @@ function Runner.optimizeSets(items, options)
         out.goal = g
         r = out
       end
+    end
+    -- LAST-RESORT dead-zone recovery (mirrors runner.js). If the floors above still leave an ILLEGAL answer
+    -- whose ONLY failing gate is the crush CERTIFICATION margin (the raw 102.4 cap is cleared — encUncrush
+    -- true — but not cap+margin, the ratings-vs-sheet band), the greedy solve stalled just short of a legal
+    -- set the gear can reach. Re-solve with the recovery sweep raised to the cert target. Guarded on
+    -- `not r.legal`, so whenever any path already produced a legal set this never runs and the answer is
+    -- unperturbed. Skipped when the raw cap itself is unmet (the default recovery already swept and found
+    -- nothing) or when Min-HP is the blocker (hpBestEffort — genuinely unreachable, honestly flagged).
+    local lrEnc = g.enc or ctx.encounter or nil
+    local lrCrushReq = (not g.gates) or (g.gates.requireUncrushable ~= false)
+    if (not r.legal) and lrCrushReq and (not r.hpBestEffort) and encUncrush(r.evald, lrEnc) then
+      local rec = solveGoalRaw(g, gseed, ctx, true)
+      if rec.legal then r = rec end
     end
     local worn = wornSet(g)
     if not worn or not worn.legal or not r.legal then return r end

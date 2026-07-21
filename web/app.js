@@ -227,7 +227,10 @@ function init() {
   $('phase').addEventListener('change', scheduleLiveUpdate);
   $('optimizeBtn').addEventListener('click', runOptimize);
   $('shareBtn').addEventListener('click', copyShareLink);
-  document.querySelectorAll('.guide-link').forEach((a) => { a.href = GUIDE_URL; }); // header/footer guide links
+  // Header/footer links to the MAIN tanking guide. `.local-guide` opts a link out (the P3–P5
+  // mini-guide shares the class for styling, and rewriting its relative href sent readers to the
+  // main guide instead of the mini-guide).
+  document.querySelectorAll('.guide-link:not(.local-guide)').forEach((a) => { a.href = GUIDE_URL; });
   // Clicking any glossary term opens the full "How the sim works" panel and jumps to it.
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.term')) return;

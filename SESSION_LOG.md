@@ -4,6 +4,43 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-07-21 — Survival "illegal" dead zone, the P3–P5 link, and a broken Node
+
+Three things, from a screenshot of the addon (user wearing their Balanced set, ran Optimize) where
+Survival showed **illegal**.
+
+1. **Survival flagged illegal = a crush-MARGIN dead-zone bug.** The reported `legal` flag certifies
+   against the cap + the 0.3% ratings-vs-sheet margin (`crushSafeTargetFor`), but the gate-recovery
+   sweep in `solveGoalRaw` only *triggered* on the RAW cap (`encUncrush`, 102.4). A threat-leaning
+   solve whose reclaim pass trades avoidance down could land in the band between the two (e.g. 102.54
+   with a 102.70 cert) — raw met, cert not — and get stamped illegal without the optimizer ever
+   searching for a set that clears the margin, even though a tankier lean reaches it easily.
+   - **First attempt was too blunt:** I widened the recovery *trigger* itself to the cert target. That
+     broke `procs.test.js`'s "nothing beats the worn set" — the recovery fired even when a legal floor
+     (the 818-SP worn Raid set) already existed, swept tanky leans, and returned a 785-SP set that
+     out-scored the worn one by **0.1%** on the blend (3887.55 vs 3883.78) by trading 33 real SP for
+     HP. Exactly the sidegrade the equippedIsBest floor exists to kill.
+   - **Correct fix:** a **last-resort** in `solveGoal` (JS `src/runner.js` + Lua `Runner.lua`). Only
+     when every floor STILL leaves an illegal answer whose sole failing gate is the crush margin (raw
+     met via `encUncrush`, not hpBestEffort, crush required) do we re-run `solveGoalRaw` with a new
+     `certGate=true` param that raises the sweep trigger to the cert target. Guarded on `!legal`, so a
+     currently-legal answer is never touched. Regression test added; the disk SavedVariables scan
+     couldn't reproduce the screenshot (that gear can't reach the 14.5k HP floor — a *different*,
+     honest illegal), so the test induces the dead zone synthetically (raid ratio 1:6, target 103.1 →
+     illegal at 103.356 without the fix, legal at 104.7 with it). Full 164 JS tests + all Lua parity
+     (runner: 31 goal results) pass.
+2. **P3–P5 Encounter Gearing link went to the main guide.** `web/app.js` rewrote *every* `.guide-link`
+   href to `GUIDE_URL`; the header mini-guide link carried that class for styling, so its relative
+   `guide-encounters.html` was clobbered on load. Added `.local-guide` to that link and changed the
+   rewrite to `.guide-link:not(.local-guide)`. The page itself served fine all along.
+3. **Node was broken machine-wide.** Every `require('vm')` / ESM file load died with
+   `Cannot define property runInThisContext, object is not extensible` (V8 read-only snapshot
+   deserialization). The binary was a genuine, byte-perfect signed OpenJS 22.18.0 — env clean (no
+   NODE_OPTIONS, no IFEO, no AppInit/injected DLLs, Object.prototype not frozen). A same-version
+   reinstall would've been a no-op; `winget install OpenJS.NodeJS.LTS` laid down **v24.18.0** and it
+   works. So it was a 22.18.0/V8-on-this-hardware quirk, not HVCI (which is on). If it recurs on a
+   version bump, the next lever is Memory Integrity.
+
 ## 2026-07-20 (latest) — Re-gem mode made an improvement operator
 
 Closed the open item from the previous entry: "re-gem everything" could return a set worse than the

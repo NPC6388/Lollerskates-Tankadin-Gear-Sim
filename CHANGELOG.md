@@ -1593,3 +1593,24 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     so it proved the name-mapping logic and nothing about whether the function exists on the target
     client. A stub can only test the code path it fakes. Availability of a WoW API is exactly the kind
     of thing that has to be read off the real client — here, off another addon that already solved it.
+
+- **Fixed: the site's "P3–P5 Encounter Gearing" link went to the main tanking guide.** `web/app.js`
+  rewrote the href of EVERY `.guide-link` to the main guide URL (a convenience so the guide URL lives
+  in one place). The header's mini-guide link carries that class for styling, so its relative
+  `guide-encounters.html` href was overwritten on load and the mini-guide was unreachable from the
+  header. The rewrite now skips `.local-guide`, which the mini-guide link declares.
+
+- **Fixed: a set could be reported "illegal" for a crush-MARGIN miss when a legal set was reachable.**
+  The reported `legal` flag certifies against the crush cap PLUS the ~0.1% ratings-vs-sheet safety margin
+  (`crushSafeTargetFor`, +0.3%), but the greedy solve's gate-recovery sweep only triggered on the RAW cap
+  (`encUncrush` / 102.4). So a threat-leaning solve whose reclaim pass trades avoidance back down could
+  strand a set in the **dead zone** between the two — raw cap cleared, cert margin not — and it was stamped
+  illegal even though a tankier lean cleared the margin comfortably. This is why a re-tuned Survival set
+  showed `illegal` at ~102.5% avoidance while the threatier Balanced set beside it sat at 104%+. Fix is a
+  **last-resort recovery** in `solveGoal` (JS + Lua): when every floor (the equipped / as-is set) still
+  leaves an illegal answer whose *only* failing gate is the crush margin (raw cap met, cert not, Min-HP and
+  crit both fine), re-run the recovery sweep with its trigger raised to the cert target (`solveGoalRaw`'s new
+  `certGate`). Guarded on `!legal`, so it **never perturbs an answer that any path already made legal** — the
+  worn-set floor's threat set (e.g. the 818-SP Raid set) is returned unchanged, not displaced by a 0.1%-higher
+  EHP sidegrade. Regression test in `procs.test.js` (a tightened target strands the greedy at 103.356% /
+  cert 103.40% → illegal without the fix, legal at ~104.7% with it). Runner Lua parity still matches.

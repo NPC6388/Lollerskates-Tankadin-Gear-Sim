@@ -852,7 +852,7 @@ export function optimizeSets(items, options = {}) {
   // `useCtx` lets the as-is floor reuse this whole path (recovery sweep included) under a keep-mode
   // ctx — an encounter goal's as-worn answer often needs that sweep to clear its harder avoidance gate,
   // and a floor computed by the plain solve would come back illegal and be silently skipped.
-  const solveGoalRaw = (g, gseed, useCtx = ctx) => {
+  const solveGoalRaw = (g, gseed, useCtx = ctx, certGate = false) => {
     // Live slider drags pass the PREVIOUS result's per-slot selection as a seed, so each nudge climbs
     // from the adjacent (good) set instead of restarting cold — this kills the heuristic's small
     // non-monotonic wiggles (an SP dip when the slider should only rise) as you sweep the dial.
@@ -867,8 +867,17 @@ export function optimizeSets(items, options = {}) {
     const r = runGoal(g, items, useCtx, Object.keys(gseed).length ? gseed : seedBase);
     const floor = (g.gates && g.gates.minHealth) || 0;
     const crushReq = !g.gates || g.gates.requireUncrushable !== false;
+    const enc = g.enc || useCtx.encounter || null;
     const floorMet = !floor || r.agg.health + 1e-9 >= floor;
-    const crushMet = !crushReq || encUncrush(r.evald, g.enc || useCtx.encounter || null);
+    // Default: trigger on the RAW crush cap (the SOLVER's gate, crushTargetFor). `certGate` raises the
+    // trigger to the margined CERTIFICATION target (crushSafeTargetFor), so a set stuck in the ratings-vs-
+    // sheet dead zone (raw cap cleared but not cap+margin — e.g. 102.54 vs a 102.70 cert) ALSO triggers the
+    // sweep. certGate is used only by solveGoal's last-resort call, which fires when no legal set was found
+    // any other way, so a currently-legal answer is never perturbed (see solveGoal). The candidate filter
+    // below (c.legal) is always the margined cert, so the swept set is certifiable regardless of certGate.
+    const crushMet = !crushReq || (certGate
+      ? encAvoid(r.evald, enc) + 1e-9 >= crushSafeTargetFor(enc, g.gates && g.gates.uncrushableTarget)
+      : encUncrush(r.evald, enc));
     if (floorMet && crushMet) return r; // the gates this recovery repairs (Min-HP floor + uncrushable) are met
     // Uncrushable and Min-HP are HARD gates, but the greedy+repair heuristic can return an ILLEGAL set
     // even when a legal one exists — e.g. it keeps a higher-threat libram and lands ~0.1% short of the
@@ -924,6 +933,20 @@ export function optimizeSets(items, options = {}) {
       // A legal set always beats a flagged best-effort one; otherwise compare on the goal's objective.
       if (!r.legal) r = { ...asIs, goal: g };
       else if (score(asIs.agg._raw, blendScale(g.ratio)) > score(r.agg._raw, blendScale(g.ratio)) + 1e-9) r = { ...asIs, goal: g };
+    }
+    // LAST-RESORT dead-zone recovery. If the floors above still leave an ILLEGAL answer whose ONLY failing
+    // gate is the crush CERTIFICATION margin (the raw 102.4 cap is cleared — encUncrush true — but not
+    // cap+margin, the ratings-vs-sheet band), the greedy solve stalled just short of a legal set the gear
+    // can actually reach (a tankier lean clears the margin). Re-solve with the recovery sweep raised to the
+    // cert target. Guarded on `!r.legal`, so whenever ANY path already produced a legal set (the as-is/worn
+    // floor, or the solve itself), this never runs — a currently-legal answer and its objective are left
+    // exactly as they were. Skipped when the raw cap itself is unmet (the default recovery already swept and
+    // found nothing) or when Min-HP is the blocker (hpBestEffort — genuinely unreachable, honestly flagged).
+    const enc = g.enc || ctx.encounter || null;
+    const crushReq = !g.gates || g.gates.requireUncrushable !== false;
+    if (!r.legal && crushReq && !r.hpBestEffort && encUncrush(r.evald, enc)) {
+      const rec = solveGoalRaw(g, gseed, ctx, true);
+      if (rec.legal) r = rec;
     }
     const worn = wornSet(g);
     if (!worn || !worn.legal || !r.legal) return r;

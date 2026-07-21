@@ -13,6 +13,7 @@ import { parseExport, equippableItems } from '../src/import.js';
 import { optimizeSets, GOAL_PRESETS } from '../src/runner.js';
 import { score } from '../src/scoring.js';
 import { blendScale } from '../src/weights.js';
+import { crushSafeTargetFor } from '../src/constants.js';
 
 test('procStats models known proc trinkets by id or name', () => {
   assert.deepEqual(procStats({ itemId: 30447 }), { spellDamage: 66 });                       // by id
@@ -159,6 +160,31 @@ test('the equipped floor respects a pin for gear the player is not wearing', () 
   })[0];
   assert.ok(!r.equippedIsBest, 'floor must stand down when it would drop a pinned item');
   assert.equal(r.selection.back.itemId, notWorn.itemId, 'the pinned item must survive');
+});
+
+// --- dead-zone recovery: never report illegal for a crush-MARGIN miss when a legal set is reachable ----
+// The reported `legal` flag certifies against the crush cap PLUS the ratings-vs-sheet safety margin
+// (crushSafeTargetFor), but the greedy solve's gate-recovery sweep only fired on the RAW cap. So a
+// threat-leaning solve whose reclaim pass trades avoidance back down could strand a set in the dead zone
+// between the two — raw cap cleared, cert margin not — and it was stamped illegal even though a tankier
+// lean cleared the margin comfortably. (This is why a re-tuned Survival set showed "illegal" at ~102.5%.)
+// A threat-heavy goal with a tightened target the worn set can't meet (so the equipped/as-is floor can't
+// rescue it) reproduces the exact stall: without the last-resort recovery the result is illegal at
+// avoid 103.356 (>= the 103.1 raw target, < the 103.40 cert); with it, a legal set at ~104.7% is found.
+test('a crush-margin miss is repaired, not reported illegal, when a legal set exists', () => {
+  const parsed = parseExport(REAL_EXPORT);
+  const items = equippableItems(parsed);
+  const raid = GOAL_PRESETS.find((g) => g.id === 'raid');
+  const target = 103.1; // above the worn set's avoidance, so no floor can stand in — forces the search
+  const goal = { ...raid, ratio: { ehp: 1, threat: 6 }, gates: { ...raid.gates, uncrushableTarget: target } };
+  const r = optimizeSets(items, {
+    buff: 'raid', professions: ['Enchanting'], talentRanks: parsed.talentRanks, maxPhase: 2,
+    useImbuedMeta: true, goals: [goal], trinketLocks: { icon: 29370, eye: 30447 },
+  })[0];
+  assert.equal(r.legal, true, 'a reachable legal set must not be reported as an illegal margin-miss');
+  assert.ok(r.evald.raidCritImmune, 'and it is still crit-immune');
+  assert.ok(r.evald.totalAvoidanceWithHS + 1e-9 >= crushSafeTargetFor(null, target),
+    'its avoidance clears the margined certification target, not merely the raw cap');
 });
 
 // --- the modeled proc must not inflate the DISPLAYED spell power ---------------------------------
