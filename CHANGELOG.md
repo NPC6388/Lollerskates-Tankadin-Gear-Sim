@@ -1564,3 +1564,12 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     gear cannot reach Illidan-uncrushable at all), so the -0.40% was between two best-effort sets and
     overstated as a regression. The regression test only compares goals where both answers are legal;
     the fix stands on its own as a correctness property.
+
+- **Site copy: the locked-trinket note named the wrong trinket (`index.html`).** It read "(Eye is
+  dropped for the Survival set)", but that dropdown holds whatever trinket the player picks — it
+  defaults to their SECOND equipped trinket, which for the reporting player was Tome of Fiery
+  Redemption. Now phrased by position ("the 2nd one is dropped for the Survival set, freeing that slot
+  for a defensive pick"), matching the selects' own tooltips, which were already generic. The two
+  internal comments that carried the same stale assumption (`runner.js`'s `lockEye` note and the
+  Balanced-blend comment in `app.js`) are corrected too — that assumption is where the UI copy came
+  from in the first place.

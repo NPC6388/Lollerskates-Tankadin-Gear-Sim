@@ -34,7 +34,8 @@ const encUncrush = (e, enc) => enc === 'sunwell' ? e.swpUncrushable : enc === 'i
 
 // Preset goals as TUNABLE EHP:threat ratios (blendScale builds the objective). Every goal uses
 // the same EHP↔threat axis; AOE Trash differs only by a relaxed crush gate (trash can't crush).
-// `lockEye` adds Eye of Magtheridon to the locked trinkets.
+// `lockEye` locks the SECOND trinket (whatever the caller passed as locks.eye — the UI defaults it to
+// your second equipped trinket, it is not necessarily Eye of Magtheridon) into this goal's sets.
 export const GOAL_PRESETS = [
   { id: 'raid', name: 'Raid Threat', focus: 'EHP : threat 1:2', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true }, lockEye: true },
   { id: 'survival', name: 'Survival', focus: 'EHP : threat 2:1', ratio: { ehp: 2, threat: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: false },

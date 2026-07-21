@@ -599,7 +599,7 @@ function currentGoals() {
     if (isBalanced(g.id)) {
       // Balanced slides between the Survival set (t=0) and the Raid Threat set (t=1). To make the
       // ENDS actually reproduce those sets it inherits the whole config that differs between them —
-      // ratio AND Min-HP floor (both blended) AND the Eye-of-Magtheridon trinket lock (Survival
+      // ratio AND Min-HP floor (both blended) AND the SECOND trinket lock (Survival
       // leaves it free, Raid forces it; take the nearer side). Balanced has no Min-HP knob of its
       // own — the floor is derived from your two sets, so it's why the survival end is now as tanky.
       const t = balanceT(v);
