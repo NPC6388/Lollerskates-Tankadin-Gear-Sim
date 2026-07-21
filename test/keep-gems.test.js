@@ -7,9 +7,14 @@ import { fileURLToPath } from 'node:url';
 import { parseExport, equippableItems } from '../src/import.js';
 import { optimizeSets, lockEligible } from '../src/runner.js';
 import { professionPerks } from '../src/professions.js';
+import { score } from '../src/scoring.js';
+import { blendScale } from '../src/weights.js';
 
 // The committed TGS9 sample carries baseStats + current gems/enchant, so locking is meaningful.
 const SAMPLE = fs.readFileSync(fileURLToPath(new URL('../web/sample-export.txt', import.meta.url)), 'utf8');
+// The real 17-piece, fully-gemmed threat set (same fixture procs.test.js uses): the re-gem-vs-kept
+// invariant only has teeth on gear whose existing gems are actually good.
+const REAL_EXPORT = fs.readFileSync(fileURLToPath(new URL('./fixtures/threat-set-export.txt', import.meta.url)), 'utf8');
 const parsed = parseExport(SAMPLE);
 const items = equippableItems(parsed);
 const goals = [{ id: 'rt', name: 'Raid Threat', focus: '', ratio: { ehp: 1, threat: 2 }, gates: { raid: true, requireUncrushable: true }, lockEye: true }];
@@ -126,4 +131,46 @@ test('scope ignoreCompleteness: "current set as-is" locks an equipped item with 
   // As-is equipped scope: the same incomplete chest IS locked (frozen as worn).
   const asis = optimizeSets(local, { ...base, keepGemsEnchants: { equippedOnly: true, ignoreCompleteness: true } })[0];
   if (asis.selection.chest === chest) assert.equal(asis.perSlot.chest.locked, true);
+});
+
+// --- re-gem mode must never be worse than keeping your gems ---------------------------------------
+// Found by explaining a site-vs-addon disagreement: the addon never re-gems, the site defaults to
+// "re-gem everything", and on one goal the re-gem answer scored BELOW the same solve with the gems
+// kept. Keeping what is already socketed is attainable by definition — you are wearing it — so any
+// set reachable with gems kept is also reachable when re-gemming is merely ALLOWED. "Re-gem
+// everything" therefore has to be an improvement operator over "keep them", never a coin flip.
+test('re-gemming never returns a set below the same solve with gems kept, on any goal', () => {
+  const parsed = parseExport(REAL_EXPORT);
+  const items = equippableItems(parsed);
+  const opts = { buff: 'raid', professions: ['Enchanting'], talentRanks: parsed.talentRanks,
+    maxPhase: 2, useImbuedMeta: true, trinketLocks: { icon: 29370, eye: 30447 } };
+  const kept = optimizeSets(items, {
+    ...opts, keepGemsEnchants: { itemIds: items.map((i) => i.itemId), ignoreCompleteness: true },
+  });
+  const regem = optimizeSets(items, opts);
+  const keptById = Object.fromEntries(kept.map((r) => [r.goal.id, r]));
+
+  for (const r of regem) {
+    const k = keptById[r.goal.id];
+    // Only comparable when BOTH clear the gates: between two flagged best-effort sets (a gate the
+    // gear cannot reach at all) the objective ranking carries no meaning.
+    if (!r.legal || !k.legal) continue;
+    const objScale = blendScale(r.goal.ratio);
+    const a = score(r.agg._raw, objScale), b = score(k.agg._raw, objScale);
+    assert.ok(a + 1e-9 >= b,
+      `${r.goal.name}: re-gem scored ${a.toFixed(2)} vs ${b.toFixed(2)} with gems kept`);
+  }
+});
+
+test('re-gem mode may keep an individual piece\'s gems when they beat re-gemming it', () => {
+  // The as-worn configuration is a per-ITEM option, not just an all-or-nothing fallback: a set that
+  // re-gems some slots and leaves others alone is legitimate, and is what a well-gemmed character
+  // should get. Such pieces come back tagged like any other kept item, so the UI says "Kept".
+  const parsed = parseExport(REAL_EXPORT);
+  const items = equippableItems(parsed);
+  const r = optimizeSets(items, { buff: 'raid', professions: ['Enchanting'],
+    talentRanks: parsed.talentRanks, maxPhase: 2, useImbuedMeta: true,
+    trinketLocks: { icon: 29370, eye: 30447 } }).find((x) => x.goal.id === 'raid');
+  const keptPieces = Object.values(r.selection).filter((it) => it && it._gem === 'locked');
+  assert.ok(keptPieces.length > 0, 'a fully-gemmed threat set should keep at least one piece as worn');
 });

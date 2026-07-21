@@ -220,9 +220,19 @@ local function itemVariants(it, objScale, ctx)
     for k, v in pairs(it.stats or {}) do st[k] = v end
     return { mk("locked", st) }
   end
-  local focus = mk("focus", buildVariant(it, objScale, objScale, ctx))
-  if not hasSockets(it) then return { focus } end
-  return { focus, mk("cap", buildVariant(it, CAP_SCALE, objScale, ctx)) }
+  local out = { mk("focus", buildVariant(it, objScale, objScale, ctx)) }
+  if hasSockets(it) then out[#out + 1] = mk("cap", buildVariant(it, CAP_SCALE, objScale, ctx)) end
+  -- AS-WORN VARIANT (mirrors runner.js): re-gem mode otherwise offers only SIMULATED gemmings, so the
+  -- configuration already in the gear — attainable by definition — wasn't in the search space, and
+  -- "re-gem everything" could land below the same solve with gems kept. Only for COMPLETE items with
+  -- something actually applied: otherwise the focus variant fills the empty socket and dominates it.
+  if not ctx.keep and ((it.gems and #it.gems > 0) or it.enchantId)
+      and lockEligible(it, { perks = ctx.perks, faction = ctx.faction, maxPhase = ctx.maxPhase, objScale = objScale }) then
+    local st = {}
+    for k, v in pairs(it.stats or {}) do st[k] = v end
+    out[#out + 1] = mk("locked", st)
+  end
+  return out
 end
 
 local function lockFor(goal, locks)
@@ -911,16 +921,23 @@ function Runner.optimizeSets(items, options)
     return ok and out or nil
   end
 
-  local function solveGoalRaw(g, gseed)
+  -- `useCtx` lets the as-is floor reuse this whole path (gate-recovery sweep included) under a
+  -- keep-mode ctx: an encounter goal's as-worn answer often needs that sweep to clear its harder
+  -- avoidance gate, and a floor computed by the plain solve would come back illegal and be skipped.
+  local asIsSeed -- forward declaration (defined below; solveGoalRaw and asIsSet call each other)
+  local function solveGoalRaw(g, gseed, useCtx)
+    useCtx = useCtx or ctx
     gseed = gseed or {}
-    -- Seed from the EQUIPPED set when the caller gave no seed, so the search starts from a known-good
-    -- set rather than the per-slot greedy pick.
-    if next(gseed) == nil then gseed = wornSeed end
-    local r = runGoal(g, items, ctx, gseed)
+    -- Seed from the EQUIPPED set when the caller gave no seed — or better, in re-gem mode, from the
+    -- AS-IS answer for this goal (the best set reachable without touching a gem, already computed for
+    -- the floor). The heuristic is greedy, so where it starts decides where it lands. useCtx.keep is
+    -- set exactly when THIS call is the as-is solve, which is what stops the two from recursing.
+    if next(gseed) == nil then gseed = (not useCtx.keep and asIsSeed(g)) or wornSeed end
+    local r = runGoal(g, items, useCtx, gseed)
     local floor = (g.gates and g.gates.minHealth) or 0
     local crushReq = (not g.gates) or (g.gates.requireUncrushable ~= false)
     local floorMet = (floor == 0) or (r.agg.health + 1e-9 >= floor)
-    local crushMet = (not crushReq) or encUncrush(r.evald, g.enc or ctx.encounter or nil)
+    local crushMet = (not crushReq) or encUncrush(r.evald, g.enc or useCtx.encounter or nil)
     if floorMet and crushMet then return r end
     local maxHpGoal = {}
     for k, v in pairs(g) do maxHpGoal[k] = v end
@@ -929,7 +946,7 @@ function Runner.optimizeSets(items, options)
     if g.gates then for k, v in pairs(g.gates) do mhGates[k] = v end end
     mhGates.minHealth = 0
     maxHpGoal.gates = mhGates
-    local maxHp = runGoal(maxHpGoal, items, ctx)
+    local maxHp = runGoal(maxHpGoal, items, useCtx)
     if floor ~= 0 and maxHp.agg.health + 1e-9 < floor then
       if maxHp.agg.health > r.agg.health then
         local out = {}
@@ -951,7 +968,7 @@ function Runner.optimizeSets(items, options)
       local lg = {}
       for k, v in pairs(g) do lg[k] = v end
       lg.ratio = rt
-      consider(runGoal(lg, items, ctx, recSeed))
+      consider(runGoal(lg, items, useCtx, recSeed))
     end
     if #cands == 0 then return r end
     local best = cands[1]
@@ -965,6 +982,34 @@ function Runner.optimizeSets(items, options)
     return out
   end
 
+  -- The same pool solved with EVERY item's gems/enchants kept as worn — the floor "re-gem everything"
+  -- must clear (see solveGoal). Memoized per goal; nil in keep mode, where the main solve IS this set.
+  local asIsCache = {}
+  local function asIsSet(g)
+    if ctx.keep then return nil end
+    if asIsCache[g] ~= nil then
+      local c = asIsCache[g]
+      if c == false then return nil end
+      return c
+    end
+    local kctx = {}
+    for k, v in pairs(ctx) do kctx[k] = v end
+    kctx.keep = function() return true end
+    kctx.keepIgnoreCompleteness = true
+    local ok, out = pcall(solveGoalRaw, g, {}, kctx) -- the floor is an optimization, never a failure mode
+    asIsCache[g] = ok and out or false
+    return ok and out or nil
+  end
+  -- The as-is answer's per-slot picks, as a seed map (nil when there is no as-is set, so the caller
+  -- falls back to the equipped seed). Assigned to the forward-declared local above.
+  asIsSeed = function(g)
+    local a = asIsSet(g)
+    if not a then return nil end
+    local sd, any = {}, false
+    for slot, it in pairs(a.selection) do if it then sd[slot] = it.itemId; any = true end end
+    return any and sd or nil
+  end
+
   -- EQUIPPED FLOOR (mirrors runner.js). A recommendation scoring below the gear you already have is
   -- not a recommendation: return the worn set and flag it (`equippedIsBest`) instead of surfacing a
   -- sidegrade the player reads as an upgrade. Skipped when the worn set can't legally stand in —
@@ -972,11 +1017,26 @@ function Runner.optimizeSets(items, options)
   -- itself illegal (a flagged near-miss is the honest output there).
   local function solveGoal(g, gseed)
     local r = solveGoalRaw(g, gseed)
+    -- AS-IS FLOOR (re-gem mode only, mirrors runner.js): keeping the gems already in the gear is
+    -- attainable by definition, so re-gemming must never return LESS than the same solve with them
+    -- kept. A legal set beats a flagged best-effort one; otherwise compare on the goal's objective.
+    local asIs = asIsSet(g)
+    if asIs and asIs.legal then
+      local objScale = Scoring.blendScale(g.ratio)
+      if (not r.legal)
+          or Scoring.score(asIs.agg._raw, objScale) > Scoring.score(r.agg._raw, objScale) + 1e-9 then
+        local out = {}
+        for k, v in pairs(asIs) do out[k] = v end
+        out.goal = g
+        r = out
+      end
+    end
     local worn = wornSet(g)
     if not worn or not worn.legal or not r.legal then return r end
     if not equippedMeetsConstraints(items, g, ctx.locks, ctx.pins) then return r end
     local objScale = Scoring.blendScale(g.ratio)
-    if Scoring.score(worn.agg._raw, objScale) <= Scoring.score(r.agg._raw, objScale) + 1e-9 then return r end
+    -- TIES GO TO THE GEAR YOU ARE WEARING: the solved answer must be STRICTLY better to displace it.
+    if Scoring.score(worn.agg._raw, objScale) + 1e-9 < Scoring.score(r.agg._raw, objScale) then return r end
     local out = {}
     for k, v in pairs(worn) do out[k] = v end
     out.goal = g

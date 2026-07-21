@@ -1530,3 +1530,37 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     run from picking a different item selection whose ceiling is lower. So "re-gem everything" is not
     yet an improvement operator at the SELECTION level, the way the equipped-set floor made the
     optimizer one against your worn gear. Same class of problem, one level up.
+
+- **"Re-gem everything" is now an improvement operator over keeping your gems (`src/runner.js`,
+  `engine/Runner.lua`).** The follow-up to the previous entry's open item. Re-gem mode offered the
+  solver only two SIMULATED gemmings per item (focus and cap), so the configuration already sitting in
+  the gear — attainable by definition, you're wearing it — was not in the search space at all. It could
+  therefore return a set scoring BELOW the same solve with gems kept, which is how the site ended up
+  able to contradict the addon.
+  - **The as-worn configuration is now a third per-item variant**, so a set may keep some pieces and
+    re-gem others (on the reporting player's Raid Threat set the answer keeps all 17; on AOE Trash, 5).
+    It is tagged `locked` — which is exactly what it means downstream — so plans, meta colors, socket
+    bonuses and the UI's "Kept" badge all handle it with no new plumbing. Skipped for items with an
+    empty socket or no enchant, where the focus variant fills it and strictly dominates (extra stats
+    can't cost legality — every gate is a floor), and for items with nothing applied to keep.
+  - **Plus an explicit floor**, because a variant only makes the as-is set REACHABLE and the heuristic
+    is greedy: each goal is also solved with everything kept, and that answer wins if it scores higher
+    (a legal set beating a flagged best-effort one outright). The floor routes through the same
+    gate-recovery path as the main solve — without that, an encounter goal's as-is candidate comes back
+    illegal and gets silently skipped, which is precisely what kept Illidan broken in the first cut.
+  - **The as-is answer also seeds the main search.** Greedy search lands where it starts, and the
+    widened pool cost ~0.2% on the Survival goal until it was seeded from the (strictly better) as-is
+    set instead of the worn one.
+  - **Ties now go to the gear you're wearing.** With the floor returning the worn set verbatim on a
+    well-gemmed character, an equal-scoring solved set was winning the tie-break and quietly dropping
+    the `equippedIsBest` label — the player got their own set back with no explanation. The solved set
+    must now be STRICTLY better to displace what you have.
+  - **Measured** on the reporting player's 200-item pool, re-gem vs keep-as-is, per goal: Raid +0.00%
+    (the floor returns the as-is set), Survival +0.92%, Balanced +0.66%, AOE +3.98%, Sunwell +4.12%,
+    Brutallus +6.16% — and zero goals below keep-as-is, where Illidan had been -0.40%. Cost: the full
+    7-goal re-gem solve goes 510ms -> 669ms (the floor is cheap because keep-mode solving is ~4x
+    faster than re-gem; the widened pool is the rest). The addon's own as-is solve is untouched.
+  - **On the Illidan measurement that started this:** both answers there are FLAGGED ILLEGAL (that
+    gear cannot reach Illidan-uncrushable at all), so the -0.40% was between two best-effort sets and
+    overstated as a regression. The regression test only compares goals where both answers are legal;
+    the fix stands on its own as a correctness property.

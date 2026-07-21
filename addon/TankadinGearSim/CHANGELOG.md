@@ -3,6 +3,15 @@
 This is the player-facing changelog shipped with the addon (and used as the release notes on
 GitHub/CurseForge). The full development log lives in the repo's root `CHANGELOG.md`.
 
+## v0.8.51
+
+- **The re-gem comparison can no longer suggest a downgrade.** The engine's "re-gem everything" mode
+  only ever considered two simulated gemmings per item, so the gems already in your gear weren't in
+  its search space at all — it could hand back a set scoring *below* the same solve with your gems
+  kept. Your current gemming is now one of the options the solver weighs per item (a set may keep
+  some pieces and re-gem others), and the result is floored against the keep-everything answer. This
+  is what the card's re-gem line compares against, so a CTA now only ever appears for a genuine gain.
+
 ## v0.8.50
 
 - **The optimizer now reads your actual talents.** It was assuming the reference build (Anticipation

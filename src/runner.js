@@ -182,9 +182,29 @@ function itemVariants(it, objScale, ctx) {
       && (ctx.keepIgnoreCompleteness || lockEligible(it, { perks: ctx.perks, faction: ctx.faction, maxPhase: ctx.maxPhase, objScale }))) {
     return [mk('locked', { ...(it.stats || {}) })];
   }
-  const focus = mk('focus', buildVariant(it, objScale, objScale, ctx));
-  if (!hasSockets(it)) return [focus];
-  return [focus, mk('cap', buildVariant(it, CAP_SCALE, objScale, ctx))];
+  const out = [mk('focus', buildVariant(it, objScale, objScale, ctx))];
+  if (hasSockets(it)) out.push(mk('cap', buildVariant(it, CAP_SCALE, objScale, ctx)));
+  // AS-WORN VARIANT. Re-gem mode offers the solver only two SIMULATED gemmings per item (focus and
+  // cap), so the configuration already sitting in the gear — which is attainable by definition, you
+  // are wearing it — was not in the search space at all. That made "re-gem everything" able to return
+  // a set scoring BELOW the same solve with gems kept (measured: -0.40% on the Illidan goal), because
+  // it had to re-gem every piece even where the current gems were better. The gem-level monotonicity
+  // guard below can't fix that: it only re-prices the gems of an ALREADY-CHOSEN selection, and by then
+  // the wrong items are chosen. Offering the as-worn config as a third variant puts it back in the
+  // space, so re-gemming becomes a true improvement operator over keeping your gems, not a coin flip.
+  // Only for COMPLETE items: with an empty socket or a missing enchant, the focus variant fills it and
+  // therefore strictly dominates the as-worn config (added stats can't cost legality — every gate is a
+  // floor). Tagged 'locked' precisely because that is what it means downstream — keep this piece's
+  // gems/enchant as they are — and every consumer (plans, meta colors, socket bonus, the UI's "Kept"
+  // badge) already handles that tag.
+  // Also skipped when there is nothing applied to keep (no gems, no enchant): the as-worn config is
+  // then just the bare item, which the focus variant already covers or beats — a variant that can
+  // never win is pure search cost, and this pass runs over every item in the pool.
+  if (!ctx.keep && ((it.gems || []).length > 0 || it.enchantId)
+      && lockEligible(it, { perks: ctx.perks, faction: ctx.faction, maxPhase: ctx.maxPhase, objScale })) {
+    out.push(mk('locked', { ...(it.stats || {}) }));
+  }
+  return out;
 }
 
 function lockFor(goal, locks) {
@@ -802,19 +822,52 @@ export function optimizeSets(items, options = {}) {
     wornCache.set(g, out);
     return out;
   };
+  // The same pool solved with EVERY item's gems/enchants kept exactly as worn — the floor "re-gem
+  // everything" has to clear (see solveGoal). Memoized per goal. Null in keep mode, where the main
+  // solve already is this set.
+  const asIsCache = new Map();
+  const asIsSet = (g) => {
+    if (ctx.keep) return null;
+    if (asIsCache.has(g)) return asIsCache.get(g);
+    let out = null;
+    try {
+      out = solveGoalRaw(g, {}, { ...ctx, keep: () => true, keepIgnoreCompleteness: true });
+    } catch { out = null; } // the floor is an optimization, never a reason to fail the solve
+    asIsCache.set(g, out);
+    return out;
+  };
+  // The as-is answer's per-slot picks, as a seed map. Null when there is no as-is set (keep mode, or
+  // the solve threw) so the caller falls back to the equipped seed.
+  const asIsSeed = (g) => {
+    const a = asIsSet(g);
+    if (!a) return null;
+    const s = {};
+    for (const [slot, it] of Object.entries(a.selection)) if (it) s[slot] = it.itemId;
+    return Object.keys(s).length ? s : null;
+  };
+
   // Solve one goal at a given seed (incl. the Min-HP floor-recovery fallback). Factored out so the
   // Balanced goal can be solved from more than one seed and keep the best (see below).
-  const solveGoalRaw = (g, gseed) => {
+  // `useCtx` lets the as-is floor reuse this whole path (recovery sweep included) under a keep-mode
+  // ctx — an encounter goal's as-worn answer often needs that sweep to clear its harder avoidance gate,
+  // and a floor computed by the plain solve would come back illegal and be silently skipped.
+  const solveGoalRaw = (g, gseed, useCtx = ctx) => {
     // Live slider drags pass the PREVIOUS result's per-slot selection as a seed, so each nudge climbs
     // from the adjacent (good) set instead of restarting cold — this kills the heuristic's small
     // non-monotonic wiggles (an SP dip when the slider should only rise) as you sweep the dial.
     // Seed from the EQUIPPED set when the caller gave no seed of its own, so the search starts from a
-    // set that is known-good rather than from the per-slot greedy pick.
-    const r = runGoal(g, items, ctx, Object.keys(gseed).length ? gseed : wornSeed);
+    // set that is known-good rather than from the per-slot greedy pick. Better still in re-gem mode:
+    // seed from the AS-IS answer for this goal — the best set reachable without touching a gem, which
+    // dominates the worn set and is already computed for the floor below. The heuristic is greedy, so
+    // where it starts decides where it lands: seeding cold cost ~0.2% on the Survival goal once the
+    // as-worn variants widened the pool. `useCtx.keep` is set exactly when THIS call is the as-is solve
+    // itself, which is also what stops the two from recursing into each other.
+    const seedBase = useCtx.keep ? wornSeed : (asIsSeed(g) || wornSeed);
+    const r = runGoal(g, items, useCtx, Object.keys(gseed).length ? gseed : seedBase);
     const floor = (g.gates && g.gates.minHealth) || 0;
     const crushReq = !g.gates || g.gates.requireUncrushable !== false;
     const floorMet = !floor || r.agg.health + 1e-9 >= floor;
-    const crushMet = !crushReq || encUncrush(r.evald, g.enc || ctx.encounter || null);
+    const crushMet = !crushReq || encUncrush(r.evald, g.enc || useCtx.encounter || null);
     if (floorMet && crushMet) return r; // the gates this recovery repairs (Min-HP floor + uncrushable) are met
     // Uncrushable and Min-HP are HARD gates, but the greedy+repair heuristic can return an ILLEGAL set
     // even when a legal one exists — e.g. it keeps a higher-threat libram and lands ~0.1% short of the
@@ -824,7 +877,7 @@ export function optimizeSets(items, options = {}) {
     // AMONG the sets that clear the gates, never surfacing a higher-threat crushable (or sub-floor) set.
     // Tankiest reference: maximize pure STAMINA (keep uncrit/uncrush, drop the floor so the search isn't
     // pinned below the reachable max); it anchors the floor and seeds the leans from a defensive start.
-    const maxHp = runGoal({ ...g, ratio: { sta: 1 }, gates: { ...g.gates, minHealth: 0 } }, items, ctx);
+    const maxHp = runGoal({ ...g, ratio: { sta: 1 }, gates: { ...g.gates, minHealth: 0 } }, items, useCtx);
     if (floor && maxHp.agg.health + 1e-9 < floor) {
       // The Min-HP floor itself is unreachable with this gear/keep-settings → best-effort tankiest set, flagged.
       return maxHp.agg.health > r.agg.health ? { ...maxHp, goal: g, legal: false, hpBestEffort: true } : r;
@@ -839,7 +892,7 @@ export function optimizeSets(items, options = {}) {
     const leans = [g.ratio, { ehp: 1, threat: 1 }, { ehp: 1.5, threat: 1 }, { ehp: 2, threat: 1 }, { ehp: 3, threat: 1 }];
     // Keep only candidates that pass EVERY gate — c.legal covers uncrit + uncrush + Min-HP; the explicit
     // floor check also catches maxHp (run with the floor dropped).
-    const cands = [maxHp, ...leans.map((rt) => runGoal({ ...g, ratio: rt }, items, ctx, recSeed))]
+    const cands = [maxHp, ...leans.map((rt) => runGoal({ ...g, ratio: rt }, items, useCtx, recSeed))]
       .filter((c) => c.legal && (!floor || c.agg.health + 1e-9 >= floor));
     if (!cands.length) return r; // no legal set reachable with this gear/keep-settings — keep the best-effort (flagged illegal)
     const best = cands.reduce((a, b) => (score(b.agg._raw, objScale) > score(a.agg._raw, objScale) ? b : a));
@@ -855,12 +908,32 @@ export function optimizeSets(items, options = {}) {
   //   - the solved answer is itself illegal/best-effort, where a flagged near-miss is the honest
   //     output and silently swapping in the worn set would hide that the gates are unreachable.
   const solveGoal = (g, gseed) => {
-    const r = solveGoalRaw(g, gseed);
+    let r = solveGoalRaw(g, gseed);
+    // AS-IS FLOOR (re-gem mode only). Keeping the gems already in your gear is always attainable, so
+    // "re-gem everything" must never return LESS than the same solve with them kept — otherwise the
+    // site contradicts the addon, which is exactly how this was found. The as-worn variant added in
+    // itemVariants puts that configuration in the search space and closed most of the gap (Illidan
+    // -0.40% -> -0.09%), but the heuristic is greedy and still may not FIND it, so the guarantee has to
+    // be a floor, not a hope. Cheap enough to be unconditional: keep-mode solving is ~4x faster than
+    // re-gem (one variant per item, no gem planning), so this adds ~20%, not 2x.
+    // It needs no equippedMeetsConstraints-style guard the way the equipped floor does — this runs the
+    // SAME runGoal with the SAME ctx, so the goal's locks and the player's pins are already honored.
+    const asIs = asIsSet(g);
+    if (asIs && asIs.legal) {
+      // A legal set always beats a flagged best-effort one; otherwise compare on the goal's objective.
+      if (!r.legal) r = { ...asIs, goal: g };
+      else if (score(asIs.agg._raw, blendScale(g.ratio)) > score(r.agg._raw, blendScale(g.ratio)) + 1e-9) r = { ...asIs, goal: g };
+    }
     const worn = wornSet(g);
     if (!worn || !worn.legal || !r.legal) return r;
     if (!equippedMeetsConstraints(items, g, ctx.locks, ctx.pins)) return r;
     const objScale = blendScale(g.ratio);
-    if (score(worn.agg._raw, objScale) <= score(r.agg._raw, objScale) + 1e-9) return r;
+    // TIES GO TO THE GEAR YOU ARE WEARING. The solved answer has to be STRICTLY better to displace it:
+    // an equal-scoring set is not an upgrade, and telling someone to swap pieces for zero gain — or
+    // worse, handing back their own set without the "already equipped" label because a different
+    // object won the tie — is noise. (This surfaced once the as-is floor started returning the worn
+    // set verbatim on a well-gemmed character: same 17 pieces, identical score, flag silently lost.)
+    if (score(worn.agg._raw, objScale) + 1e-9 < score(r.agg._raw, objScale)) return r;
     return { ...worn, goal: g, equippedIsBest: true };
   };
   // The web UI builds the Balanced goal's ratio by blending the Survival and Raid ratios (its slider

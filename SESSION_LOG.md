@@ -4,7 +4,31 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-20 (latest) — Why the site and addon disagreed, + addon talents/re-gem CTA
+## 2026-07-20 (latest) — Re-gem mode made an improvement operator
+
+Closed the open item from the previous entry: "re-gem everything" could return a set worse than the
+same solve with gems kept, because the as-worn gemming was never in the search space (only two
+simulated gemmings per item). Three parts, all mirrored into Lua and parity-checked:
+
+1. as-worn config added as a third per-item variant (tagged `locked`, so all downstream handling and
+   the "Kept" badge already worked) — mixed keep/re-gem sets are now reachable;
+2. an explicit floor per goal against the keep-everything solve, routed through the same gate-recovery
+   path (without that, encounter goals' as-is candidates come back illegal and are skipped — this was
+   the bug in my first cut);
+3. the as-is answer also seeds the main search — greedy search lands where it starts, and the widened
+   pool cost 0.2% on Survival until seeded from it.
+
+Also: ties in the equipped floor now go to the worn set, else a well-gemmed player got their own gear
+back WITHOUT the "already equipped" label (caught by an existing test — worth noting that the test
+suite caught a UX regression, not a math one).
+
+Correction to the previous entry: the Illidan -0.40% was measured between two ILLEGAL best-effort sets
+(that gear can't reach Illidan-uncrushable), so it overstated the bug. Comparing objective scores of
+best-effort sets is meaningless — the new regression test only compares goals legal in both modes.
+
+---
+
+## 2026-07-20 — Why the site and addon disagreed, + addon talents/re-gem CTA
 
 Player asked why the site and the addon produced different Survival sets from the same SavedVariables
 with the same sliders. Reproduced both against their live export: the addon row (36,702 EHP / 591 SP /
