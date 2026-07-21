@@ -295,6 +295,13 @@ function Core.debug()
     input.blockPct, input.blockPctEffective))
   p(string.format("RF live=%s  impRF rank=%d  damageTakenMult=%.3f",
     tostring(input.righteousFuryLive), input.impRfRank or 0, input.damageTakenMult or 1))
+  -- Professions + which API answered. Worth printing because the answer is CLIENT-dependent:
+  -- GetProfessions() is retail-only, so on a Classic client the skills list is the only path that
+  -- works, and a wrong read here silently changes which gems/enchants the optimizer will recommend.
+  local profs = (ns.Exporter and ns.Exporter.detectProfessions and ns.Exporter.detectProfessions()) or {}
+  p(string.format("professions=%s  |  GetNumSkillLines=%s  GetProfessions=%s",
+    (#profs > 0) and table.concat(profs, "+") or "(none detected)",
+    type(GetNumSkillLines), type(GetProfessions)))
   -- Raw resilience reads per combat-rating index, so we can see which one the client fills.
   local names = { [CR_CRIT_TAKEN_MELEE or -1] = "MELEE", [CR_CRIT_TAKEN_SPELL or -2] = "SPELL",
     [CR_CRIT_TAKEN_RANGED or -3] = "RANGED" }

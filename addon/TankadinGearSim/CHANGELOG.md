@@ -3,6 +3,18 @@
 This is the player-facing changelog shipped with the addon (and used as the release notes on
 GitHub/CurseForge). The full development log lives in the repo's root `CHANGELOG.md`.
 
+## v0.8.52
+
+- **Profession detection actually works now.** It used `GetProfessions()`, which is a RETAIL-only API
+  — on a Classic client it simply isn't there, so the addon read "no professions" for everyone. That
+  was silent: the export's professions line came out empty, AND the in-game optimizer had been solving
+  without your profession perks all along (no Jewelcrafting-only gems, no Blacksmithing sockets, no
+  Enchanting ring enchants). It now reads the character sheet's Skills list, which is the path that
+  works here, expanding a collapsed Professions header if it has to, and falls back to the old API on
+  clients that do have it.
+- `/tgs debug` now prints the professions it detected and which API answered, so a wrong read is
+  visible instead of silent.
+
 ## v0.8.51
 
 - **The re-gem comparison can no longer suggest a downgrade.** The engine's "re-gem everything" mode

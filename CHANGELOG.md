@@ -1573,3 +1573,23 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   internal comments that carried the same stale assumption (`runner.js`'s `lockEye` note and the
   Balanced-blend comment in `app.js`) are corrected too — that assumption is where the UI copy came
   from in the first place.
+
+- **Profession detection used a retail-only API and silently found nothing (`Exporter.lua`).** Reported
+  as "the latest zip didn't export my professions". The export on disk was still `TGS11` — an older
+  session's string — but chasing that turned up the real bug underneath: `detectProfessions` called
+  `GetProfessions()`, which does not exist on a Classic client. TradeSkillMaster, sitting in the same
+  AddOns folder, gates its use of that API behind `IsRetail()` and uses `GetNumSkillLines` /
+  `GetSkillLineInfo` otherwise — which is the evidence that settled it.
+  - **This was never just an export problem.** The addon's own Optimize tab has used the same function
+    since it was written, so every in-game solve has run with NO profession perks: no Jewelcrafting-only
+    gems, no Blacksmithing sockets, no Enchanting ring enchants. Nobody could see it, because "no
+    professions" is a perfectly plausible-looking answer.
+  - **Now reads the Skills list** (`GetNumSkillLines`/`GetSkillLineInfo`, skipping headers), expands a
+    collapsed Professions header only if the first pass finds nothing — skills under a collapsed header
+    aren't enumerated at all — and keeps `GetProfessions` as a fallback for clients that have it.
+  - **`/tgs debug` now prints the detected professions and the type of each API**, so a wrong read is
+    visible in one command instead of silently changing which gems and enchants get recommended.
+  - **On how this shipped broken:** the wasmoon check I ran when adding it STUBBED `GetProfessions`,
+    so it proved the name-mapping logic and nothing about whether the function exists on the target
+    client. A stub can only test the code path it fakes. Availability of a WoW API is exactly the kind
+    of thing that has to be read off the real client — here, off another addon that already solved it.

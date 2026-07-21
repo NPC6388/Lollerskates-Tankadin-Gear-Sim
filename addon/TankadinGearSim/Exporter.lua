@@ -325,16 +325,45 @@ end
 -- SAME detection for its in-game solve — one implementation, so the addon and the `P:` line it exports
 -- can never disagree. Empty when the client doesn't expose the API or the profession isn't one we model.
 function ns.Exporter.detectProfessions()
-  local out = {}
-  if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then return out end
+  local out, seen = {}, {}
   local known = {}
   for _, n in ipairs(ns.engine.Professions.PROFESSION_NAMES) do known[n] = true end
-  local ok, p1, p2 = pcall(GetProfessions)
-  if not ok then return out end
-  for _, idx in ipairs({ p1 or false, p2 or false }) do
-    if idx then
-      local ok2, name = pcall(GetProfessionInfo, idx)
-      if ok2 and name and known[name] then out[#out + 1] = name end
+  local function add(name)
+    if name and known[name] and not seen[name] then seen[name] = true; out[#out + 1] = name end
+  end
+
+  -- PRIMARY PATH: the character sheet's Skills list. This is the one that works on a Classic client —
+  -- GetProfessions() is RETAIL-only (TradeSkillMaster gates its use behind IsRetail()), so the earlier
+  -- version of this function silently found nothing here and every export said "no professions".
+  local function scanSkillLines()
+    if type(GetNumSkillLines) ~= "function" or type(GetSkillLineInfo) ~= "function" then return end
+    local n = safe(GetNumSkillLines) or 0
+    for i = 1, n do
+      -- safe() only forwards the FIRST return value, and we need isHeader too, so pcall directly.
+      local ok, name, isHeader = pcall(GetSkillLineInfo, i)
+      if ok and not isHeader then add(name) end
+    end
+  end
+  scanSkillLines()
+  -- Skills under a COLLAPSED header aren't enumerated at all, so a player whose Professions header is
+  -- collapsed would read as having none. Only expand (a visible change to their skills UI) when the
+  -- first pass came up empty — for most players nothing is touched.
+  if #out == 0 and type(ExpandSkillHeader) == "function" then
+    pcall(ExpandSkillHeader, 0)
+    scanSkillLines()
+  end
+  if #out > 0 then return out end
+
+  -- FALLBACK: the retail/Pandaria-Classic spellbook API, for clients that do have it.
+  if type(GetProfessions) == "function" and type(GetProfessionInfo) == "function" then
+    local ok, p1, p2 = pcall(GetProfessions)
+    if ok then
+      for _, idx in ipairs({ p1 or false, p2 or false }) do
+        if idx then
+          local ok2, name = pcall(GetProfessionInfo, idx)
+          if ok2 then add(name) end
+        end
+      end
     end
   end
   return out

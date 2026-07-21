@@ -57,7 +57,7 @@
 
       <div class="eco-lead">
         <div class="eco-lead-copy">
-          <span class="eco-badge">Addon v0.8.51</span>
+          <span class="eco-badge">Addon v0.8.52</span>
           <h3>Start in the game — the addon does the heavy lifting</h3>
           <p><strong>Tankadin Gear Sim</strong> (<code>/tgs</code>) is the front door. It gives you a
             <strong>live tank readout</strong> off your character sheet, an in-game <strong>Optimize</strong>
@@ -65,13 +65,14 @@
             own EHP&#8596;Threat and Min-HP sliders, a <strong>minimap flyout</strong> to preview and equip any
             set in one click (gems and enchants kept), and <strong>one-click export</strong> to this site.</p>
           <p>
-            <a class="dl-addon" href="addon/TankadinGearSim-v0.8.51.zip" download>&#8595; Download the addon (ZIP)</a>
+            <a class="dl-addon" href="addon/TankadinGearSim-v0.8.52.zip" download>&#8595; Download the addon (ZIP)</a>
             <a class="eco-repo" href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim" target="_blank" rel="noopener">Source on GitHub</a>
           </p>
-          <p class="dl-note muted"><strong>New in v0.8.51:</strong> re-gemming is now a true upgrade &mdash; the solver
-            weighs <strong>the gems already in your gear</strong> alongside its own suggestions per piece, and never returns
-            a set worse than keeping them, so this site can no longer contradict the addon. (v0.8.50 made the addon read
-            your actual talents, and had each set card tell you when re-gemming would beat it.)</p>
+          <p class="dl-note muted"><strong>New in v0.8.52:</strong> <strong>profession detection is fixed</strong> &mdash; it
+            used a retail-only API, so on a Classic client the addon read &ldquo;no professions&rdquo; for everyone: the export
+            said none, and the in-game optimizer had been solving without your JC gems, Blacksmithing sockets or
+            Enchanting ring enchants. After updating, <code>/reload</code> and re-export. (v0.8.51 made re-gemming a
+            true upgrade &mdash; never worse than keeping the gems you already have.)</p>
         </div>
         <figure class="eco-shot">
           <img src="docs/assets/addon-optimize-tab.png" alt="The in-game Optimize tab: four tuned Protection Paladin sets with per-goal EHP-to-Threat and Min-HP sliders." loading="lazy" />
@@ -126,7 +127,7 @@
       </div>
       <details class="how" id="ownGear">
         <summary>Use your own gear — install the addon &amp; upload</summary>
-        <p><a class="dl-addon" href="addon/TankadinGearSim-v0.8.51.zip" download>⬇ Download the TankadinGearSim addon (ZIP)</a></p>
+        <p><a class="dl-addon" href="addon/TankadinGearSim-v0.8.52.zip" download>⬇ Download the TankadinGearSim addon (ZIP)</a></p>
         <ol>
           <li><strong>Install:</strong> unzip it into your WoW <code>Interface\AddOns</code> folder — e.g.
             <code>World of Warcraft\_anniversary_\Interface\AddOns\</code> — so you end up with an
