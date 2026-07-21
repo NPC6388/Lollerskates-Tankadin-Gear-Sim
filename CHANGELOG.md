@@ -1479,3 +1479,25 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     exists to close. Now referenced LAZILY at the call site (the pattern `Items.build` already uses
     for the same two optional modules), and both harnesses load Procs. Run locally with
     `npm run test:lua:wasm` — wasmoon, no native interpreter needed.
+
+- **Professions are exported and auto-selected on the site (`Exporter.lua`, `src/import.js`,
+  `web/app.js`).** The site hardcoded `prof1 = 'Enchanting'` for every visitor. That is not a cosmetic
+  default: professions gate real recommendations — JC-only gems, Blacksmithing sockets, the Leatherworking
+  bracer, and the Enchanting ring enchants — so the site was recommending ring enchants to players who
+  can't apply them, and withholding perks from players who have them. The addon has always detected
+  professions for its own in-game solve; it just never told the website.
+  - **Export format v12 adds a `P:` line** (`P:Enchanting;Jewelcrafting`). It is written even when
+    empty, which is the load-bearing detail: `[]` ("the addon looked and found none we model") has to
+    be distinguishable from `null` ("this export predates v12"). The site treats the first as an
+    answer — clear both dropdowns — and the second as a reason to leave the current selection alone,
+    so old exports keep working exactly as before.
+  - **One implementation, not two.** `detectProfessions` moved from `UI.lua` (where the Optimize tab
+    used it) into `Exporter.lua` and is now public; UI.lua aliases it. The in-game solve and the
+    exported line therefore cannot disagree about what the player's professions are.
+  - **Still the player's choice:** they remain plain dropdowns, and `applyState` re-applies a shared
+    or restored state's selection after the parse, so a link someone shared doesn't get overwritten
+    by the exporter's detection.
+  - **Coverage:** import tests for the empty-vs-absent distinction and whitespace tolerance; the Lua
+    detection was exercised under wasmoon with stubbed `GetProfessions`/`GetProfessionInfo` across
+    five paths (unmodeled profession filtered out, both modeled, only one learned, API missing, API
+    erroring). 161/161 JS tests, all 8 Lua parity harnesses green.

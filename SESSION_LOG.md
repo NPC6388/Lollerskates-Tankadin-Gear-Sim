@@ -4,7 +4,25 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-20 (latest) — Card SP said 818, character sheet said 752
+## 2026-07-20 (latest) — Site auto-selects the player's professions
+
+The site hardcoded Enchanting for everyone. Professions gate actual recommendations (JC gems, BS
+sockets, LW bracer, Enchanting ring enchants), so that default was handing some players enchants they
+cannot apply. The addon already detected professions for its own Optimize tab — it just never
+exported them.
+
+Export format v12 adds a `P:` line. The detail that matters: it is written even when empty, so the
+site can tell `[]` ("no professions we model") from `null` ("older addon, cannot say") and only
+override its dropdowns in the first case. `detectProfessions` moved from UI.lua into Exporter.lua so
+the in-game solve and the exported line share one implementation. Addon v0.8.49.
+
+Verified the Lua detection under wasmoon with stubbed `GetProfessions`/`GetProfessionInfo` (five
+paths incl. an unmodeled profession like First Aid, a missing API, and the API erroring) — worth
+doing for any WoW-API-touching function, since nothing else in the harness reaches those.
+
+---
+
+## 2026-07-20 — Card SP said 818, character sheet said 752
 
 Player screenshot: the addon's Raid Threat card showed 818 spell power for the set they were wearing,
 their paper doll showed 752. Read their live SavedVariables straight off disk and reconciled: the

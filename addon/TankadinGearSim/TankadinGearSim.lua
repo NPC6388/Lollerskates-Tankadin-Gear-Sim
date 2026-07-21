@@ -14,7 +14,7 @@
 local ADDON, ns = ...
 
 -- Export-string format version. Kept here so Exporter.lua (loaded next) picks it up as ns.VERSION.
-ns.VERSION = "11"
+ns.VERSION = "12"  -- v12 adds the P: professions line
 
 SLASH_TANKADINGEARSIM1 = "/tgs"
 SLASH_TANKADINGEARSIM2 = "/tankadin"

@@ -3,6 +3,15 @@
 This is the player-facing changelog shipped with the addon (and used as the release notes on
 GitHub/CurseForge). The full development log lives in the repo's root `CHANGELOG.md`.
 
+## v0.8.49
+
+- **The export now carries your professions, and the website fills its dropdowns in from them.** The
+  site defaulted everyone to Enchanting, which quietly recommended ring enchants to players who
+  cannot apply them and withheld JC gems / Blacksmithing sockets from players who have them. Your
+  two professions now ride along in the export (`P:` line, format v12) and the site selects them for
+  you on load — still ordinary dropdowns you can change whenever you like. The addon's own Optimize
+  tab already detected them; both now use one shared implementation, so they cannot disagree.
+
 ## v0.8.48
 
 - **The spell power on each set card is now the number your character sheet will show.** Tome of

@@ -28,10 +28,15 @@ A WoW Classic (TBC Anniversary) addon for Protection Paladins. It does two thing
 3. In the box: **Ctrl+A**, **Ctrl+C**, then paste the string into the website sim.
 
 ## What it exports
-- **Line 1:** `TGS<version>` (format version; currently `TGS9`)
+- **Line 1:** `TGS<version>` (format version; currently `TGS12`)
 - **Line 2:** `C:...` — your current character-sheet finals (dodge/parry/block %,
   defense skill, spell power, armor, strength/agility/stamina/intellect, etc.). The sim
   uses these to **reconcile** its first-principles forward calc against your real sheet.
+- **Then:** `T:` / `TR:` — your talent string and per-talent ranks.
+- **Then:** `P:` (v12) — your two professions, so the website can default its profession
+  dropdowns to what you actually have instead of guessing. Written even when empty (`P:`), so
+  "no professions we model" is distinguishable from an older addon that couldn't say. You can
+  still change them on the site.
 - **Then:** one item line per owned item — `E:` for equipped, `I:` for everything else
   (bags + bank + reagent bank), de-duplicated. Each line is
   `<itemString>|<resolved>|<base>|<socketBonus>`:

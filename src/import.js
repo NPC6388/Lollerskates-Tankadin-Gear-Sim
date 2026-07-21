@@ -4,6 +4,7 @@
 //   v1 item line: I:item:<id>:<enchant>:<g1..4>:<suffix>:...
 //   v2 item line: I:<itemString>|<equipLoc>|ilvl=N;<GetItemStats key>=val;...
 //   v8 adds: ...|<baseStats>|<socketBonus>   v9 adds a trailing: |<name>
+//   v12 adds: P:<profession>;<profession>          (empty "P:" = character has none we model)
 
 // GetItemStats keys -> our internal stat names. This client emits ratings/spell-power
 // WITHOUT the _SHORT suffix (e.g. ITEM_MOD_DODGE_RATING) but primary stats WITH it
@@ -129,7 +130,10 @@ export function parseExport(text) {
   if (!lines.length || !/^TGS\d+$/.test(lines[0])) {
     throw new Error('Not a Tankadin Gear Sim export (missing TGS header)');
   }
-  const out = { version: Number(lines[0].slice(3)), character: {}, items: [], talents: '', talentRanks: {} };
+  // `professions` is null when the export predates v12 (the addon couldn't tell us) and an ARRAY —
+  // possibly empty — when it could. The site distinguishes the two: unknown keeps its old default,
+  // known-empty means the character really has no profession we model.
+  const out = { version: Number(lines[0].slice(3)), character: {}, items: [], talents: '', talentRanks: {}, professions: null };
 
   for (const line of lines.slice(1)) {
     if (line.startsWith('TR:')) {
@@ -141,6 +145,8 @@ export function parseExport(text) {
       }
     } else if (line.startsWith('T:')) {
       out.talents = line.slice(2); // v10 talent string (per-talent ranks, "-" between trees)
+    } else if (line.startsWith('P:')) {
+      out.professions = line.slice(2).split(';').map((p) => p.trim()).filter(Boolean); // v12
     } else if (line.startsWith('C:')) {
       for (const kv of line.slice(2).split(';')) {
         if (!kv) continue;

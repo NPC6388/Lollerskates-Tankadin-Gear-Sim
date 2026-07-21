@@ -484,6 +484,31 @@ function updateTalentSummary() {
 
 function setStatus(msg, kind = '') { const el = $('inputStatus'); el.textContent = msg; el.className = 'status ' + kind; }
 
+// Default the two profession dropdowns from the export's `P:` line (v12+). These gate real
+// recommendations — JC-only gems, the Enchanting ring enchants, the LW bracer, BS sockets — so
+// guessing "Enchanting" for everyone quietly hands some players enchants they cannot apply, and
+// denies others perks they have. They stay ordinary dropdowns: this sets the default, the player
+// overrides it whenever they like (and a shared/restored state re-applies their choice afterwards).
+//   null  = export predates v12 -> leave whatever is selected (the old Enchanting default)
+//   []    = the addon looked and found none we model -> clear both, which is the honest answer
+function applyDetectedProfessions(profs) {
+  const readout = $('profReadout');
+  if (!Array.isArray(profs)) {
+    if (readout) {
+      readout.textContent = 'Not in this export — update the addon to detect them';
+      readout.classList.add('muted');
+    }
+    return;
+  }
+  const known = profs.filter((p) => PROFESSION_NAMES.includes(p)).slice(0, 2);
+  $('prof1').value = known[0] || '';
+  $('prof2').value = known[1] || '';
+  if (readout) {
+    readout.textContent = known.length ? `${known.join(' + ')} (from your character)` : 'None detected';
+    readout.classList.toggle('muted', !known.length);
+  }
+}
+
 function tryParse(text) {
   const raw = (text || '').trim();
   if (!raw) { items = null; $('optimizeBtn').disabled = true; setStatus(''); return; }
@@ -494,6 +519,7 @@ function tryParse(text) {
     $('factionReadout').classList.remove('muted');
     $('factionReadout').textContent = faction ? `${faction} (from shoulder inscription)` : 'Unknown — considering both';
     populateTrinketLocks();
+    applyDetectedProfessions(parsed.professions);
     if (parsed.talents) $('talents').value = parsed.talents; // v10 export carries the talent string
     updateTalentSummary();
     $('optimizeBtn').disabled = items.length === 0;

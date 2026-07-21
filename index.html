@@ -19,7 +19,7 @@
       "./src/enchants.js": "./src/enchants.js?v=923da28d",
       "./src/gems.js": "./src/gems.js?v=32263164",
       "./src/gemsolver.js": "./src/gemsolver.js?v=e89a88f5",
-      "./src/import.js": "./src/import.js?v=627c2d7f",
+      "./src/import.js": "./src/import.js?v=daa30cf3",
       "./src/librams.js": "./src/librams.js?v=07bee90e",
       "./src/model.js": "./src/model.js?v=c7025d12",
       "./src/optimizer.js": "./src/optimizer.js?v=5ef46354",
@@ -57,7 +57,7 @@
 
       <div class="eco-lead">
         <div class="eco-lead-copy">
-          <span class="eco-badge">Addon v0.8.48</span>
+          <span class="eco-badge">Addon v0.8.49</span>
           <h3>Start in the game — the addon does the heavy lifting</h3>
           <p><strong>Tankadin Gear Sim</strong> (<code>/tgs</code>) is the front door. It gives you a
             <strong>live tank readout</strong> off your character sheet, an in-game <strong>Optimize</strong>
@@ -65,14 +65,13 @@
             own EHP&#8596;Threat and Min-HP sliders, a <strong>minimap flyout</strong> to preview and equip any
             set in one click (gems and enchants kept), and <strong>one-click export</strong> to this site.</p>
           <p>
-            <a class="dl-addon" href="addon/TankadinGearSim-v0.8.48.zip" download>&#8595; Download the addon (ZIP)</a>
+            <a class="dl-addon" href="addon/TankadinGearSim-v0.8.49.zip" download>&#8595; Download the addon (ZIP)</a>
             <a class="eco-repo" href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim" target="_blank" rel="noopener">Source on GitHub</a>
           </p>
-          <p class="dl-note muted"><strong>New in v0.8.48:</strong> the <strong>spell power on each set card</strong> is now the
-            number your character sheet will show. A proc trinket's modeled value (Tome of Fiery Redemption) and a
-            libram's Consecration damage are still scored for threat, but they are temporary buffs rather than stats,
-            so they no longer inflate the displayed figure &mdash; they trail it as a dim &ldquo;+N&rdquo;. (v0.8.47 made the set
-            you are already wearing the baseline every goal is measured against.)</p>
+          <p class="dl-note muted"><strong>New in v0.8.49:</strong> the export now carries <strong>your professions</strong>,
+            and this site fills its profession dropdowns in from them instead of assuming Enchanting &mdash; they gate real
+            recommendations (JC-only gems, Blacksmithing sockets, the Enchanting ring enchants), and you can still change
+            them here. (v0.8.48 made each set card show the spell power your character sheet will actually read.)</p>
         </div>
         <figure class="eco-shot">
           <img src="docs/assets/addon-optimize-tab.png" alt="The in-game Optimize tab: four tuned Protection Paladin sets with per-goal EHP-to-Threat and Min-HP sliders." loading="lazy" />
@@ -127,7 +126,7 @@
       </div>
       <details class="how" id="ownGear">
         <summary>Use your own gear — install the addon &amp; upload</summary>
-        <p><a class="dl-addon" href="addon/TankadinGearSim-v0.8.48.zip" download>⬇ Download the TankadinGearSim addon (ZIP)</a></p>
+        <p><a class="dl-addon" href="addon/TankadinGearSim-v0.8.49.zip" download>⬇ Download the TankadinGearSim addon (ZIP)</a></p>
         <ol>
           <li><strong>Install:</strong> unzip it into your WoW <code>Interface\AddOns</code> folder — e.g.
             <code>World of Warcraft\_anniversary_\Interface\AddOns\</code> — so you end up with an
@@ -149,7 +148,7 @@
 
     <section class="panel" id="config-panel">
       <h2>2 · Setup</h2>
-      <p class="setup-hint">Defaults are fine for most characters — set your professions, then hit <strong>Optimize</strong>. Everything else is optional fine-tuning under <em>Advanced</em>.</p>
+      <p class="setup-hint">Defaults are fine for most characters — your professions are filled in from your character, so just hit <strong>Optimize</strong>. Everything else is optional fine-tuning under <em>Advanced</em>.</p>
       <div class="config-grid">
         <div class="field">
           <label>Professions</label>
@@ -157,7 +156,8 @@
             <select id="prof1"></select>
             <select id="prof2"></select>
           </div>
-          <small>Drives gem/enchant perks (JC gems, BS sockets, ring enchant).</small>
+          <div id="profReadout" class="readout muted">Auto-filled when you load gear</div>
+          <small>Auto-detected from your character when you load gear (addon v0.8.49+) &mdash; change them here any time. Drives gem/enchant perks (JC gems, BS sockets, ring enchant).</small>
         </div>
         <div class="field">
           <label for="statBuff">Stat buff</label>
@@ -276,6 +276,6 @@
       <a href="https://github.com/NPC6388/Lollerskates-Tankadin-Gear-Sim">Source on GitHub</a></p>
   </footer>
 
-  <script type="module" src="web/app.js?v=81f4f042"></script>
+  <script type="module" src="web/app.js?v=d21a0cdd"></script>
 </body>
 </html>

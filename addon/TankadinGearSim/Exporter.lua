@@ -1,6 +1,6 @@
 -- Tankadin Gear Sim — website exporter (formerly all of TankadinGearSim.lua).
 -- Builds the export string the browser sim ingests and stashes it in SavedVariables. The
--- format is unchanged (TGS<version> header + C:/T:/TR: lines + one I:/E: line per item); see
+-- format is TGS<version> header + C:/T:/TR:/P: lines + one I:/E: line per item; see
 -- addon/README.md. Exposed as ns.Exporter for the UI's Export tab and the /tgs export command.
 --   resolved = TOOLTIP-scanned stats (gems + enchants as worn); base = GetItemStats on the
 --   gem/enchant-stripped link (clean stats + full socket layout); socketBonus captured separately.
@@ -306,11 +306,35 @@ local function talentRanks()
   return table.concat(parts, ";")
 end
 
+-- Public: the player's two professions, mapped to the engine's names (which gate JC-only gems, the
+-- Enchanting ring enchants, the LW bracer, and BS sockets). Public because the Optimize tab runs the
+-- SAME detection for its in-game solve — one implementation, so the addon and the `P:` line it exports
+-- can never disagree. Empty when the client doesn't expose the API or the profession isn't one we model.
+function ns.Exporter.detectProfessions()
+  local out = {}
+  if type(GetProfessions) ~= "function" or type(GetProfessionInfo) ~= "function" then return out end
+  local known = {}
+  for _, n in ipairs(ns.engine.Professions.PROFESSION_NAMES) do known[n] = true end
+  local ok, p1, p2 = pcall(GetProfessions)
+  if not ok then return out end
+  for _, idx in ipairs({ p1 or false, p2 or false }) do
+    if idx then
+      local ok2, name = pcall(GetProfessionInfo, idx)
+      if ok2 and name and known[name] then out[#out + 1] = name end
+    end
+  end
+  return out
+end
+
 -- Public: build the full export string + item count.
 function ns.Exporter.build()
-  local lines = { "TGS" .. VERSION, characterLine(), "T:" .. talentString(), "TR:" .. talentRanks() }
+  -- P: (v12) — the professions line, so the website can default its two dropdowns to what the player
+  -- actually has instead of guessing Enchanting. Written even when empty ("P:"), so an export from a
+  -- profession-less character reads as "none", not as an older addon that couldn't say.
+  local lines = { "TGS" .. VERSION, characterLine(), "T:" .. talentString(), "TR:" .. talentRanks(),
+    "P:" .. table.concat(ns.Exporter.detectProfessions(), ";") }
   for _, l in ipairs(scanGear()) do lines[#lines + 1] = l end
-  return table.concat(lines, "\n"), #lines - 4
+  return table.concat(lines, "\n"), #lines - 5
 end
 
 -- Public: build + stash into SavedVariables (flushed on /reload or logout) and return the text.

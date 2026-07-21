@@ -210,3 +210,22 @@ test('rejects non-export text; handles CRLF', () => {
   assert.throws(() => parseExport('hello'), /Tankadin Gear Sim export/);
   assert.equal(parseExport(V2.replace(/\n/g, '\r\n')).items.length, 3);
 });
+
+// --- P: professions line (v12) -------------------------------------------------------------------
+// The site defaults its two profession dropdowns from this. Professions gate real recommendations
+// (JC-only gems, Enchanting ring enchants, the LW bracer, BS sockets), so the parse has to keep
+// "the addon told us none" distinct from "the addon is too old to tell us" — the site treats the
+// first as an answer and the second as a reason to leave the existing selection alone.
+test('parses the P: professions line, distinguishing empty from absent', () => {
+  const p = (line) => parseExport(['TGS12', 'C:name=x', line].filter(Boolean).join('\n')).professions;
+  assert.deepEqual(p('P:Blacksmithing;Jewelcrafting'), ['Blacksmithing', 'Jewelcrafting']);
+  assert.deepEqual(p('P:Enchanting'), ['Enchanting']);
+  assert.deepEqual(p('P:'), [], 'an empty P: means the addon looked and found none');
+  assert.equal(p(null), null, 'no P: line at all (pre-v12 export) is UNKNOWN, not empty');
+  assert.equal(parseExport('TGS11\nC:name=x').professions, null);
+});
+
+test('the P: line tolerates stray whitespace and empty entries', () => {
+  const parsed = parseExport(['TGS12', 'C:name=x', 'P:Enchanting; ;Jewelcrafting'].join('\n'));
+  assert.deepEqual(parsed.professions, ['Enchanting', 'Jewelcrafting']);
+});
