@@ -293,16 +293,30 @@ local function talentString()
   return table.concat(out)
 end
 
-local function talentRanks()
-  local parts = {}
+-- Public: the player's talents as { [name] = rank }. Public because the Optimize tab feeds this
+-- STRAIGHT to the optimizer (Runner's `talentRanks` option): without it the engine falls back to its
+-- default build — Anticipation 5, Toughness 5, Sacred Duty 2, Combat Expertise 5 — which silently
+-- gives a differently-specced player armor, stamina and defense they do not have. The `TR:` export
+-- line is the same table, flattened.
+function ns.Exporter.talentRanks()
+  local out = {}
   local tabs = (type(GetNumTalentTabs) == "function" and GetNumTalentTabs()) or 3
   for t = 1, tabs do
     local n = (type(GetNumTalents) == "function" and GetNumTalents(t)) or 0
     for i = 1, n do
       local name, _, _, _, rank = GetTalentInfo(t, i)
-      if name then parts[#parts + 1] = name .. "=" .. tostring(rank or 0) end
+      if name then out[name] = rank or 0 end
     end
   end
+  return out
+end
+
+local function talentRanksLine()
+  local parts = {}
+  for name, rank in pairs(ns.Exporter.talentRanks()) do
+    parts[#parts + 1] = name .. "=" .. tostring(rank)
+  end
+  table.sort(parts) -- pairs() order is arbitrary; sort so the export line is stable between runs
   return table.concat(parts, ";")
 end
 
@@ -331,7 +345,7 @@ function ns.Exporter.build()
   -- P: (v12) — the professions line, so the website can default its two dropdowns to what the player
   -- actually has instead of guessing Enchanting. Written even when empty ("P:"), so an export from a
   -- profession-less character reads as "none", not as an older addon that couldn't say.
-  local lines = { "TGS" .. VERSION, characterLine(), "T:" .. talentString(), "TR:" .. talentRanks(),
+  local lines = { "TGS" .. VERSION, characterLine(), "T:" .. talentString(), "TR:" .. talentRanksLine(),
     "P:" .. table.concat(ns.Exporter.detectProfessions(), ";") }
   for _, l in ipairs(scanGear()) do lines[#lines + 1] = l end
   return table.concat(lines, "\n"), #lines - 5

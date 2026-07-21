@@ -1501,3 +1501,32 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     detection was exercised under wasmoon with stubbed `GetProfessions`/`GetProfessionInfo` across
     five paths (unmodeled profession filtered out, both modeled, only one learned, API missing, API
     erroring). 161/161 JS tests, all 8 Lua parity harnesses green.
+
+- **The addon reads real talents, and says when re-gemming would beat the set it's showing
+  (`Exporter.lua`, `UI.lua`).** Found while explaining why the site and the addon disagreed on the
+  Survival set for the same character and the same sliders. Reproducing both against the player's live
+  export isolated the cause to ONE knob — the site's keep-scope was "Keep all completed", the addon is
+  hardcoded to "keep current set as-is" — and turned up a second, latent bug on the way.
+  - **Talents (the latent bug).** `UI.Optimize` never passed `talentRanks`, so the in-game optimizer
+    fell back to the engine's default build. The reporting player happens to run exactly that build,
+    so it was invisible to them and a silent wrong answer for anyone else. `detectProfessions`'s
+    sibling `ns.Exporter.talentRanks()` now returns the live spellbook ranks as a table (the `TR:`
+    export line is the same table flattened, now sorted so the line is stable), and the Optimize tab
+    feeds it to the solver.
+  - **Why the addon doesn't just re-gem.** Its whole contract is that a set is what you'd have the
+    moment you equip it — a recommendation you can't act on without a jewelcrafter isn't one. But
+    staying silent about the option made the site look like it was contradicting the addon.
+  - **So the addon now runs the goals TWICE**: the real (as-is) solve renders first, then a background
+    pass with re-gemming allowed. Where the second beats the first ON THAT GOAL'S OWN OBJECTIVE (not
+    merely on EHP — a tankier set with a worse blend isn't an upgrade) the card gains a line naming
+    what the EHP and spell power could be and the delta, pointing at the site. Below a 0.2% gain it
+    stays quiet. Measured on the reporting player's gear: Raid Threat gains nothing (which is exactly
+    why that set matched the site), Survival +1.12% (36,702 -> 39,721 EHP for -92 SP), Sunwell +4.09%,
+    Brutallus +6.14%.
+  - The second pass is cancelled whenever a new solve starts, so a CTA can never describe stale gear,
+    and a failure in it is swallowed — the answer you can act on must not depend on the side quest.
+  - **Note (not fixed here):** on the Illidan goal the re-gem pass scored 0.40% BELOW the as-is set.
+    The monotonicity guard only protects the gems WITHIN a chosen selection; it can't stop the re-gem
+    run from picking a different item selection whose ceiling is lower. So "re-gem everything" is not
+    yet an improvement operator at the SELECTION level, the way the equipped-set floor made the
+    optimizer one against your worn gear. Same class of problem, one level up.

@@ -28,6 +28,10 @@ local optCards, optStatus, optButton, optSubs, optPageLabel, optPageBtn
 local trinketList = {} -- [{ itemId, name }] owned trinkets, refreshed when the Optimize tab opens
 local ddIcon, ddEye    -- the two trinket-lock UIDropDownMenu frames
 local optRun -- active async handle (so re-clicking cancels the prior run)
+-- Second, OPTIONAL solve: the same goals with re-gemming/re-enchanting allowed. Kicked off only after
+-- the real (as-is) sets are on screen, so the answer you can act on right now is never delayed by it.
+-- optRegem = { [goalId] = result }; nil until that pass finishes. See regemLine().
+local optRegemRun, optRegem
 -- Optimize card pager (keeps the column short): 0 = the four tunable "core" goals, 1 = the always-on
 -- encounter sets. optResults holds the last solve so flipping the page just re-paints. paintCards is
 -- forward-declared (assigned near renderOptimize) so the pager button, built earlier, can call it.
@@ -447,7 +451,12 @@ local function buildFrame()
     local l3 = opt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     l3:SetPoint("TOPLEFT", opt, "TOPLEFT", 16, cy - 34); l3:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy - 34)
     l3:SetJustifyH("LEFT"); l3:SetWordWrap(false)
-    optCards[i] = { head = head, l2 = l2, l3 = l3 }
+    -- l4: the re-gem call-to-action. Blank unless the second (re-gem allowed) pass beat this set —
+    -- see regemLine(). Sits in the 12px the 62px card pitch leaves under l3.
+    local l4 = opt:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    l4:SetPoint("TOPLEFT", opt, "TOPLEFT", 16, cy - 48); l4:SetPoint("TOPRIGHT", opt, "TOPRIGHT", -8, cy - 48)
+    l4:SetJustifyH("LEFT"); l4:SetWordWrap(false)
+    optCards[i] = { head = head, l2 = l2, l3 = l3, l4 = l4 }
     cy = cy - 62
   end
   if paintCards then paintCards() end -- init the pager label/button text (cards stay blank until Optimize)
@@ -455,7 +464,7 @@ local function buildFrame()
   optSubs:SetPoint("BOTTOMLEFT", 10, 6); optSubs:SetPoint("BOTTOMRIGHT", -22, 6); optSubs:SetJustifyH("LEFT")
   -- Two lines, each short enough to NOT wrap at the 380px min width (a wrapped footer overlaps the cards):
   -- line 1 the gem note, line 2 the bare sim URL (still the click-to-copy target below).
-  optSubs:SetText("Keeps gems/enchants; profs & faction auto. Sim:\n"
+  optSubs:SetText("Sets keep your gems/enchants; talents/profs/faction auto. Sim:\n"
     .. color(CYAN, "npc6388.github.io/Lollerskates-Tankadin-Gear-Sim"))
   -- The footer's a plain FontString (can't be Ctrl+C'd in-game), so a transparent button over it pops a
   -- dialog with the URL pre-selected to copy — WoW can't open a browser from an addon.
@@ -551,6 +560,32 @@ local function detectProfessions()
   return (ns.Exporter and ns.Exporter.detectProfessions and ns.Exporter.detectProfessions()) or {}
 end
 
+-- What re-gemming/re-enchanting COULD buy for a goal, as a call-to-action line. The addon's own sets
+-- never touch your gems or enchants — its numbers are what you'd have the moment you equip the set —
+-- so a set that needs a trip to the jewelcrafter is not an answer it can give. It can still tell you
+-- the answer EXISTS and what it's worth: optRegem holds a second solve with re-gemming allowed, and
+-- this returns the gain when that beats the as-is set ON THAT GOAL'S OWN OBJECTIVE (the same score the
+-- optimizer maximizes — a set with more EHP but a worse blend isn't an upgrade). nil when there's no
+-- material gain, so the line stays blank rather than nagging.
+local REGEM_EPS = 0.002 -- ignore <0.2% objective gains: inside the noise, not worth a CTA
+local function regemLine(r)
+  local alt = optRegem and optRegem[r.goal.id]
+  if not alt or not alt.legal then return nil end
+  local Scoring = ns.engine.Scoring
+  local objScale = Scoring.blendScale(r.goal.ratio)
+  local now, could = Scoring.score(r.agg._raw, objScale), Scoring.score(alt.agg._raw, objScale)
+  if could <= now * (1 + REGEM_EPS) then return nil end
+  -- Show the two numbers the cards already lead with, so the trade is legible at a glance.
+  local dEHP = alt.evald.ehpPhysical - r.evald.ehpPhysical
+  local dSP = (alt.agg.spellPowerLiteral or alt.agg.spellPower) - (r.agg.spellPowerLiteral or r.agg.spellPower)
+  local parts = {}
+  if math.abs(dEHP) >= 1 then parts[#parts + 1] = string.format("%+d EHP", dEHP) end
+  if math.abs(dSP) >= 1 then parts[#parts + 1] = string.format("%+d SP", dSP) end
+  return "Re-gem/enchant could reach " .. num(alt.evald.ehpPhysical) .. " EHP / "
+    .. num(alt.agg.spellPowerLiteral or alt.agg.spellPower) .. " SP"
+    .. ((#parts > 0) and (" (" .. table.concat(parts, ", ") .. ")") or "") .. " - plan it on the sim site"
+end
+
 -- Fill the visible cards from the active pager page (core 4 goals, or the encounter sets). Called on a
 -- fresh solve (via renderOptimize, which stores the results) and whenever the pager button flips pages.
 paintCards = function()
@@ -566,7 +601,7 @@ paintCards = function()
   for i, card in ipairs(optCards) do
     local r = list[i]
     if not r then
-      card.head:SetText(""); card.l2:SetText(""); card.l3:SetText("")
+      card.head:SetText(""); card.l2:SetText(""); card.l3:SetText(""); card.l4:SetText("")
     else
       local e, a = r.evald, r.agg
       local legalTxt = r.legal and "" or color(BAD, " illegal")
@@ -604,6 +639,8 @@ paintCards = function()
         color(GOLD, "EHP/HP ") .. color(CYAN, num(e.ehpPhysical)) .. color(DIM, " / ") .. color(CYAN, num(e.health))
         .. color(GOLD, "   Avoid ") .. color(CYAN, pct(e.actualAvoidance))
         .. color(GOLD, "   Block ") .. color(CYAN, num(e.blockValue)))
+      local cta = regemLine(r)
+      card.l4:SetText(cta and color(GOLD, cta) or "")
     end
   end
 end
@@ -621,7 +658,11 @@ function UI.Optimize()
     optStatus:SetText(color(BAD, "Optimizer not loaded.")); return
   end
   if optRun and optRun.isRunning and optRun.isRunning() then optRun.cancel() end
-  for _, c in ipairs(optCards) do c.head:SetText(""); c.l2:SetText(""); c.l3:SetText("") end
+  -- Drop any in-flight re-gem pass too: its answer belongs to the PREVIOUS gear/slider state, and a
+  -- stale CTA claiming a gain that no longer exists is worse than no CTA.
+  if optRegemRun and optRegemRun.isRunning and optRegemRun.isRunning() then optRegemRun.cancel() end
+  optRegem = nil
+  for _, c in ipairs(optCards) do c.head:SetText(""); c.l2:SetText(""); c.l3:SetText(""); c.l4:SetText("") end
 
   local items = ns.ItemPool.scan()
   local faction = ns.engine.Enchants and ns.engine.Enchants.detectFaction(items) or nil
@@ -670,15 +711,42 @@ function UI.Optimize()
         ratio = g.ratio, gates = gates, lockEye = g.lockEye, enc = g.enc }
     end
   end
+  -- Talents come from the live spellbook, NOT the engine's defaults. Without this the optimizer
+  -- assumes the reference build (Anticipation 5 / Toughness 5 / Sacred Duty 2 / Combat Expertise 5)
+  -- and hands a differently-specced player armor, stamina and defense skill they don't actually have.
+  local talentRanks = ns.Exporter and ns.Exporter.talentRanks and ns.Exporter.talentRanks() or nil
+  local baseOpts = { buff = buff, professions = professions, faction = faction,
+    trinketLocks = trinketLocks, goals = goals, talentRanks = talentRanks }
+  local function opts(extra)
+    local o = {}
+    for k, v in pairs(baseOpts) do o[k] = v end
+    for k, v in pairs(extra or {}) do o[k] = v end
+    return o
+  end
+
+  -- The second pass: identical goals, but the solver may re-gem and re-enchant. Its sets are NOT
+  -- offered as recommendations (the addon only ever hands back gear you can equip as-is) — they exist
+  -- to answer "would a trip to the jewelcrafter be worth it?", which the cards then say out loud.
+  local function startRegemPass()
+    optRegemRun = ns.Async.optimizeSets(items, opts({ keepGemsEnchants = nil }),
+      function(alt)
+        optRegem = {}
+        for _, r in ipairs(alt) do optRegem[r.goal.id] = r end
+        paintCards() -- repaint in place: the CTA lines appear under whichever cards gained
+      end,
+      nil,
+      function() optRegem = nil end) -- a failed side-quest must never disturb the real result
+  end
+
   optRun = ns.Async.optimizeSets(items,
-    { buff = buff, professions = professions, faction = faction, trinketLocks = trinketLocks,
-      goals = goals, keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } },
+    opts({ keepGemsEnchants = { itemIds = keepAll, ignoreCompleteness = true } }),
     function(results) -- onDone
       optButton:SetEnabled(true)
       renderOptimize(results)
       if ns.Minimap and ns.Minimap.SetSets then ns.Minimap.SetSets(results) end -- feed the minimap flyout
       optStatus:SetText(color(GOOD, string.format("Done · %d items · %s · %s",
         #items, profTxt, faction or "both factions")))
+      startRegemPass()
     end,
     function(done, total) -- onProgress
       optStatus:SetText(color(DIM, string.format("Solving %d/%d...", done, total)))

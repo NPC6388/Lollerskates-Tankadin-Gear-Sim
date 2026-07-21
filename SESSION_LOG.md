@@ -4,7 +4,27 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
-## 2026-07-20 (latest) — Site auto-selects the player's professions
+## 2026-07-20 (latest) — Why the site and addon disagreed, + addon talents/re-gem CTA
+
+Player asked why the site and the addon produced different Survival sets from the same SavedVariables
+with the same sliders. Reproduced both against their live export: the addon row (36,702 EHP / 591 SP /
+5.38% hit) and the site row (36,769 / 576+35 / 3.95%) both fall out exactly, and a 16-cell grid over
+keep-scope x imbued-meta x phase pinned it to ONE knob — the site was on "Keep all completed", the
+addon is hardcoded to "keep current set as-is". Raid Threat matched because that set sits on
+already-completed gear, so the scope didn't bite. Site default was already "Re-gem everything"; theirs
+came from the sticky `#s=` share-state the site writes into the URL via history.replaceState.
+
+Two changes out of it (v0.8.50): the addon now passes live `talentRanks` (it had been assuming the
+engine's default build for everyone — invisible to this player, who runs exactly that build), and each
+card now carries a re-gem CTA sourced from a second background solve with re-gemming allowed.
+
+Open item worth picking up: the re-gem pass scored 0.40% BELOW the as-is set on the Illidan goal. The
+monotonicity guard only covers gems within a fixed selection, so re-gem mode is not an improvement
+operator at the SELECTION level — the same problem the equipped-set floor solved one level down.
+
+---
+
+## 2026-07-20 — Site auto-selects the player's professions
 
 The site hardcoded Enchanting for everyone. Professions gate actual recommendations (JC gems, BS
 sockets, LW bracer, Enchanting ring enchants), so that default was handing some players enchants they

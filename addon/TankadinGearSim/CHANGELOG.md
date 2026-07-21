@@ -3,6 +3,19 @@
 This is the player-facing changelog shipped with the addon (and used as the release notes on
 GitHub/CurseForge). The full development log lives in the repo's root `CHANGELOG.md`.
 
+## v0.8.50
+
+- **The optimizer now reads your actual talents.** It was assuming the reference build (Anticipation
+  5, Toughness 5, Sacred Duty 2, Combat Expertise 5) for everyone, which handed a differently-specced
+  paladin armor, stamina and defense skill they don't have. Your live spec is now fed straight into
+  the solve, so the numbers on the cards are yours.
+- **Cards now tell you when re-gemming would beat the set you're being shown.** The addon still never
+  re-gems or re-enchants — its sets are what you'd have the moment you equip them — but after the
+  solve it quietly runs the same goals a second time WITH re-gemming allowed. Where that would be a
+  real improvement, the card adds a line: what the EHP and spell power could be, and how much you'd
+  gain. Planning and applying that is the sim site's job; this just makes sure you know the option
+  exists rather than leaving it invisible.
+
 ## v0.8.49
 
 - **The export now carries your professions, and the website fills its dropdowns in from them.** The
