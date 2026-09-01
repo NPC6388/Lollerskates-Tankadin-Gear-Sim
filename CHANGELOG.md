@@ -1633,6 +1633,11 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     export's Raid goal, roughly +70% on a full 7-goal solve). It fires only for a goal that actually
     stalled illegal, at most once per goal — the alternative was an answer that silently ignored the
     setting.
+  - **The v0.8.52 addon ZIP was rebuilt in place, version string unchanged.** The pre-commit hook
+    repacks the zip whenever the addon Lua changes, so `addon/TankadinGearSim-v0.8.52.zip` now carries
+    the fixed `Runner.lua` while still announcing `## Version: 0.8.52`. Anyone who downloaded v0.8.52
+    before this commit has the old solver ordering and gets no update prompt — re-download to pick the
+    fix up. Bump the `.toc` on the next addon release so the two can be told apart.
   - **One test changed with it.** `procs.test.js`'s "nothing beats the worn set" used the threat-set
     fixture, whose Raid goal is *also* a dead-zone stall: with the repair it now finds a legal set
     scoring 3887.55 vs the worn 3883.78, so the worn set is no longer best there and `equippedIsBest`

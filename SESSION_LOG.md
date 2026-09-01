@@ -34,8 +34,21 @@ silently answered with the as-is set"; verified it fails when the old order is r
   correctly false. Last session read that same 0.1% as a sidegrade worth suppressing — that suppression
   is what hid this bug. The test now freezes the worn pool's gems (nothing *can* beat it) so it pins
   the flag rather than one fixture's arithmetic.
-- Not shipped as an addon version bump — engine + addon Lua only. Bump the `.toc`/zip when the next
-  addon release goes out.
+- **The v0.8.52 zip was rebuilt in place, version string unchanged.** The pre-commit hook repacks the
+  addon whenever its Lua changes, so the zip on the site carries the fixed `Runner.lua` while still
+  reading `## Version: 0.8.52`. Existing v0.8.52 installs get no update prompt and still have the old
+  ordering — re-download, or bump the `.toc` on the next release so the two are distinguishable.
+
+**Status: shipped.** Commit `dcbf7c1`, fast-forwarded onto `main` and pushed to `origin`; GitHub Pages
+rebuilds from `main`, so the site is live. Working tree clean, 165 JS tests + all 17 Lua parity suites
+green at that commit.
+
+**Pick up here next session:**
+1. Confirm on the live site (hard refresh) that Re-gem everything now re-gems the Raid set — it should
+   show ~11 of 17 slots with gem recommendations, not 17 "Kept".
+2. Re-run `/tgs debug` in-game after re-downloading the addon: still open from two sessions ago whether
+   profession detection reads correctly on the real client (see the verify-profession-detection note).
+3. If live slider drags feel sluggish now, see the cost note above for the two levers.
 
 ---
 
