@@ -1614,3 +1614,30 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   worn-set floor's threat set (e.g. the 818-SP Raid set) is returned unchanged, not displaced by a 0.1%-higher
   EHP sidegrade. Regression test in `procs.test.js` (a tightened target strands the greedy at 103.356% /
   cert 103.40% → illegal without the fix, legal at ~104.7% with it). Runner Lua parity still matches.
+
+- **Fixed: "Re-gem everything" could hand back every piece exactly as worn.** On a well-gemmed
+  character the site would answer the Raid goal with all 17 slots tagged **Kept** — the option looked
+  like it was being ignored. Two correct-in-isolation guards were fighting, and the order decided it:
+  the **as-is floor** substitutes the fully-kept set for *any* illegal answer, and the **dead-zone
+  recovery** (added just above) repairs a solve stranded between the raw crush cap and the cert margin
+  — but it ran *after* the floor, guarded on `!r.legal`. The floor had already made `r` legal by
+  swapping in the as-is set, so the repair never fired on the very answers it exists for. Measured on
+  the live export: the Raid solve reached 3997 but stalled at 102.50% avoidance (cert 102.70), the
+  floor replaced it with the 3882 as-is set, and every piece came back "Kept". The repair now runs
+  **first**, on the raw solve, and the floor grades whatever survives: same gear, same goal, the answer
+  is now a legal 4029 that re-gems 11 of 17 slots (+59 SP, +278 HP over keeping the gems). Both floors
+  are unchanged and still bind — re-gemming still can't return less than keeping your gems, and the
+  worn set still wins ties. JS `src/runner.js` + Lua `Runner.lua`; regression test in
+  `keep-gems.test.js` (fails on the old order).
+  - **Cost:** a stalled goal now pays for one extra sweep it previously skipped (~0.4s on the live
+    export's Raid goal, roughly +70% on a full 7-goal solve). It fires only for a goal that actually
+    stalled illegal, at most once per goal — the alternative was an answer that silently ignored the
+    setting.
+  - **One test changed with it.** `procs.test.js`'s "nothing beats the worn set" used the threat-set
+    fixture, whose Raid goal is *also* a dead-zone stall: with the repair it now finds a legal set
+    scoring 3887.55 vs the worn 3883.78, so the worn set is no longer best there and `equippedIsBest`
+    is correctly false. The last session saw that same 0.1% and read it as a sidegrade to suppress;
+    it is really the equipped floor working as specified (strictly-better sets pass, ties go to your
+    gear), and suppressing it was what hid this bug. The test now pins the flag on a case where
+    nothing *can* beat the worn set — the worn pool with its gems frozen — so it tests the floor
+    rather than one fixture's arithmetic.

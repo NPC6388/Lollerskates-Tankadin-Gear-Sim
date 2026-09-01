@@ -1031,6 +1031,22 @@ function Runner.optimizeSets(items, options)
   -- itself illegal (a flagged near-miss is the honest output there).
   local function solveGoal(g, gseed)
     local r = solveGoalRaw(g, gseed)
+    -- DEAD-ZONE RECOVERY (mirrors runner.js). The greedy solve can stall on a set whose ONLY failing gate
+    -- is the crush CERTIFICATION margin (the raw 102.4 cap is cleared — encUncrush true — but not
+    -- cap+margin, the ratings-vs-sheet band) even where the gear can reach a legal set. Re-solve with the
+    -- recovery sweep raised to the cert target. Skipped when the raw cap itself is unmet (the default
+    -- recovery already swept and found nothing) or when Min-HP is the blocker (hpBestEffort — genuinely
+    -- unreachable, honestly flagged).
+    -- RUNS BEFORE THE AS-IS FLOOR, and that order is the point: the floor below substitutes the as-worn
+    -- set for ANY illegal answer, so with this after it a dead-zone stall was never repaired — it was
+    -- silently swapped for the fully-kept set, which on a well-gemmed character made "re-gem everything"
+    -- hand back all 17 pieces as worn. Guarded on `not r.legal`, so an already-legal solve is unperturbed.
+    local lrEnc = g.enc or ctx.encounter or nil
+    local lrCrushReq = (not g.gates) or (g.gates.requireUncrushable ~= false)
+    if (not r.legal) and lrCrushReq and (not r.hpBestEffort) and encUncrush(r.evald, lrEnc) then
+      local rec = solveGoalRaw(g, gseed, ctx, true)
+      if rec.legal then r = rec end
+    end
     -- AS-IS FLOOR (re-gem mode only, mirrors runner.js): keeping the gems already in the gear is
     -- attainable by definition, so re-gemming must never return LESS than the same solve with them
     -- kept. A legal set beats a flagged best-effort one; otherwise compare on the goal's objective.
@@ -1044,19 +1060,6 @@ function Runner.optimizeSets(items, options)
         out.goal = g
         r = out
       end
-    end
-    -- LAST-RESORT dead-zone recovery (mirrors runner.js). If the floors above still leave an ILLEGAL answer
-    -- whose ONLY failing gate is the crush CERTIFICATION margin (the raw 102.4 cap is cleared — encUncrush
-    -- true — but not cap+margin, the ratings-vs-sheet band), the greedy solve stalled just short of a legal
-    -- set the gear can reach. Re-solve with the recovery sweep raised to the cert target. Guarded on
-    -- `not r.legal`, so whenever any path already produced a legal set this never runs and the answer is
-    -- unperturbed. Skipped when the raw cap itself is unmet (the default recovery already swept and found
-    -- nothing) or when Min-HP is the blocker (hpBestEffort — genuinely unreachable, honestly flagged).
-    local lrEnc = g.enc or ctx.encounter or nil
-    local lrCrushReq = (not g.gates) or (g.gates.requireUncrushable ~= false)
-    if (not r.legal) and lrCrushReq and (not r.hpBestEffort) and encUncrush(r.evald, lrEnc) then
-      local rec = solveGoalRaw(g, gseed, ctx, true)
-      if rec.legal then r = rec end
     end
     local worn = wornSet(g)
     if not worn or not worn.legal or not r.legal then return r end

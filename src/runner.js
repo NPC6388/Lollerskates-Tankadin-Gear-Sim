@@ -919,6 +919,24 @@ export function optimizeSets(items, options = {}) {
   //     output and silently swapping in the worn set would hide that the gates are unreachable.
   const solveGoal = (g, gseed) => {
     let r = solveGoalRaw(g, gseed);
+    // DEAD-ZONE RECOVERY. The greedy solve can stall on a set whose ONLY failing gate is the crush
+    // CERTIFICATION margin (the raw 102.4 cap is cleared — encUncrush true — but not cap+margin, the
+    // ratings-vs-sheet band), even where the gear can reach a legal set (a tankier lean clears the
+    // margin). Re-solve with the recovery sweep raised to the cert target. Skipped when the raw cap
+    // itself is unmet (the default recovery already swept and found nothing) or when Min-HP is the
+    // blocker (hpBestEffort — genuinely unreachable, honestly flagged).
+    // RUNS BEFORE THE AS-IS FLOOR, and that order is the whole point: the floor below substitutes the
+    // as-worn set for ANY illegal answer, so with this after it, a dead-zone stall never got repaired —
+    // it was silently swapped for the fully-kept set instead. On a well-gemmed character that made
+    // "re-gem everything" hand back all 17 pieces as they are (measured on the Raid goal: a 3997 solve
+    // stuck at 102.50 avoidance was replaced by the 3882 as-is set), which reads as the option doing
+    // nothing at all. Guarded on `!r.legal`, so a solve that is already legal is never perturbed.
+    const enc = g.enc || ctx.encounter || null;
+    const crushReq = !g.gates || g.gates.requireUncrushable !== false;
+    if (!r.legal && crushReq && !r.hpBestEffort && encUncrush(r.evald, enc)) {
+      const rec = solveGoalRaw(g, gseed, ctx, true);
+      if (rec.legal) r = rec;
+    }
     // AS-IS FLOOR (re-gem mode only). Keeping the gems already in your gear is always attainable, so
     // "re-gem everything" must never return LESS than the same solve with them kept — otherwise the
     // site contradicts the addon, which is exactly how this was found. The as-worn variant added in
@@ -933,20 +951,6 @@ export function optimizeSets(items, options = {}) {
       // A legal set always beats a flagged best-effort one; otherwise compare on the goal's objective.
       if (!r.legal) r = { ...asIs, goal: g };
       else if (score(asIs.agg._raw, blendScale(g.ratio)) > score(r.agg._raw, blendScale(g.ratio)) + 1e-9) r = { ...asIs, goal: g };
-    }
-    // LAST-RESORT dead-zone recovery. If the floors above still leave an ILLEGAL answer whose ONLY failing
-    // gate is the crush CERTIFICATION margin (the raw 102.4 cap is cleared — encUncrush true — but not
-    // cap+margin, the ratings-vs-sheet band), the greedy solve stalled just short of a legal set the gear
-    // can actually reach (a tankier lean clears the margin). Re-solve with the recovery sweep raised to the
-    // cert target. Guarded on `!r.legal`, so whenever ANY path already produced a legal set (the as-is/worn
-    // floor, or the solve itself), this never runs — a currently-legal answer and its objective are left
-    // exactly as they were. Skipped when the raw cap itself is unmet (the default recovery already swept and
-    // found nothing) or when Min-HP is the blocker (hpBestEffort — genuinely unreachable, honestly flagged).
-    const enc = g.enc || ctx.encounter || null;
-    const crushReq = !g.gates || g.gates.requireUncrushable !== false;
-    if (!r.legal && crushReq && !r.hpBestEffort && encUncrush(r.evald, enc)) {
-      const rec = solveGoalRaw(g, gseed, ctx, true);
-      if (rec.legal) r = rec;
     }
     const worn = wornSet(g);
     if (!worn || !worn.legal || !r.legal) return r;

@@ -4,6 +4,41 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-09-01 — "Re-gem everything" was handing back the whole worn set
+
+**Report:** the site isn't re-gemming everything even with that option selected.
+
+**Reproduced off the live SavedVariables export** (`scratchpad/dbg-regem3.mjs`, counts pieces tagged
+`_gem === 'locked'` per goal): the Raid goal came back **17/17 kept**, every other goal 2–7. So it was
+one goal collapsing entirely, not the option being wired wrong.
+
+**Cause — two guards in the wrong order, in `solveGoal`:**
+1. The greedy solve for Raid landed at **102.502% avoidance**: past the raw crush cap (102.4) but short
+   of the cert margin (102.7) — the dead zone last session fixed. Flagged illegal, score 3997.
+2. The **as-is floor** (`if (!r.legal) r = asIs`) then swapped in the fully-kept set, score 3882.
+3. The **dead-zone recovery** ran *after* that, guarded on `!r.legal` — but `r` was legal by then. It
+   never fired on the case it was written for.
+
+**Fix:** move the recovery ahead of the as-is floor so it repairs the *raw* solve; the floors then grade
+whatever survives. Raid now returns a legal **4029** re-gemming 11/17 slots. JS + Lua both reordered
+(all 17 Lua parity suites pass). New test `keep-gems.test.js` → "a dead-zone stall is repaired, not
+silently answered with the as-is set"; verified it fails when the old order is restored.
+
+**Watch-outs for next session:**
+- **Cost:** ~+0.4s on a goal that stalls (the extra sweep), ~+70% on the live export's full 7-goal
+  solve — 580ms → 1.19s. Live slider drags are synchronous in `optimizeNow`, so if that feels sluggish
+  the lever is reusing the stalled `runGoal` result instead of re-running it inside `solveGoalRaw`
+  (worth ~60ms of the 420ms) or trimming the 5-lean sweep. Not done — correctness first.
+- **`procs.test.js` "nothing beats the worn set" was rewritten.** Its fixture's Raid goal is also a
+  dead-zone stall, so the repair now finds 3887.55 vs the worn 3883.78 and `equippedIsBest` is
+  correctly false. Last session read that same 0.1% as a sidegrade worth suppressing — that suppression
+  is what hid this bug. The test now freezes the worn pool's gems (nothing *can* beat it) so it pins
+  the flag rather than one fixture's arithmetic.
+- Not shipped as an addon version bump — engine + addon Lua only. Bump the `.toc`/zip when the next
+  addon release goes out.
+
+---
+
 ## 2026-07-21 — Survival "illegal" dead zone, the P3–P5 link, and a broken Node
 
 Three things, from a screenshot of the addon (user wearing their Balanced set, ran Optimize) where

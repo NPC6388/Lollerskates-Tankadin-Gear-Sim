@@ -126,16 +126,21 @@ test('a solved set never scores below the equipped set it could have kept', () =
   assert.ok(!freed.equippedIsBest, 'a real improvement must not be reported as "already best"');
 });
 
+// The pool is exactly the worn pieces and their gems are frozen ("as-is" scope), so NOTHING the solver
+// can do beats the worn set — the answer must be that set, returned with the flag rather than handed
+// back anonymously as a set of 17 "upgrades" that change nothing. (The tie-break is the load-bearing
+// part: the solve scores identically, so only "ties go to the gear you are wearing" keeps the flag.)
 test('when nothing beats the worn set, the result IS the worn set and says so', () => {
   const parsed = parseExport(REAL_EXPORT);
   const items = equippableItems(parsed);
+  const wornIds = new Set(items.filter((i) => i.equipped).map((i) => i.itemId));
   // Stock Raid Threat preset with the locks defaulting to the trinkets actually being worn.
-  const r = optimizeSets(items, {
+  const r = optimizeSets(items.filter((i) => wornIds.has(i.itemId)), {
     buff: 'raid', professions: ['Enchanting'], talentRanks: parsed.talentRanks, maxPhase: 2,
     useImbuedMeta: true, trinketLocks: { icon: 29370, eye: 30447 },
+    keepGemsEnchants: { itemIds: [...wornIds], ignoreCompleteness: true },
   }).find((x) => x.goal.id === 'raid');
   assert.equal(r.equippedIsBest, true, 'raid goal should report the equipped set as already best');
-  const wornIds = new Set(items.filter((i) => i.equipped).map((i) => i.itemId));
   for (const it of Object.values(r.selection)) {
     if (it) assert.ok(wornIds.has(it.itemId), `${it.name} is not part of the equipped set`);
   }

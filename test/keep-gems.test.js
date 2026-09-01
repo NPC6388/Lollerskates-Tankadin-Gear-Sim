@@ -174,3 +174,31 @@ test('re-gem mode may keep an individual piece\'s gems when they beat re-gemming
   const keptPieces = Object.values(r.selection).filter((it) => it && it._gem === 'locked');
   assert.ok(keptPieces.length > 0, 'a fully-gemmed threat set should keep at least one piece as worn');
 });
+
+// --- ...and it must not collapse INTO "keep them" either --------------------------------------------
+// The mirror of the invariant above, and the bug it caused. The as-is floor substitutes the fully-kept
+// set for ANY illegal answer, and the greedy solve routinely lands in the crush-certification dead zone
+// (past the raw 102.4 cap, short of cap+margin) — a stall the dead-zone recovery repairs. With the
+// recovery running AFTER the floor it never saw those answers: the floor had already swapped in the
+// as-is set, so "re-gem everything" handed back all 17 pieces exactly as worn and looked like it was
+// ignoring the setting. Order matters, so pin it: on this fixture a strictly better legal set exists,
+// and re-gem mode must find it rather than fall back to the gems already in the gear.
+test('a dead-zone stall is repaired, not silently answered with the as-is set', () => {
+  const parsed = parseExport(REAL_EXPORT);
+  const items = equippableItems(parsed);
+  const opts = { buff: 'raid', professions: ['Enchanting'], talentRanks: parsed.talentRanks,
+    maxPhase: 2, useImbuedMeta: true, trinketLocks: { icon: 29370, eye: 30447 } };
+  const asIs = optimizeSets(items, {
+    ...opts, keepGemsEnchants: { itemIds: items.map((i) => i.itemId), ignoreCompleteness: true },
+  }).find((x) => x.goal.id === 'raid');
+  const r = optimizeSets(items, opts).find((x) => x.goal.id === 'raid');
+  const objScale = blendScale(r.goal.ratio);
+
+  assert.ok(r.legal, 'the raid answer should be legal, not a flagged dead-zone near-miss');
+  assert.ok(score(r.agg._raw, objScale) > score(asIs.agg._raw, objScale) + 1e-9,
+    `re-gem scored ${score(r.agg._raw, objScale).toFixed(2)} vs ${score(asIs.agg._raw, objScale).toFixed(2)} as-is`);
+  const picks = Object.values(r.selection).filter(Boolean);
+  const kept = picks.filter((it) => it._gem === 'locked');
+  assert.ok(kept.length < picks.length,
+    'every single piece came back as-worn — re-gem mode fell back to the kept set');
+});
