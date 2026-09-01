@@ -43,9 +43,25 @@ silently answered with the as-is set"; verified it fails when the old order is r
 rebuilds from `main`, so the site is live. Working tree clean, 165 JS tests + all 17 Lua parity suites
 green at that commit.
 
+**Follow-up, same session — the hint had the same bug in the UI layer.** Screenshot after the hard
+refresh: with "Re-gem everything" selected the site still showed *"your kept gems are frozen … switch
+Gems & enchants to Re-gem everything."* Same root cause one layer up — the hint triggered on a
+`locked` piece in the RESULT, and since the as-worn variant that tag no longer implies the player
+froze anything. Trigger is now the player's settings (`lastKeepScope`, captured at Optimize time
+because the dropdown has no change handler, plus `lockedItemIds`), and the text now says "unlock those
+pieces" when it's per-item locks rather than the scope. The "Kept" glossary entry was reworded to
+admit both meanings. `web/app.js` only — no engine change, no test (this is DOM-string rendering; the
+suite doesn't cover it).
+
+**Lesson worth carrying:** `_gem === 'locked'` / `ps.locked` is now overloaded — "the player froze it"
+vs "the solver kept it by choice". Anything that reads it as a player CONSTRAINT (UI hints, CTAs,
+export notes) needs the keep spec instead. Worth grepping `ps.locked` / `.locked` in `web/app.js` and
+`UI.lua` if another one of these turns up.
+
 **Pick up here next session:**
 1. Confirm on the live site (hard refresh) that Re-gem everything now re-gems the Raid set — it should
-   show ~11 of 17 slots with gem recommendations, not 17 "Kept".
+   show ~11 of 17 slots with gem recommendations, not 17 "Kept" — and that the surplus-avoidance
+   banner is gone in that mode (it should still appear under a keep scope).
 2. Re-run `/tgs debug` in-game after re-downloading the addon: still open from two sessions ago whether
    profession detection reads correctly on the real client (see the verify-profession-detection note).
 3. If live slider drags feel sluggish now, see the cost note above for the two levers.

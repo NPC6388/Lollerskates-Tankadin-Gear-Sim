@@ -81,6 +81,10 @@ let parsed = null;       // full parse (character + items)
 let exportRaw = '';      // raw TGS export text (from the uploaded .lua) — kept here, not in a DOM field
 let activeTab = 0;
 let lastResults = null;  // last optimize results (for the per-set lock button)
+// The keep scope the DISPLAYED results were solved under. The dropdown has no change handler (you
+// have to press Optimize), so reading it at render time can describe a solve that hasn't run yet —
+// and the surplus-avoidance hint below tells the player to change a setting, so it has to be right.
+let lastKeepScope = 'off';
 let loadedSample = false; // true while the displayed results are the demo character (drives the "use your own gear" CTA)
 let faction = null;      // Aldor/Scryer, auto-detected from the equipped shoulder inscription
 const lockedItemIds = new Set(); // item-ids whose gems/enchants are kept across every set
@@ -628,6 +632,7 @@ function optimizeNow(live) {
     // the adjacent set (smooth, monotonic) rather than re-optimizing cold. Fresh runs seed from scratch.
     const seeds = (live && lastResults) ? Object.fromEntries(lastResults.map((r) =>
       [r.goal.id, Object.fromEntries(Object.entries(r.selection).filter(([, it]) => it).map(([s, it]) => [s, it.itemId]))])) : undefined;
+    lastKeepScope = $('keepScope').value;
     const results = optimizeSets(optimizerPool(), {
       professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
       faction, useImbuedMeta: $('imbuedMeta').checked,
@@ -691,7 +696,7 @@ const GLOSSARY = {
   uncrush: 'Uncrushable — crushing blows (an extra ~50% hit) can’t land. Needs miss + dodge + parry + block ≥ 102.4% with Holy Shield up. A hard gate, dropped on AOE Trash (≤72 mobs can’t crush). The Illidan set gates on 101.8% WITHOUT miss (Shear can’t miss); the Sunwell set on the Radiance-reduced avoidance.',
   minhp: 'Min HP — a raid-buffed health floor you set per goal; the optimizer won’t go below it. 10k = effectively off.',
   defgem: 'Def-gemmed — gemmed for avoidance/defense (not threat) to help reach the uncrittable/uncrushable caps.',
-  kept: 'Kept — this item’s existing gems/enchants were preserved (locked), not re-optimized.',
+  kept: 'Kept — this item is used with the gems/enchants already in it, not re-gemmed. Either you froze it (a keep scope, or a per-item lock), or — under “Re-gem everything” — the solver priced re-gemming it and found the gems already in it scored higher.',
 };
 const term = (label, key, cls = '') => `<abbr class="term ${cls}" title="${GLOSSARY[key]}">${label}</abbr>`;
 const fmt = (n) => Math.round(n).toLocaleString();
@@ -1078,13 +1083,17 @@ function setCard(r) {
   const socketNote = anyRecGems
     ? '<div class="socketnote">💎 Verify gems are in the correct sockets on Sixty Upgrades — the export sometimes puts them in the wrong holes.</div>'
     : '';
-  // Surplus avoidance hint: when an uncrushable set sits well OVER the crush cap AND it has kept (frozen)
-  // gems, that surplus is locked in — re-gemming would trim it to the cap and convert it to threat. Only
-  // show it when there's something locked to unfreeze (re-gem mode already trims to the cap on its own).
+  // Surplus avoidance hint: when an uncrushable set sits well OVER the crush cap AND the player has
+  // frozen gems, that surplus is locked in — unfreezing lets the solver trim it to the cap and convert
+  // it to threat. The trigger CANNOT be a locked piece in the result: since re-gem mode gained the
+  // as-worn variant, `ps.locked` also marks a piece the solver was free to re-gem and chose to leave
+  // alone, so this fired in "Re-gem everything" and told the player to switch to the mode they were
+  // already in. Only the player's own settings freeze anything, so only they can trigger the hint —
+  // and the fix is whichever one is actually set.
   const crushSurplus = crushShown - need;
-  const anyLocked = Object.values(r.perSlot).some((ps) => ps.locked);
-  const surplusNote = (crushReq && crushPass && anyLocked && crushSurplus >= 1.5)
-    ? `<div class="tipnote">💡 This set is <b>${crushSurplus.toFixed(1)}%</b> over the ${need}% uncrushable cap, but your <b>kept gems</b> are frozen, so that surplus avoidance can't be re-gemmed into threat. Switch <b>Gems &amp; enchants</b> to <b>“Re-gem everything”</b> (or unlock pieces) to convert it to more spell damage.</div>`
+  const scopeFreezes = lastKeepScope !== 'off';
+  const surplusNote = (crushReq && crushPass && (scopeFreezes || lockedItemIds.size) && crushSurplus >= 1.5)
+    ? `<div class="tipnote">💡 This set is <b>${crushSurplus.toFixed(1)}%</b> over the ${need}% uncrushable cap, but ${scopeFreezes ? 'your <b>kept gems</b> are frozen' : 'the pieces you locked have <b>frozen gems</b>'}, so that surplus avoidance can't be re-gemmed into threat. ${scopeFreezes ? 'Switch <b>Gems &amp; enchants</b> to <b>“Re-gem everything”</b>' : 'Unlock those pieces'} to convert it to more spell damage.</div>`
     : '';
 
   const doll = `<div class="doll">

@@ -1646,3 +1646,17 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
     gear), and suppressing it was what hid this bug. The test now pins the flag on a case where
     nothing *can* beat the worn set — the worn pool with its gems frozen — so it tests the floor
     rather than one fixture's arithmetic.
+
+- **Fixed: the surplus-avoidance hint fired in "Re-gem everything" and told you to switch to the mode
+  you were already in.** The hint ("this set is N% over the cap, but your kept gems are frozen…")
+  triggered on any piece in the result tagged `locked`. That tag used to mean only one thing — the
+  player froze this piece — but since the as-worn variant landed, it ALSO marks a piece the solver was
+  free to re-gem and chose to leave alone because its current gems scored higher. So a perfectly normal
+  re-gem answer lit up a banner telling the player to enable re-gemming. The trigger is now the
+  player's own settings (`lastKeepScope !== 'off'`, or a per-item lock) rather than the result's tags,
+  captured at Optimize time because the scope dropdown has no change handler and reading it at render
+  time can describe a solve that hasn't run yet. The wording follows suit: with pieces locked but the
+  scope open it says to unlock those pieces, not to change the dropdown.
+  - The **"Kept"** badge's glossary entry now states both meanings too — you froze it, *or* the solver
+    priced re-gemming it and the gems already in it won — since on a well-gemmed character the second
+    is now the common case and the old text ("preserved (locked)") read as the first.
