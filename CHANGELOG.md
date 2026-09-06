@@ -1660,3 +1660,117 @@ Notable changes to the sim engine and the companion addon. Newest at the bottom.
   - The **"Kept"** badge's glossary entry now states both meanings too — you froze it, *or* the solver
     priced re-gemming it and the gems already in it won — since on a well-gemmed character the second
     is now the common case and the old text ("preserved (locked)") read as the first.
+
+- **New: a second site tab — "Compare gear" — with a real damage number behind it.** The site could
+  only answer "given everything I own, what are my best sets?" It could not answer the question a
+  raider actually asks when loot drops: *what does this piece do to me?* The new tab does: pick a
+  baseline (your equipped gear, or any of the seven solved sets), pick a slot, and every item you own
+  for that slot is ranked by what it would do to your **EHP** and your **DPS**, with the hard gates
+  checked per candidate. The Optimizer tab keeps the gear + setup panels visible in both views, so
+  professions, buff, phase, scrolls and talents are set once and drive both.
+  - **`src/dps.js` — the threat model finally reaches the product.** `threat.js` has held the guide's
+    entire per-ability math since M1 — Consecration, Holy Shield, both seals, three judgements,
+    Blessing of Sanctuary, Retribution Aura — with every formula pinned against the guide's published
+    table by `reference.test.js`, and **nothing imported it**. The optimizer's "threat" axis is a
+    spell-power proxy through the weight scales, which is the right call for *selection* (under a
+    fixed rotation damage is monotonic in spell power, so the proxy picks the same sets far more
+    cheaply) but useless for *explaining*: "+14 objective points" means nothing to a player, "+5 DPS"
+    means something.
+    - **Threat and damage are the same number here.** The guide publishes its per-ability figures as
+      THREAT, and every ability in a Prot Paladin's rotation is Holy damage under Righteous Fury — so
+      each `threat.js` function is literally `damage * 1.9`. `computeDPS()` sums the validated
+      formulas for the guide's worked-example rotation (SoR + JoR) and divides that one constant back
+      out. No separate damage model, and the guide stays the single source of truth: the tests
+      re-multiply each component by RF and assert it lands on the guide's published threat value
+      (290 / 176 / 188 / 145 / 33 = 832 threat = **438 DPS** at the raid-buffed reference profile).
+    - **Tier bonuses feed the formulas directly** rather than through the scales' spell-power
+      equivalents — Justicar 2pc (+10% seal damage), 4pc (+15/block), Crystalforge 2pc (+15
+      Retribution Aura).
+    - **One derived constant.** Spell crit was the only quantity the forward model never computed
+      (nothing gated on it — the scales price `spellCritRating` directly). `spellCritPct()` is
+      `base + intellect/80 + rating/22.08`, with the base intercept **4.2475%** derived the same way
+      `model.js` derives `baseDodgePct`: the reference profile reads 7.86% spell crit at the 289
+      intellect of the v6 sheet capture, with no spell-crit rating. Low stakes — the judgement is the
+      only crit-carrying ability in this rotation, so a full 1%-point error moves total DPS by well
+      under 1 — but the test records the derivation so neither half can move without the other.
+    - **Retribution Aura is kept honest.** It fires on every boss swing that *lands*, so it is the one
+      component that *falls* as you gear defensively (~2% of the total, at a 2.0s boss swing).
+      Dropping it would have made for a tidier story and a less true number; the per-ability breakdown
+      is one hover away on every DPS figure, so it stays.
+    - **Known omission, stated up front wherever the number appears: no white melee swings.** The
+      addon exports `GetItemStats`, which carries no weapon damage or speed, so swing damage isn't
+      computable from an export at all. Every figure is ABILITY damage and will read a few percent
+      under Details!/Recount. The footnote leads with this rather than burying it, because a damage
+      number — unlike a threat number — is one people can and will check against a meter.
+  - **`src/compare.js` — drop-in slot swaps, priced off the engine's own numbers.** Every other slot is
+    held exactly as the baseline has it and only the chosen slot changes: instant, and the literal
+    question being asked. The *other* question — "now re-optimize the set around this piece" — was
+    already shipped (pin-to-slot + re-solve), so each row hands off to it rather than duplicating the
+    optimizer. Ring/trinket distinctness is enforced (the tool never offers the ring you have in the
+    other finger) and two-handers are excluded.
+    - **The swap is exact, not re-derived.** `runner.js` now records each slot's gem + enchant + socket
+      bonus contribution as `perSlot[k].addedStats`, and carries the solve environment (buffs, talents,
+      professions, phase, faction, objective scale) on the result as `env`. A swap is that sum with one
+      slot's blocks exchanged — so a compared set and the set card it came from **cannot** disagree,
+      and no consumer re-derives gem stats from names or reassembles aggregate options by hand.
+      `compare.test.js` asserts the rebuild reproduces every solved set's aggregate to 1e-9 across all
+      seven goals, and that the worn piece's own row reads exactly 0.00 / 0.00 — the round trip made
+      visible in the UI.
+    - **Meta activation is a whole-set property**, so a swap can darken a meta sitting in another slot.
+      Rather than silently score a dead gem, the affected slots are re-checked against the post-swap
+      colours, the stats are removed, and the row says which meta went dark and why.
+    - **Both gem policies.** *Best-gemmed* (default) gems and enchants each candidate for the
+      baseline's goal — comparing the items themselves. *As it sits* uses what is socketed right now —
+      the honest answer for tonight, where an empty socket costs you.
+  - **The candidate table sorts from its column headings.** Click any of Item / Δ EHP / Δ DPS /
+    Δ Health / Δ Avoid / Gates to sort by it, click again to reverse; the active column shows its
+    direction and carries `aria-sort`, and a new column starts at its most useful direction (biggest
+    gain first, A–Z for names) rather than inheriting the last one's. This replaced a separate
+    "Sort by" dropdown — one control for one job, and it reaches the three columns the dropdown never
+    offered. The comparator lives in `compare.js` (`SORT_KEYS` + `sortRows`) rather than the UI, so it
+    is unit-tested and a column can't be added to the header without a sort behind it. Ties always
+    break on item name ascending whichever way the column points, so equal rows don't reshuffle on
+    every click. The header tooltips are plain hover definitions rather than glossary links, because
+    the glossary's click handler would otherwise fire when you clicked a heading to sort it.
+  - **Clicking an item in any list now equips it, instead of navigating to Wowhead.** Every list —
+    a slot's "also viable" alternates, the BiS reference rows, and the Compare tab's candidates —
+    showed the item as a Wowhead link with the equip action parked in a separate small button beside
+    it, so the obvious gesture did the least useful thing. The whole row is clickable now. The name
+    stays a real Wowhead anchor, because `power.js` keys off the href for the icon, quality colour and
+    hover tooltip — its click is intercepted rather than the anchor being replaced — and a small
+    ↗ button is the way through to Wowhead. That button is deliberately not an anchor: `power.js`
+    iconizes every Wowhead link it finds, so a second one would put a second item icon in every row.
+    Ctrl/Cmd/Shift-click still opens the link, and the row hands the work to its own equip button
+    rather than reimplementing it, so there is still exactly one definition of "equip this item".
+    Rows with nothing to do — the piece already in the set, a BiS entry with no stat data, any
+    candidate row while the baseline is your worn gear (no goal to pin into) — stay plain links.
+  - **The Compare tab is a fitting room, not a one-shot calculator.** Two problems shared one root:
+    clicking a piece did nothing on the "Your equipped gear" baseline (there was no goal to pin into,
+    so those rows were deliberately inert), and there was no way to see what a *series* of changes had
+    done — every delta was measured against the baseline one slot at a time. Now clicking a piece
+    tries it on: it goes into a working set and STAYS there while you look at other slots. The baseline
+    stays frozen, so the readout strip always answers "versus what I started with" — running ΔEHP,
+    ΔDPS, ΔHealth, ΔSpell damage, ΔUncrush and ΔUncrit across every change at once, with a warning
+    when the accumulated changes drop the set below a hard gate. A "Trying on" bar lists each change as
+    <em>old → new</em> with its own undo, plus Reset all; changed slots are marked in the slot rail.
+    Clicking the piece you originally had in a slot takes that change back off. The per-row Δ columns
+    now price against the WORKING set, so a row still answers "what does this do from where I am now",
+    while the strip carries the total — the two questions kept separate rather than conflated.
+    - **The engine generalised from one swap to N** (`applySwaps` in `compare.js`; `evaluateSwap` is
+      now its one-entry case). Meta corrections are folded into the owning slot's `addedStats` rather
+      than carried as a loose extra block, which keeps the (baseStats + addedStats) rebuild exact —
+      and that is precisely what lets a working set be handed straight back in as the next
+      comparison's baseline without drifting. Tests assert the rebuild still holds after three stacked
+      swaps, that applying three at once equals applying them one at a time, and that swapping a slot
+      back to its original restores the original aggregate.
+    - Meta activation is judged once the WHOLE set is assembled rather than per swap, since "2+ blue"
+      is a set-wide property and two swaps can interact — one adding the colour another needs.
+  - **DPS also lands on the Optimizer tab**, since the two tabs should not disagree: a DPS column in the
+    summary table and a Damage-per-second row in each set card's Spell panel, both with the per-ability
+    breakdown on hover. The "How the sim works" panel gains a section stating plainly that **DPS is a
+    readout, not the optimizer's objective** — without it the number looks like something to maximize
+    directly and the guide's reasoning for the spell-power proxy gets lost — plus what is *not*
+    modelled (melee swings, Avenger's Shield, target count, fight timing).
+  - **Site only this pass** — no Lua mirror, no new parity fixture suite; the in-game Live tab still
+    shows no DPS. The 17 Lua parity suites are unaffected: `perSlot.addedStats` and `env` are purely
+    additive, and regenerating `runner_fixtures.lua` produces identical bytes.

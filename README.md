@@ -32,9 +32,10 @@ into a live tank readout and a full set optimizer without leaving the game.
 
 ### 2. The website — the sim at [npc6388.github.io/Lollerskates-Tankadin-Gear-Sim](https://npc6388.github.io/Lollerskates-Tankadin-Gear-Sim/)
 
-The same optimizer, plus a gem/enchant solver, phase selection, and BiS "pretend I own
-this" planning — all running client-side in your browser from the addon's export. The
-Lua port is parity-tested against this JS engine, so the numbers match.
+The same optimizer, plus a gem/enchant solver, phase selection, BiS "pretend I own
+this" planning, and a **Compare gear** tab that prices any item you own slot by slot —
+all running client-side in your browser from the addon's export. The Lua port is
+parity-tested against this JS engine, so the numbers match.
 
 ![Website results paper-doll: a solved set card with per-slot items, gems, enchants, uncrittable and uncrushable pass badges, and the stat panels](docs/assets/site-results-paperdoll.png)
 
@@ -94,6 +95,16 @@ it; it never rehosts it. When a number here needs justifying, it points back to 
 - Same four-set optimizer as the addon, plus a **gem/enchant solver** (weight-driven,
   profession-gated, socket-bonus-worth-it aware) and **phase selection**.
 - **BiS planning** — "pretend I own this" to see the ceiling for a slot or a whole set.
+- **Compare gear tab** — pick a baseline (your equipped gear, or any solved set) and a slot,
+  and every item you own for it is ranked by **ΔEHP** and **ΔDPS**, with the uncrittable /
+  uncrushable / min-HP gates checked per candidate. Sort by any column heading. Click pieces to try
+  them on — they stay in as you move between slots, and the readout tracks the running total against
+  the gear you started with. Gem each candidate optimally or use what's
+  socketed in it right now; one click forces a piece into the slot and re-solves around it.
+- **Damage per second** on every set — the guide's per-ability formulas summed for a fixed rotation,
+  with the breakdown on hover. Abilities only (the export carries no weapon damage, so melee swings
+  aren't modelled), and a readout rather than the optimizer's objective — selection still runs on the
+  spell-power weight scales.
 - Wowhead tooltips on every item link; copy-a-share-link for results.
 - Runs entirely client-side — your export never leaves your browser.
 
@@ -127,6 +138,8 @@ and the website never disagree. For what's landed milestone by milestone, see
 | `src/` | The JS sim engine (source of truth the Lua is parity-tested against). |
 | `web/` + `index.html` | The website front-end served from GitHub Pages. |
 | `docs/` | [`explainer.md`](docs/explainer.md), [`visual-identity.md`](docs/visual-identity.md), asset checklist; screenshots live in `docs/assets/`. |
+| `src/dps.js` | Steady-state ability-DPS rollup over `threat.js` — the readout behind the DPS figures. |
+| `src/compare.js` | Per-slot drop-in gear comparison (ΔEHP / ΔDPS / gates) behind the Compare tab. |
 | `test/` | Engine tests. |
 | `CHANGELOG.md` / `SESSION_LOG.md` | What's landed, newest last. |
 

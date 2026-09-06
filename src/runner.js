@@ -29,8 +29,8 @@ export const DEFAULT_TRINKET_LOCKS = { icon: 29370, eye: 28789 }; // Icon of the
 // Encounter-adjusted crush avoidance / uncrushable (see character.js evaluateSet). `enc` is
 // 'illidan' | 'sunwell' | null (normal boss). Used so the uncrushable gate can demand the extra
 // avoidance those fights need (Illidan's Shear can't miss; Sunwell Radiance cuts miss+dodge).
-const encAvoid = (e, enc) => enc === 'sunwell' ? e.swpAvoidance : enc === 'illidan' ? e.illyAvoidance : e.totalAvoidanceWithHS;
-const encUncrush = (e, enc) => enc === 'sunwell' ? e.swpUncrushable : enc === 'illidan' ? e.illyUncrushable : e.uncrushable;
+export const encAvoid = (e, enc) => enc === 'sunwell' ? e.swpAvoidance : enc === 'illidan' ? e.illyAvoidance : e.totalAvoidanceWithHS;
+export const encUncrush = (e, enc) => enc === 'sunwell' ? e.swpUncrushable : enc === 'illidan' ? e.illyUncrushable : e.uncrushable;
 
 // Preset goals as TUNABLE EHP:threat ratios (blendScale builds the objective). Every goal uses
 // the same EHP↔threat axis; AOE Trash differs only by a relaxed crush gate (trash can't crush).
@@ -68,7 +68,7 @@ export const spellHitPct = (a) => TALENTS.precisionSpellHitPct + ((a._raw && a._
 // EMPTY — GetItemStats returns nothing for librams/relics, so their base field is {} and would
 // otherwise drop real stats like a libram's block rating. Such items have no sockets/enchants,
 // so resolved == base (no double-count).
-const baseOf = (it) => (it.baseStats && Object.keys(it.baseStats).length) ? it.baseStats : (it.stats || {});
+export const baseOf = (it) => (it.baseStats && Object.keys(it.baseStats).length) ? it.baseStats : (it.stats || {});
 const sumInto = (into, s, m = 1) => { for (const [k, v] of Object.entries(s || {})) into[k] = (into[k] || 0) + v * m; };
 const hasSockets = (it) => { const s = it.sockets || {}; return !!(s.red || s.yellow || s.blue || s.meta); };
 
@@ -78,7 +78,7 @@ const hasSockets = (it) => { const s = it.sockets || {}; return !!(s.red || s.ye
 // contributes resolved-minus-base (the gem/enchant delta) on top of baseStats — no re-gemming.
 // `worn` forces the AS-SOCKETED stats (`_wornStats`) rather than a variant's simulated gemming —
 // used by the monotonicity guard, which prices the gems literally sitting in the gear today.
-const lockedDelta = (it, worn = false) => {
+export const lockedDelta = (it, worn = false) => {
   const base = baseOf(it), res = (worn ? it._wornStats : it.stats) || {};
   const out = {};
   for (const k of STAT_KEYS) { const d = (res[k] || 0) - (base[k] || 0); if (d) out[k] = d; }
@@ -423,7 +423,12 @@ function runGoal(goal, items, ctx, seed = {}) {
     const added = {};
     const gemChoices = [];
     for (const p of plans) {
-      sumInto(added, p.plan.stats); // for locked items this delta already includes the kept enchant
+      // Every credit below lands in BOTH the set total and this plan's own `added` bucket. The
+      // per-plan copy is what src/compare.js swaps out to price a single-slot change exactly, off
+      // the engine's own numbers rather than a second derivation from gem names. Observational only.
+      p.added = {};
+      const credit = (st, m = 1) => { sumInto(added, st, m); sumInto(p.added, st, m); };
+      credit(p.plan.stats); // for locked items this delta already includes the kept enchant
       if (p.locked) {
         p.gems = currentGems(p.v);
         p.enchant = currentEnchant(p.v);
@@ -432,7 +437,7 @@ function runGoal(goal, items, ctx, seed = {}) {
         continue;
       }
       const en = bestEnchant(p.v.slot, p.scale, perks, { faction, maxPhase });
-      if (en) sumInto(added, en.enchant.stats);
+      if (en) credit(en.enchant.stats);
       gemChoices.push(...p.plan.choices);
       p.socketBonus = p.v.socketBonus || null;
       // Bonus is ACTIVE if the item's chosen gems can be assigned (in ANY order — the player controls
@@ -445,7 +450,7 @@ function runGoal(goal, items, ctx, seed = {}) {
       // A bonus the relabel newly earns wasn't banked by planItemGems (it forfeited), so credit it now —
       // it's free mitigation the same gems provide once slotted by color. (Reassignment never LOSES a
       // bonus that was tagged-earned, so we only ever add.)
-      if (p.bonusKept && !earnedBefore) sumInto(added, { [p.v.socketBonus.stat]: p.v.socketBonus.value });
+      if (p.bonusKept && !earnedBefore) credit({ [p.v.socketBonus.stat]: p.v.socketBonus.value });
       // Carry the SOCKET COLOR per gem: the export's socket order is unreliable (Lua pairs()), so the
       // bonus only activates if the user places each gem by COLOR — surface that (relabeled) mapping.
       p.gems = p.plan.choices.map((c) => ({ name: c.name, id: c.id || null, socket: c.socket || null }));
@@ -459,7 +464,7 @@ function runGoal(goal, items, ctx, seed = {}) {
       for (const m of p.metas) {
         if (m.active) continue;
         const mg = META_BY_NAME.get(m.name);
-        if (mg) sumInto(added, mg.stats, -1);
+        if (mg) { sumInto(added, mg.stats, -1); sumInto(p.added, mg.stats, -1); }
       }
     }
     const agg = aggregate([...baseStatsList, { stats: added }], aggOpts);
@@ -679,7 +684,10 @@ function runGoal(goal, items, ctx, seed = {}) {
   const perSlot = {};
   for (const [slotKey, it] of Object.entries(res.selection)) {
     const p = plans.find((x) => x.v === it);
-    perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap', locked: it._gem === 'locked', socketBonus: p.socketBonus || null, bonusKept: p.bonusKept } : { gems: [], enchant: null, metas: [], defGemmed: false, locked: false, socketBonus: null, bonusKept: null };
+    // addedStats = everything this slot contributes ON TOP of its baseStats (gems + enchant + any
+    // socket bonus earned, less a kept meta that wouldn't activate). Lets the Compare tab rebuild the
+    // set with one slot replaced without re-deriving any of it. See the `credit` closure in gemSet.
+    perSlot[slotKey] = p ? { gems: p.gems, enchant: p.enchant, metas: p.metas, defGemmed: it._gem === 'cap', locked: it._gem === 'locked', socketBonus: p.socketBonus || null, bonusKept: p.bonusKept, addedStats: p.added || {} } : { gems: [], enchant: null, metas: [], defGemmed: false, locked: false, socketBonus: null, bonusKept: null, addedStats: {} };
     perSlot[slotKey].alternatives = nearAlternatives(slotKey, it);
   }
   // Some effects are valued as EQUIVALENT spell damage so the threat scales score them, but they are
@@ -701,7 +709,12 @@ function runGoal(goal, items, ctx, seed = {}) {
   agg.spellPowerEquiv = spellPowerEquiv;
   agg.spellPowerEquivSource = equivSources.length ? equivSources.join(' + ') : null;
   agg.spellPowerLiteral = Math.max(0, (agg.spellPower || 0) - spellPowerEquiv);
-  return { goal, selection: res.selection, items: res.items, legal: certLegal(evald), evald, agg, gemChoices, metas, perSlot, buffImpact };
+  // `env` is the solve environment, exported so a caller (src/compare.js) can re-aggregate a
+  // MODIFIED selection under exactly the same buffs, talents, professions, phase and faction this set
+  // was solved with. Without it every consumer re-derives aggOpts from the raw options and drifts the
+  // moment a buff channel changes (scrolls' flat armor, the Kings/MotW stacking order, hsBlockBonus).
+  const env = { aggOpts, perks, maxPhase, faction, objScale, metaExclude: ctx.metaExclude || [] };
+  return { goal, selection: res.selection, items: res.items, legal: certLegal(evald), evald, agg, gemChoices, metas, perSlot, buffImpact, env };
 
   // Near-identical alternatives for a slot: OTHER owned items whose objective contribution is within
   // ALT_EPS of the chosen item AND that keep the set legal when swapped in. The objective is LINEAR

@@ -16,6 +16,8 @@ import { CHARACTER, TALENTS, BUFFS } from '../src/model.js';
 import { CAPS, BASE, RATING, THREAT, ARMOR_CONST, crushTargetFor, crushSafeTargetFor } from '../src/constants.js';
 import { BIS, BIS_PHASES } from './bis.js';
 import { BIS_ITEM_DB } from './bis-items.js';
+import { computeDPS } from '../src/dps.js';
+import { compareSlot, candidatesForSlot, sortRows, applySwaps, gatesFor } from '../src/compare.js';
 
 const $ = (id) => document.getElementById(id);
 // The companion guide every constant/scale is transcribed from.
@@ -80,6 +82,17 @@ let items = null;        // equippable items from the export
 let parsed = null;       // full parse (character + items)
 let exportRaw = '';      // raw TGS export text (from the uploaded .lua) — kept here, not in a DOM field
 let activeTab = 0;
+let activeView = 'optimize';   // which site tab is showing ('optimize' | 'compare')
+let resultsReady = false;      // a solve has produced sets to show
+let cmpSlot = 'head';          // the slot the Compare tab is inspecting
+let cmpSortKey = 'dps';        // Compare table sort column (see CMP_COLS / compare.js SORT_KEYS)
+let cmpSortDir = -1;           // -1 descending (biggest gain first), 1 ascending
+// The fitting room. Pieces you click in accumulate here (slotKey -> itemId) ON TOP of the chosen
+// baseline, which stays frozen — so the readout can always answer "versus what I started with",
+// however many slots you've changed. Cleared when the baseline itself changes, since the swaps are
+// only meaningful relative to the set they were made against.
+let cmpSwaps = {};
+let wornBaseline;              // undefined = not solved yet, null = no equipped set available
 let lastResults = null;  // last optimize results (for the per-set lock button)
 // The keep scope the DISPLAYED results were solved under. The dropdown has no change handler (you
 // have to press Optimize), so reading it at render time can describe a solve that hasn't run yet —
@@ -241,6 +254,11 @@ function init() {
     const d = document.querySelector('#logic-panel details'); if (d) d.open = true;
     $('logic-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+  $('siteTabs').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  // Swaps are relative to the set they were made against, so changing the baseline clears them.
+  $('cmpBaseline').addEventListener('change', () => { cmpSwaps = {}; renderCompare(); });
+  $('cmpGemMode').addEventListener('change', renderCompare);
+  applyView();
   renderWeights();
   renderLogic();
   setStep(1); // guide arrow starts on "1 · Your gear"
@@ -463,7 +481,25 @@ function renderLogic() {
       <li><strong>Brutallus</strong> (P5) — a high effective-health <em>goal</em> (aim &gt;20k HP raid-buffed): the crush gate is off and the ratio is pushed to pure survival (EHP + extra stamina, no threat), so it takes all the EHP it can get while still keeping the avoidance the EHP scale values.</li>
     </ul>
 
-    <h4>6 · Gems, enchants &amp; metas</h4>
+    <h4>6 · Damage per second (the DPS readout)</h4>
+    <p class="muted">Each set also shows a <strong>steady-state DPS</strong> figure, summed from the guide's
+      per-ability formulas (Consecration, Holy Shield, Seal and Judgement of Righteousness, Blessing of
+      Sanctuary, Retribution Aura) for one <em>fixed</em> rotation — every one of those formulas is checked
+      against the guide's published table. The guide publishes them as <em>threat</em>; for a Prot Paladin
+      that's the same number &times;1.9, since every ability here is Holy damage under Righteous Fury, which
+      multiplies threat and not damage. Tier bonuses feed the formulas directly (Justicar 2pc +10% seal
+      damage, 4pc +15 per block, Crystalforge 2pc +15 Retribution Aura). Hover any DPS number for the
+      per-ability breakdown, and see the <strong>Compare gear</strong> tab for the full assumption list.</p>
+    <p class="muted"><strong>Abilities only — melee swings aren't included</strong>, because the addon
+      exports the game's item stats and those carry no weapon damage or speed. Expect the figure to sit a
+      few percent under a damage meter.</p>
+    <p class="muted"><strong>DPS is a readout, not the optimizer's objective.</strong> Sets are still
+      selected on the spell-power weight scales above: under a fixed rotation damage is monotonic in spell
+      power, so the proxy picks the same sets far more cheaply than re-summing a rotation for every
+      candidate set. Avenger's Shield, target count and real fight timing aren't modelled either — so the
+      number is a comparison scale between sets, not a prediction of your log.</p>
+
+    <h4>7 · Gems, enchants &amp; metas</h4>
     <ul>
       <li><strong>Per-item socket-bonus worth-it:</strong> for each socketed piece the sim compares filling every socket with the globally best gem (forfeit the bonus) vs colour-matching to earn the socket bonus, and keeps whichever scores higher. Gems are tagged by the <em>socket colour</em> to place them in, since the export's socket order is unreliable.</li>
       <li><strong>Gemming is a lever for the caps:</strong> each socketed item enters as a focus variant (goal gems) and a cap variant (avoidance/defense gems), so the optimizer can keep a higher-threat item and def-gem it when that beats a tankier swap. Once uncrushable it stops over-gemming capped avoidance.</li>
@@ -471,7 +507,7 @@ function renderLogic() {
       <li><strong>Enchants</strong> are profession- and faction-aware (faction auto-detected from your shoulder inscription); <strong>scrolls</strong> add flat stats that help meet the gates with less gear.</li>
     </ul>
 
-    <h4>7 · What you can override</h4>
+    <h4>8 · What you can override</h4>
     <ul>
       <li><strong>Equip</strong> any item (the pick, an "≈ also viable" alternate, or an owned item from the BiS list) to force it into a slot and re-optimize the rest around it.</li>
       <li><strong>Keep gems/enchants</strong> to preserve committed pieces across sets; <strong>lock trinkets</strong> the model can't score (procs/on-use).</li>
@@ -518,6 +554,7 @@ function applyDetectedProfessions(profs) {
 
 function tryParse(text) {
   const raw = (text || '').trim();
+  wornBaseline = undefined;   // a new character: the cached equipped baseline belongs to the old one
   if (!raw) { items = null; $('optimizeBtn').disabled = true; setStatus(''); return; }
   try {
     parsed = parseExport(toExportText(raw));
@@ -623,31 +660,45 @@ function currentGoals() {
 
 // Core optimize + render. `live` skips the button "Optimizing…" toggle and runs synchronously
 // (used by the debounced slider-drag updates so the numbers track the sliders without flicker).
+// Every optimizeSets option the current UI state implies. Factored out of optimizeNow so the
+// Compare tab's "your equipped gear" baseline is solved under EXACTLY the same settings as the four
+// sets it sits beside — professions, buff, phase, scrolls, talents, faction and all. A second,
+// hand-assembled options object is how the two tabs would start quietly disagreeing.
+function buildOptions({ live = false, goals = null } = {}) {
+  // On live slider drags, seed each goal from its previous result so incremental nudges climb from
+  // the adjacent set (smooth, monotonic) rather than re-optimizing cold. Fresh runs seed from scratch.
+  const seeds = (live && lastResults) ? Object.fromEntries(lastResults.map((r) =>
+    [r.goal.id, Object.fromEntries(Object.entries(r.selection).filter(([, it]) => it).map(([s, it]) => [s, it.itemId]))])) : undefined;
+  return {
+    professions: [$('prof1').value, $('prof2').value].filter(Boolean),
+    buff: $('statBuff').value, maxPhase: +$('phase').value,
+    faction, useImbuedMeta: $('imbuedMeta').checked,
+    keepGemsEnchants: buildKeepSpec(), scrolls: [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value),
+    pins: pinnedSlots, exclude: [...excludedItemIds], seeds,
+    talentRanks: parsed.talentRanks,
+    trinketLocks: { icon: num($('lockIcon').value), eye: num($('lockEye').value) },
+    goals: goals || currentGoals(),
+  };
+}
+
 function optimizeNow(live) {
   try {
-    const professions = [$('prof1').value, $('prof2').value].filter(Boolean);
-    const trinketLocks = { icon: num($('lockIcon').value), eye: num($('lockEye').value) };
-    const scrolls = [...document.querySelectorAll('.scroll-cb:checked')].map((c) => c.value);
-    // On live slider drags, seed each goal from its previous result so incremental nudges climb from
-    // the adjacent set (smooth, monotonic) rather than re-optimizing cold. Fresh runs seed from scratch.
-    const seeds = (live && lastResults) ? Object.fromEntries(lastResults.map((r) =>
-      [r.goal.id, Object.fromEntries(Object.entries(r.selection).filter(([, it]) => it).map(([s, it]) => [s, it.itemId]))])) : undefined;
     lastKeepScope = $('keepScope').value;
-    const results = optimizeSets(optimizerPool(), {
-      professions, buff: $('statBuff').value, maxPhase: +$('phase').value,
-      faction, useImbuedMeta: $('imbuedMeta').checked,
-      keepGemsEnchants: buildKeepSpec(), scrolls, pins: pinnedSlots, exclude: [...excludedItemIds], seeds,
-      talentRanks: parsed.talentRanks, trinketLocks, goals: currentGoals(),
-    });
+    const results = optimizeSets(optimizerPool(), buildOptions({ live }));
     lastResults = results;
+    wornBaseline = undefined; // settings may have moved — re-solve the worn baseline on demand
     render(results);
-    if (scrollAfterOptimize) { // sample/upload path: bring the results into view (the "aha" moment)
+    if (activeView === 'compare') renderCompare();
+    if (scrollAfterOptimize) { // sample/upload path: bring the answer into view (the "aha" moment)
       scrollAfterOptimize = false;
-      $('results-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Whichever tab is showing — scrolling to the results panel while Compare is up would target a
+      // hidden element and silently do nothing.
+      $(activeView === 'compare' ? 'compare-panel' : 'results-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   } catch (err) {
     $('summary').innerHTML = `<p class="status err">${err.message || err}</p>`;
-    $('results-panel').hidden = false;
+    resultsReady = true;
+    applyView();
   } finally {
     if (!live) { $('optimizeBtn').disabled = false; $('optimizeBtn').textContent = 'Optimize'; }
   }
@@ -705,8 +756,20 @@ const fmt = (n) => Math.round(n).toLocaleString();
 // as equivalent spell damage for THREAT scoring, but neither is real +spell-power on the tooltip, so
 // they're shown separately (see agg.spellPowerEquiv), not folded into this number.
 const litSP = (a) => (a.spellPowerLiteral != null ? a.spellPowerLiteral : a.spellPower);
+// Steady-state ability DPS for a solved set. Memoized on the result object because the summary row,
+// the set card and the Compare tab's baseline strip all ask for the same figure on one render pass.
+const DPS_CACHE = new WeakMap();
+function setDps(r) {
+  let t = DPS_CACHE.get(r);
+  if (!t) { t = computeDPS(r.agg, { evald: r.evald, items: r.items }); DPS_CACHE.set(r, t); }
+  return t;
+}
 const yesno = (b) => `<span class="badge ${b ? 'yes' : 'no'}">${b ? 'yes' : 'no'}</span>`;
 const wh = (id, text, cls) => `<a class="${cls}" href="https://www.wowhead.com/tbc/item=${id}" target="_blank" rel="noopener">${text}</a>`;
+// The way OUT to Wowhead from a row whose click has been taken over for "equip" (see wireRowActions).
+// Deliberately a <button>, not an <a>: power.js iconizes every Wowhead anchor it finds, so a second
+// anchor would put a second item icon in every row.
+const whOut = (id) => `<button class="wh-out" type="button" data-href="https://www.wowhead.com/tbc/item=${id}" title="Open this item on Wowhead in a new tab">\u2197</button>`;
 // Wowhead's power.js adds the icon + hover tooltip to any item link; fall back to plain text
 // (color by gem color) when we have no id.
 const gemLink = (g) => g.id ? wh(g.id, g.name, 'gem') : `<span class="gem g-${GEM_COLOR[g.name] || 'meta'}">${g.name}</span>`;
@@ -771,8 +834,31 @@ function whRefresh() {
   tryRefresh(8);
 }
 
+// Clicking an item ANYWHERE in a list equips it (or adds it to the plan) instead of following its
+// Wowhead link — the link is still what power.js decorates and what shows the hover tooltip, we just
+// take over the click. The work is delegated to the row's OWN control rather than reimplemented, so
+// there stays exactly one definition of "equip this item" and it can't drift from the button's.
+// Modified clicks (ctrl / cmd / shift) fall through to the anchor, so "open in a new tab" still works.
+function wireRowActions(root) {
+  root.querySelectorAll('.row-act').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('button, abbr')) return;   // the row's own controls and info tooltips
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return; // let a modified click open Wowhead as usual
+      const btn = row.querySelector('.pin-btn, .plan-btn, .cmp-pin');
+      if (!btn) return;
+      e.preventDefault();   // the item name is an <a> to Wowhead — don't follow it
+      btn.click();
+    });
+  });
+  root.querySelectorAll('.wh-out').forEach((b) => b.addEventListener('click', (e) => {
+    e.stopPropagation();  // never let the escape hatch also equip the item
+    window.open(b.dataset.href, '_blank', 'noopener');
+  }));
+}
+
 function render(results) {
-  $('results-panel').hidden = false;
+  resultsReady = true;
+  applyView(); // reveal the results panel only if the Optimizer tab is the one showing
   setStep(3); // guide arrow moves to the results
   $('useOwnCta').hidden = !loadedSample; // only nudge the addon when they're looking at the demo
   const sh = (r) => spellHitPct(r.agg);
@@ -784,9 +870,10 @@ function render(results) {
     : r.goal.enc === 'illidan' ? r.evald.illyAvoidance : r.evald.totalAvoidanceWithHS;
 
   $('summary').innerHTML = `<table><thead><tr>
-      <th>Set</th><th>${term('EHP', 'ehp')}</th><th>Spell&nbsp;dmg</th><th><abbr class="tip" title="Spell-hit cap vs a level-${BASE.raidBossLevel} raid boss is ${CAPS.spellHitCapPct}%. Below it, spell hit recovers missed spell threat; at it, more gives nothing. Hover a set's Spell panel for how far that set is below.">Spell&nbsp;hit</abbr></th><th>Stam</th><th>${term('Uncrush', 'uncrush')}${encName}</th><th>${term('Uncrit', 'uncrit')}</th>
+      <th>Set</th><th>${term('EHP', 'ehp')}</th><th><abbr class="tip" title="Steady-state ability damage per second for the sim's fixed rotation. Hover a value for the per-ability breakdown; the full assumptions are on the Compare tab. Melee swings aren't included — the export carries no weapon damage.">DPS</abbr></th><th>Spell&nbsp;dmg</th><th><abbr class="tip" title="Spell-hit cap vs a level-${BASE.raidBossLevel} raid boss is ${CAPS.spellHitCapPct}%. Below it, spell hit recovers missed spell threat; at it, more gives nothing. Hover a set's Spell panel for how far that set is below.">Spell&nbsp;hit</abbr></th><th>Stam</th><th>${term('Uncrush', 'uncrush')}${encName}</th><th>${term('Uncrit', 'uncrit')}</th>
     </tr></thead><tbody>${results.map((r, i) => `<tr class="${i === activeTab ? 'sel' : ''}">
-      <td>${r.goal.name}</td><td>${fmt(r.evald.ehpPhysical)}</td><td>${fmt(litSP(r.agg))}${r.agg.spellPowerEquiv ? `<abbr class="equiv" title="+${fmt(r.agg.spellPowerEquiv)} threat-equivalent spell damage from ${r.agg.spellPowerEquivSource || 'a relic effect'} (a libram's +Consecration damage, or a proc trinket's buff averaged over its uptime). Not literal spell power — your character sheet and Sixty Upgrades won't show it.">+${fmt(r.agg.spellPowerEquiv)}</abbr>` : ''}</td>
+      <td>${r.goal.name}</td><td>${fmt(r.evald.ehpPhysical)}</td>
+      <td><abbr class="tip" title="${dpsTitle(setDps(r))}">${fmt(setDps(r).total)}</abbr></td><td>${fmt(litSP(r.agg))}${r.agg.spellPowerEquiv ? `<abbr class="equiv" title="+${fmt(r.agg.spellPowerEquiv)} threat-equivalent spell damage from ${r.agg.spellPowerEquivSource || 'a relic effect'} (a libram's +Consecration damage, or a proc trinket's buff averaged over its uptime). Not literal spell power — your character sheet and Sixty Upgrades won't show it.">+${fmt(r.agg.spellPowerEquiv)}</abbr>` : ''}</td>
       <td>${sh(r).toFixed(2)}%</td><td>${fmt(r.agg.stamina)}</td>
       <td>${crushVal(r).toFixed(1)}%</td><td>${yesno(r.evald.raidCritImmune)}</td>
     </tr>`).join('')}</tbody></table>`;
@@ -857,6 +944,7 @@ function render(results) {
   slotDetails.forEach((d) => d.addEventListener('toggle', () => {
     if (d.open) slotDetails.forEach((o) => { if (o !== d && o.open) o.open = false; });
   }));
+  wireRowActions($('sets'));
   whRefresh(); // iconize + quality-color the freshly-rendered item links via Wowhead
 }
 
@@ -985,7 +1073,14 @@ function bisHTML(goalId, slotKey, chosenId) {
       // No stat data for this id (shouldn't happen for real gear) — link only.
       tag = `<span class="bis-miss" title="Not in your loaded gear.">not in your bags</span>`;
     }
-    return `<div class="bis-row"><span class="bis-rank">${i + 1}</span>${wh(b.id, b.name, 'bis-item')}${note}${tag}${ctl}</div>`;
+    // Only rows that actually DO something on click become clickable: the item already in the set,
+    // and a BiS entry we have no stat data for, keep their plain link behaviour.
+    // Match the full class attribute, not a bare substring: 'pin-btn' is also inside 'unpin-btn'.
+    const act = ctl.includes('class="pin-btn"') || ctl.includes('class="plan-btn"');
+    const actTitle = ctl.includes('class="plan-btn"')
+      ? `Click to add this to the sim as a planning item and force it into ${SLOT_LABEL[slotKey]}`
+      : `Click to equip this in ${SLOT_LABEL[slotKey]} and re-optimize the rest of the set around it`;
+    return `<div class="bis-row${act ? ' row-act' : ''}"${act ? ` title="${actTitle}"` : ''}><span class="bis-rank">${i + 1}</span>${wh(b.id, b.name, 'bis-item')}${act ? whOut(b.id) : ''}${note}${tag}${ctl}</div>`;
   }).join('');
   return `<div class="bis-block">
     <div class="bis-h"><abbr class="tip" title="Best-in-slot reference for this slot at Phase ${currentPhase()}, from the community (Wowhead) tank BiS lists. It's a 'what to chase' pointer — independent of your gear, and the optimizer never picks from it. Items you own can be equipped; the rest just link to Wowhead.">Phase ${currentPhase()} BiS</abbr> <span class="bis-src">· community list</span></div>
@@ -1005,8 +1100,8 @@ function slotDropdown(alts, goalId, slotKey, chosenId) {
     const regem = a.dropInLegal === false ? `<abbr class="alt-regem" title="Dropping this in as-is would miss a gate (uncrittable / uncrushable / Min HP) — to use it you'd re-gem another slot for the avoidance, defense or resilience this item gives up.">needs re-gem</abbr>` : '';
     const equip = `<button class="pin-btn" data-goal="${goalId}" data-slot="${slotKey}" data-id="${a.itemId}" title="Force this item into the slot and re-optimize the rest around it">equip</button>`
       + `<button class="excl-btn" data-id="${a.itemId}" title="Exclude this item from all sets">exclude</button>`;
-    return `<div class="ds-alt">
-      <span class="alt-line">${wh(a.itemId, a.name || a.itemId, 'ds-alt-item')}<span class="alt-delta" title="Change to this goal's overall set score">${altDelta(a.objDelta)}</span>${regem}${equip}</span>
+    return `<div class="ds-alt row-act" title="Click to equip this in ${SLOT_LABEL[slotKey]} and re-optimize the rest of the set around it">
+      <span class="alt-line">${wh(a.itemId, a.name || a.itemId, 'ds-alt-item')}${whOut(a.itemId)}<span class="alt-delta" title="Change to this goal's overall set score">${altDelta(a.objDelta)}</span>${regem}${equip}</span>
       ${gc}
     </div>`;
   }).join('');
@@ -1051,6 +1146,360 @@ function buffNote(b, agg) {
     ${part(b.intellect.toFixed(1), 'intellect', `≈+${(b.intellect / INT_PER_SPELLCRIT).toFixed(2)}% spell crit`)},
     ${part(Math.round(b.armor), 'armor', `≈+${drDelta.toFixed(2)}% damage reduction`)}.
     <span class="muted">Buffs add no defense/resilience, so they don't help uncrittable. Set the buff in Sixty Upgrades after import.</span></div>`;
+}
+
+
+// ---- site tabs & the Compare view -------------------------------------------
+// The Optimizer tab answers "given everything I own, what are my best sets?". This one answers the
+// question a raider actually asks when loot drops: "what does THIS piece do to me?" Same engine,
+// same solved set as the baseline — one slot changed at a time (src/compare.js).
+
+// Show only the panels belonging to the active view. The gear + setup panels are tagged for BOTH,
+// so professions/buff/phase/scrolls/talents are set once and drive both tabs.
+function applyView() {
+  document.querySelectorAll('.panel[data-views]').forEach((p) => {
+    const inView = p.dataset.views.split(/\s+/).includes(activeView);
+    // The results panel is meaningless before a solve; the compare panel renders its own empty state.
+    p.hidden = !inView || (p.id === 'results-panel' && !resultsReady);
+  });
+  $('siteTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.view === activeView));
+}
+
+function setView(view) {
+  if (view === activeView) return;
+  activeView = view;
+  applyView();
+  // Entering Compare with gear loaded but nothing solved yet: solve now rather than showing an empty
+  // tab the user has to go back and fix. optimizeNow renders Compare itself when it finishes.
+  if (view === 'compare') {
+    if (items && !lastResults) runOptimize();
+    else renderCompare();
+  }
+}
+
+// "Your equipped gear" as a comparable baseline. It is SOLVED — as a one-item-per-slot pool with
+// every gem and enchant kept exactly as worn — so it comes back in the same shape as the four sets
+// (carrying perSlot.addedStats and the solve env compare.js needs) instead of being a second,
+// divergent path through the model. Its 1:1 EHP:threat objective is used only to gem CANDIDATES in
+// "best-gemmed" mode; the worn pieces themselves are never re-gemmed.
+const WORN_GOAL = { id: 'worn', name: 'Your equipped gear', focus: 'exactly as worn — nothing re-gemmed', ratio: { ehp: 1, threat: 1 }, gates: { raid: true, requireUncrushable: true }, lockEye: false };
+
+function equippedBaseline() {
+  if (wornBaseline !== undefined) return wornBaseline;
+  const worn = (items || []).filter((it) => it.equipped);
+  if (!worn.length) { wornBaseline = null; return null; }
+  try {
+    // Trinket locks, pins and exclusions are all RECOMMENDATION controls — this baseline is a
+    // measurement of what you have on, so they're dropped.
+    const opts = buildOptions({ goals: [WORN_GOAL] });
+    const res = optimizeSets(worn, {
+      ...opts, keepGemsEnchants: { equippedOnly: true, ignoreCompleteness: true },
+      pins: {}, exclude: [], seeds: undefined, trinketLocks: {},
+    });
+    wornBaseline = res[0] || null;
+  } catch { wornBaseline = null; }
+  return wornBaseline;
+}
+
+// key -> solved set. 'worn' is the equipped baseline; everything else is a goal id.
+function baselineFor(key) {
+  if (key === 'worn') return equippedBaseline();
+  return (lastResults || []).find((r) => r.goal.id === key) || null;
+}
+const baselineKey = () => ($('cmpBaseline') && $('cmpBaseline').value) || '';
+const cmpGemMode = () => ($('cmpGemMode') && $('cmpGemMode').value) || 'best';
+
+// Rebuild the baseline dropdown, keeping the current choice when it still exists. Defaults to your
+// equipped gear when the export has one (the "should I equip this drop" case), else the first set.
+function fillBaselineSelect() {
+  const sel = $('cmpBaseline');
+  const prev = sel.value;
+  const opts = [];
+  if (equippedBaseline()) opts.push(['worn', 'Your equipped gear']);
+  for (const r of lastResults || []) opts.push([r.goal.id, r.goal.name]);
+  sel.innerHTML = opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  if (opts.some(([v]) => v === prev)) sel.value = prev;
+  else sel.value = opts.length ? opts[0][0] : '';
+}
+
+const CMP_SLOTS = [...LEFT_SLOTS, ...RIGHT_SLOTS];
+// Signed number with the sim's minus glyph. `flat` (|v| under the display threshold) reads grey, so a
+// swap that changes nothing measurable doesn't look like a win.
+const dClass = (v, eps) => (Math.abs(v) < eps ? 'flat' : v > 0 ? 'up' : 'down');
+const dNum = (v, digits = 0) => {
+  const sign = v > 0 ? '+' : v < 0 ? '−' : '';
+  return sign + Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+};
+function deltaCell(v, { digits = 0, eps = 0.5, base = null } = {}) {
+  const pct = base ? `<span class="delta-sub">${dNum((v / base) * 100, 2)}%</span>` : '';
+  return `<td class="delta ${dClass(v, eps)}"><b>${dNum(v, digits)}</b>${pct}</td>`;
+}
+
+// Per-ability breakdown, as a hover on any DPS figure. The number models a fixed rotation and
+// leaves out melee swings, so it should always be one hover away from saying what it assumed.
+function dpsTitle(t) {
+  const lines = t.parts.map((p) => `${p.name}: ${Math.round(p.dps)} DPS (${p.note})`);
+  return `Steady-state ability damage per second — ${Math.round(t.total)} DPS at ${Math.round(t.spellPower)} spell damage:&#10;&#10;${lines.join('&#10;')}&#10;&#10;Fixed rotation, abilities only (no melee swings). See the assumptions below the table.`;
+}
+
+// Compare table columns. ONE definition drives the header, its tooltip, the sort and the aria state
+// — so a column can't be added to the markup and silently not sort, or sort by the wrong field.
+// The tooltips are plain `.tip` abbrs rather than term() glossary links on purpose: term() has a
+// document-level click handler that jumps to the "How the sim works" panel, which would fire when you
+// clicked the header to sort it. The hover definition is what's wanted here, not the jump.
+const CMP_COLS = [
+  { key: 'name', label: 'Item', tip: 'Sort by item name.' },
+  { key: 'ehp', label: '&Delta; EHP', tip: GLOSSARY.ehp },
+  { key: 'dps', label: '&Delta; DPS', tip: "Change in steady-state ability damage per second. Hover a set's DPS for the per-ability breakdown. Melee swings aren't modelled." },
+  { key: 'health', label: '&Delta; Health', tip: 'Change in raid-buffed health.' },
+  { key: 'avoid', label: '&Delta; Avoid', tip: "Change in the combined avoidance this set's crush gate measures, Holy Shield included." },
+  { key: 'gates', label: 'Gates', tip: 'Sort by whether the set still clears every hard gate with this piece in — passing rows first.' },
+];
+
+// The header row. Every column renders an arrow glyph whether or not it's the active sort, so the
+// column widths don't jump when you click between them; CSS fades the inactive ones back.
+function cmpHeadHTML() {
+  return CMP_COLS.map((c) => {
+    const active = cmpSortKey === c.key;
+    const aria = active ? (cmpSortDir < 0 ? 'descending' : 'ascending') : 'none';
+    const arrow = active ? (cmpSortDir < 0 ? '\u25bc' : '\u25b2') : '\u25be';
+    return `<th class="cmp-th${active ? ' sorted' : ''}" aria-sort="${aria}">
+      <button type="button" class="sort-btn" data-sort="${c.key}" title="${c.tip}">
+        <span>${c.label}</span><span class="sort-arrow">${arrow}</span>
+      </button></th>`;
+  }).join('') + '<th></th>';
+}
+
+// The baseline with everything you've clicked in applied. Returns the frozen baseline itself when
+// nothing has been swapped, so the "no changes yet" path costs nothing.
+function workingSet(base) {
+  const swaps = {};
+  const pool = optimizerPool();
+  for (const [slot, id] of Object.entries(cmpSwaps)) {
+    const it = pool.find((x) => x.itemId === id);
+    if (it) swaps[slot] = it;
+  }
+  if (!Object.keys(swaps).length) return base;
+  try { return applySwaps(base, swaps, { gemMode: cmpGemMode() }); }
+  catch { return base; } // a bad swap must never blank the tab
+}
+
+// The summary line: where you started, where you are now, and the aggregate difference. This is the
+// whole point of keeping the baseline frozen — with several slots changed, the per-row deltas only
+// tell you about the last click, and this tells you whether the session is actually ahead.
+function cmpReadoutHTML(base, work) {
+  const changed = Object.keys(cmpSwaps).length;
+  const bd = setDps(base), wd = changed ? computeDPS(work.agg, { evald: work.evald, items: work.items }) : bd;
+  const crushOf = (r) => r.goal.enc === 'sunwell' ? r.evald.swpAvoidance
+    : r.goal.enc === 'illidan' ? r.evald.illyAvoidance : r.evald.totalAvoidanceWithHS;
+  const stat = (label, val) => `<span class="cr-label">${label}</span> <span class="cr-val">${val}</span>`;
+  const pair = (label, now, was, digits = 0, eps = 0.5, suffix = '') => {
+    const d = now - was;
+    const shown = digits ? now.toFixed(digits) : fmt(now);
+    if (!changed) return stat(label, shown + suffix);
+    return `<span class="cr-label">${label}</span> <span class="cr-val">${shown}${suffix}</span>` +
+      `<span class="cr-delta ${dClass(d, eps)}">${dNum(d, digits)}${suffix}</span>`;
+  };
+  const head = changed
+    ? `<span class="cr-set">${base.goal.name}</span><span class="cr-changed">${changed} slot${changed === 1 ? '' : 's'} changed</span>`
+    : `<span class="cr-set">${base.goal.name}</span>`;
+  return head +
+    pair(term('EHP', 'ehp'), work.evald.ehpPhysical, base.evald.ehpPhysical) +
+    pair('DPS', wd.total, bd.total, 1, 0.05) +
+    pair('Health', work.agg.health, base.agg.health) +
+    pair('Spell dmg', litSP(work.agg), litSP(base.agg)) +
+    pair(term('Uncrush', 'uncrush'), crushOf(work), crushOf(base), 1, 0.005, '%') +
+    pair(term('Uncrit', 'uncrit'), work.evald.critReduction, base.evald.critReduction, 2, 0.005, '%');
+}
+
+// The chips for what you've changed, each removable, plus a reset. Without this a session becomes
+// untraceable after three clicks — you can see the totals moved but not what moved them.
+function cmpChangesHTML(base, work) {
+  const slots = Object.keys(cmpSwaps);
+  if (!slots.length) return '';
+  const pool = optimizerPool();
+  const chips = slots.map((slot) => {
+    const from = base.selection[slot];
+    const to = pool.find((x) => x.itemId === cmpSwaps[slot]);
+    return `<span class="lockchip cmp-chip">${SLOT_LABEL[slot]}: <em>${from ? (from.name || from.itemId) : 'empty'}</em> &rarr; <b>${to ? (to.name || to.itemId) : cmpSwaps[slot]}</b>` +
+      `<button class="cmp-undo" data-slot="${slot}" title="Put the original piece back in this slot">&times;</button></span>`;
+  }).join('');
+  const gate = gatesFor(work.evald, work.agg, base.goal);
+  const bad = [!gate.uncrit && 'uncrittable', gate.uncrush === false && 'uncrushable', gate.minHp === false && 'the Min-HP floor'].filter(Boolean);
+  const warn = bad.length
+    ? `<div class="cmp-gatewarn">&#9888; With these changes the set no longer meets ${bad.join(' or ')}.</div>`
+    : '';
+  const against = base.goal.id === 'worn' ? 'your equipped gear' : `your ${base.goal.name} set`;
+  return `<div class="lockedbar cmp-changes">&#128260; <b>Trying on</b> (against ${against}): ${chips}
+    <button class="ghost cmp-reset" type="button">Reset all</button></div>${warn}`;
+}
+
+function renderCompare() {
+  const panel = $('compare-panel');
+  if (!panel || panel.hidden) return;
+  if (!items) {
+    $('cmpBaseReadout').innerHTML = '';
+    $('cmpSlots').innerHTML = '';
+    $('cmpTable').innerHTML = '<p class="cmp-empty">Load your gear above — or hit <strong>&#9654; Try it with a sample character</strong> — and this tab fills in.</p>';
+    $('cmpNotes').innerHTML = '';
+    return;
+  }
+  fillBaselineSelect();
+  const base = baselineFor(baselineKey());
+  if (!base) {
+    $('cmpTable').innerHTML = '<p class="cmp-empty">Run <strong>Optimize</strong> once and this tab fills in.</p>';
+    return;
+  }
+
+  // Everything below prices against the WORKING set (baseline + what you've clicked in), so a row's
+  // delta always answers "what does this change do from where I am now". The readout strip is the one
+  // place that reaches back to the frozen baseline, for the running total.
+  const work = workingSet(base);
+  $('cmpBaseReadout').innerHTML = cmpReadoutHTML(base, work);
+  $('cmpChanges').innerHTML = cmpChangesHTML(base, work);
+
+  // ---- slot rail ----
+  const pool = optimizerPool();
+  if (!CMP_SLOTS.includes(cmpSlot)) cmpSlot = 'head';
+  $('cmpSlots').innerHTML = CMP_SLOTS.map((k) => {
+    const it = work.selection[k];
+    const n = candidatesForSlot(pool, k, work).length;
+    return `<button type="button" class="cmp-slot${k === cmpSlot ? ' active' : ''}${cmpSwaps[k] ? ' swapped' : ''}" data-slot="${k}">
+      <span class="cs-name">${SLOT_LABEL[k]}${cmpSwaps[k] ? ' &#8226;' : ''}</span>
+      <span class="cs-item${it ? '' : ' empty'}">${it ? (it.name || `Item #${it.itemId}`) : 'empty'}</span>
+      <span class="cs-count">${n} option${n === 1 ? '' : 's'}</span>
+    </button>`;
+  }).join('');
+  $('cmpSlots').querySelectorAll('.cmp-slot').forEach((b) => b.addEventListener('click', () => {
+    cmpSlot = b.dataset.slot;
+    renderCompare();
+  }));
+
+  // ---- candidate table ----
+  const cands = candidatesForSlot(pool, cmpSlot, work);
+  $('cmpNotes').innerHTML = notesHTML(computeDPS(work.agg, { evald: work.evald, items: work.items }));
+  if (!cands.length) {
+    $('cmpTable').innerHTML = `<p class="cmp-empty">Nothing in your collection fits <strong>${SLOT_LABEL[cmpSlot]}</strong>. Add a BiS item to the plan from a slot's dropdown on the Optimizer tab and it shows up here.</p>`;
+    return;
+  }
+  const table = compareSlot(work, cmpSlot, cands, { gemMode: cmpGemMode() });
+  const rows = sortRows(table.rows, cmpSortKey, cmpSortDir);
+  const canPin = base.goal.id !== 'worn'; // pinning targets a solved goal; the worn baseline has none
+
+  const gateChip = (ok, label, title) => ok == null ? ''
+    : `<span class="cmp-gate ${ok ? 'pass' : 'fail'}" title="${title}">${ok ? '✓' : '✗'} ${label}</span>`;
+
+  $('cmpTable').innerHTML = `<table class="cmp-table"><thead><tr>${cmpHeadHTML()}</tr></thead>
+    <tbody>${rows.map((row) => {
+      const gems = (row.gems || []).map((g) => g.name).join(', ');
+      const warn = row.warnings.length ? `<div class="cmp-warn">&#9888; ${row.warnings.join(' ')}</div>` : '';
+      // Every row that isn't already in the slot swaps in on click — that works against ANY baseline,
+      // including your worn gear, because it changes the fitting room rather than re-solving a goal.
+      const act = !row.isBaseline;
+      const isOriginal = base.selection[cmpSlot] && base.selection[cmpSlot].itemId === row.itemId;
+      const actTitle = isOriginal
+        ? `Click to put your original ${SLOT_LABEL[cmpSlot]} back`
+        : `Click to try this in ${SLOT_LABEL[cmpSlot]} — it stays in until you change it back`;
+      return `<tr class="${row.isBaseline ? 'is-baseline' : ''}${row.legal ? '' : ' illegal'}${act ? ' row-act' : ''}"${act ? ` title="${actTitle}"` : ''} data-itemid="${row.itemId}">
+        <td class="cmp-item">
+          <div><span class="cmp-item-name">${wh(row.itemId, row.name, 'cmp-link')}</span>${act ? whOut(row.itemId) : ''}${row.isBaseline ? `<span class="cmp-worn-tag">${cmpSwaps[cmpSlot] ? 'trying on' : 'in this set'}</span>` : ''}${isOriginal && !row.isBaseline ? '<span class="cmp-orig-tag">your original</span>' : ''}${row.owned ? '' : '<span class="cmp-plan-tag">planned</span>'}</div>
+          ${gems ? `<div class="cmp-gems">&#128142; ${gems}</div>` : ''}
+          ${warn}
+        </td>
+        ${deltaCell(row.dEHP, { eps: 0.5, base: table.baseEHP })}
+        ${deltaCell(row.dDPS, { digits: 1, eps: 0.05, base: table.baseDPS })}
+        ${deltaCell(row.dHealth, { eps: 0.5 })}
+        <td class="delta ${dClass(row.dCrushAvoid, 0.005)}"><b>${dNum(row.dCrushAvoid, 2)}%</b></td>
+        <td class="cmp-gatecell">
+          ${gateChip(row.gates.uncrit, 'uncrit', `Crit reduction ${row.gates.uncrit ? 'covers' : 'does NOT cover'} the boss's +${BASE.bossCritVsPlayer}%.`)}
+          ${gateChip(row.gates.uncrush, 'uncrush', `${row.gates.crushShown.toFixed(2)}% against the ${row.gates.crushNeed}% certification target.`)}
+          ${gateChip(row.gates.minHp, 'min HP', `${fmt(row.agg.health)} against the ${fmt(row.gates.minHpNeed)} floor.`)}
+        </td>
+        <td>${row.isBaseline || !canPin ? '' : `<button class="ghost cmp-pin" type="button" data-id="${row.itemId}" title="Send this to the Optimizer: force it into ${SLOT_LABEL[cmpSlot]} on the ${base.goal.name} set and re-solve the other slots around it.">&#128204; Optimize around it</button>`}</td>
+      </tr>`;
+    }).join('')}</tbody></table>
+    ${canPin ? '' : '<p class="cmp-empty">Pick one of the optimized sets as the baseline to force a piece into a slot and re-solve around it.</p>'}`;
+
+  // Clicking a row tries that piece on: it goes into the working set and STAYS there while you look
+  // at other slots, which is what makes the running total against your starting gear meaningful.
+  // Clicking the piece you originally had in the slot takes the change back off.
+  $('cmpTable').querySelectorAll('tr.row-act').forEach((tr) => tr.addEventListener('click', (e) => {
+    if (e.target.closest('button, abbr')) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    const id = +tr.dataset.itemid;
+    const orig = base.selection[cmpSlot];
+    if (orig && orig.itemId === id) delete cmpSwaps[cmpSlot];
+    else cmpSwaps[cmpSlot] = id;
+    renderCompare();
+  }));
+  $('cmpChanges').querySelectorAll('.cmp-undo').forEach((b) => b.addEventListener('click', () => {
+    delete cmpSwaps[b.dataset.slot];
+    renderCompare();
+  }));
+  const reset = $('cmpChanges').querySelector('.cmp-reset');
+  if (reset) reset.addEventListener('click', () => { cmpSwaps = {}; renderCompare(); });
+
+  // Click a header to sort by that column; click the same one again to reverse it. A NEW column
+  // starts at its most useful direction rather than inheriting the last one's: biggest gain first for
+  // the numeric columns, A-Z for names.
+  $('cmpTable').querySelectorAll('.sort-btn').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.sort;
+    if (cmpSortKey === k) cmpSortDir = -cmpSortDir;
+    else { cmpSortKey = k; cmpSortDir = k === 'name' ? 1 : -1; }
+    renderCompare();
+  }));
+
+  $('cmpTable').querySelectorAll('.cmp-pin').forEach((b) => b.addEventListener('click', () => {
+    (pinnedSlots[base.goal.id] ||= {})[cmpSlot] = +b.dataset.id;
+    const i = (lastResults || []).findIndex((r) => r.goal.id === base.goal.id);
+    if (i >= 0) activeTab = i;
+    setView('optimize');
+    runOptimize(true);
+  }));
+
+  // Only the Wowhead escape hatches here — the rows themselves are wired above, to the fitting room
+  // rather than to an equip button.
+  $('cmpTable').querySelectorAll('.wh-out').forEach((b) => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.open(b.dataset.href, '_blank', 'noopener');
+  }));
+  whRefresh(); // iconize + quality-colour the item links via Wowhead
+}
+
+// The rotation the DPS figure assumes, stated plainly. A damage number with hidden assumptions is
+// worse than no damage number — people WILL compare it against Details!/Recount, and it is abilities
+// only, so the omission has to be the first thing they read, not a footnote to the footnote.
+function notesHTML(t) {
+  const A = t.assumptions;
+  return `<details>
+    <summary>How the DPS number is calculated</summary>
+    <p><strong>Abilities only — melee swings are not included.</strong> The addon exports the game's
+      item stats, which carry no weapon damage or speed, so white-swing damage can't be computed from
+      an export at all. Expect this to read a few percent under a damage meter; it is a comparison
+      scale between sets, not a log prediction.</p>
+    <p>Steady-state damage for one fixed rotation, summed from the per-ability formulas in the
+      <a href="${GUIDE_URL}" target="_blank" rel="noopener">tanking guide</a> (<code>threat.js</code> —
+      every one checked against the guide's published table, then divided by Righteous Fury's
+      &times;1.9 threat multiplier, which changes threat but no damage):</p>
+    <ul>
+      <li><strong>${A.seal}</strong> on a <strong>${A.weaponSpeed.toFixed(1)}s</strong> weapon, and
+        <strong>${A.judgement}</strong> on its ${A.judgementCd}s cooldown.</li>
+      <li><strong>Consecration</strong> plus <strong>Holy Shield</strong> at
+        <strong>~${(A.blocksPerSec * 8).toFixed(0)} blocks per 8s</strong> (single target), and
+        <strong>Blessing of Sanctuary</strong> per block.</li>
+      <li><strong>Retribution Aura</strong> per hit taken, at a <strong>${A.bossSwingSec.toFixed(1)}s</strong>
+        boss swing — the one component that <em>falls</em> as your avoidance rises.</li>
+      <li>Tier bonuses apply where they land: Justicar 2pc (+10% seal), 4pc (+15 per block),
+        Crystalforge 2pc (+15 Retribution Aura).</li>
+      <li>Spell crit is ${t.spellCritPct.toFixed(2)}% for this set (base + intellect + spell-crit rating);
+        only the judgement can crit in this rotation.</li>
+    </ul>
+    <p><strong>It is a readout, not the optimizer's objective.</strong> Set selection still runs on the
+      spell-power weight scales — under a fixed rotation damage is monotonic in spell power, so the
+      proxy picks the same sets far more cheaply. Melee swings, Avenger's Shield, target count and real
+      fight timing aren't modelled.</p>
+  </details>`;
 }
 
 function setCard(r) {
@@ -1103,7 +1552,9 @@ function setCard(r) {
 
   const panels = `<div class="panels">
     ${panel('Primary', [['Health', fmt(a.health)], ['Stamina', fmt(a.stamina)], ['Strength', fmt(a.strength)], ['Agility', fmt(a.agility)], ['Intellect', fmt(a.intellect)]])}
-    ${panel('Spell', [['Spell Damage', fmt(litSP(a))],
+    ${panel('Spell', [
+      [`<abbr class="tip" title="${dpsTitle(setDps(r))}">Damage per second</abbr>`, `<b>${fmt(setDps(r).total)}</b>`],
+      ['Spell Damage', fmt(litSP(a))],
       ...(a.spellPowerEquiv ? [[`<abbr class="term" title="${a.spellPowerEquivSource ? a.spellPowerEquivSource + ': its' : 'A libram\'s +Consecration damage or a proc trinket\'s buff'} effect converted to threat-equivalent spell power so the threat scales value it. Not literal +spell-power on the tooltip — your character sheet and Sixty Upgrades won't show it, so it's listed separately here.">Effect (≈SP)</abbr>`, '+' + fmt(a.spellPowerEquiv)]] : []),
       [spellHitLabel(a), spellHitPct(a).toFixed(2) + '%'], ['Block Value', fmt(a.blockValue)]])}
     ${panel('Defense', [[armorLabel(a.armor), fmt(a.armor)], ['Defense', a.defenseSkill.toFixed(0)], ['Resilience', fmt(a.resilienceRating)], ['Block', a.blockPct.toFixed(2) + '%'], [missLabel(), missChance(a.defenseSkill).toFixed(2) + '%'], ['Dodge', a.dodgePct.toFixed(2) + '%'], ['Parry', a.parryPct.toFixed(2) + '%'], ['Total Avoidance', e.totalAvoidanceNoHS.toFixed(2) + '%']])}

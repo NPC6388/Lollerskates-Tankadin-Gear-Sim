@@ -4,6 +4,90 @@ Running handoff notes for resuming work. Newest session at the top.
 
 ---
 
+## 2026-09-05 — Compare tab: per-slot ΔEHP / ΔDPS, and threat.js finally wired up
+
+**Ask:** a second site tab where you swap an item in from the .lua export and see the impact on EHP
+and threat, per slot. Four follow-ups landed mid-build: **DPS instead of TPS**, sorting from the column
+headings, clicking an item should swap it in rather than open Wowhead, and the starting gear's stats
+should be preserved so a run of changes can be compared in aggregate against it.
+
+**The gap that shaped the work:** `src/threat.js` held the guide's whole per-ability model — validated
+against the guide's published table by `reference.test.js` since M1 — and **nothing imported it**. The
+optimizer scores threat with a spell-power proxy through `weights.js`. That is correct for *selection*
+(damage is monotonic in SP under a fixed rotation, so the proxy is the same answer for far less work)
+but it means "impact on threat/damage" had no number to move. So the feature needed a rotation rollup
+first, not just UI.
+
+**On TPS vs DPS — worth knowing if this comes up again:** they are the *same number* × 1.9 here. Every
+ability in the rotation is Holy damage under Righteous Fury, and every `threat.js` function is literally
+`damage * RF`. So the switch was a relabel plus one division, not a remodel, and `threat.js` stays
+untouched as the validated source — `dps.test.js` re-multiplies each component by RF and asserts it
+lands on the guide's published threat figure. The one *real* consequence of showing damage: it invites
+comparison with Details!/Recount, and the model has **no white melee swings** (the addon exports
+`GetItemStats`, which carries no weapon damage or speed — I checked the sample export's mainhand line).
+That omission is now the first sentence of the assumptions footnote and is repeated in the column
+tooltips and the logic panel. Adding white swings would need an addon change and a new export version
+plus a full attack table (glancing, boss armor, dodge/parry/miss) — deliberately not attempted.
+
+**Built in eight sections:**
+1. `src/dps.js` + `test/dps.test.js` — `computeDPS()` sums the validated formulas and divides out RF;
+   tier bonuses feed them directly. Reproduces the guide's 290/176/188/145/33 = 832 threat = **438 DPS**
+   at the raid-buffed profile. One derived constant: `SPELL_CRIT.basePct = 4.2475` (7.86% at 289 int,
+   no rating), documented and pinned by a test, in the style of `model.js`'s other sheet-derived
+   intercepts.
+2. `src/compare.js` + `test/compare.test.js` — drop-in slot swaps. `runner.js` gained two **additive**
+   fields: `perSlot[k].addedStats` (what each slot contributes over its baseStats) and `env` (the
+   solve environment). That is what makes a swap exact rather than a second derivation — the test
+   asserts `baseStats + addedStats` rebuilds every goal's aggregate to 1e-9.
+3. Site tab bar in `index.html` (`data-views` per panel; gear + setup shown in both views).
+4. Compare UI in `app.js`: baseline / gem-policy controls, slot rail, candidate table with ΔEHP,
+   ΔDPS, ΔHealth, ΔAvoid, per-gate ✓/✗ badges, and a "📌 Optimize around it" action that reuses the
+   existing pin-and-re-solve path. **Sorting is on the column headings** (click to sort, click again to
+   reverse) — that replaced a "Sort by" dropdown, which was one control too many and only covered
+   three of the six columns. The comparator is `sortRows`/`SORT_KEYS` in `compare.js` so it's tested;
+   the UI owns only labels and arrows.
+5. **The Compare tab became a fitting room.** Reported: clicking a piece "just takes me to wowhead",
+   and the equipped set's stats should be preserved so changes can be compared in aggregate to what
+   you started with. Same root cause: rows were only clickable when the baseline was a solved goal
+   (the click pinned into the optimizer), and each comparison was one slot deep. Now `cmpSwaps`
+   accumulates clicked-in pieces on top of a FROZEN baseline; the readout strip shows the running
+   total against it, a "Trying on" bar lists each change with undo, and the Δ columns price against
+   the working set. Engine side, `evaluateSwap` became the one-entry case of a new `applySwaps` —
+   with meta corrections folded into the owning slot's `addedStats` so the rebuild invariant survives
+   re-baselining, which is what makes stacking swaps safe.
+6. **Item rows are clickable** across the set card's alternates, the BiS list and the Compare table:
+   clicking the item equips it rather than opening Wowhead. The name stays a Wowhead anchor (power.js
+   needs the href for icon/colour/tooltip) with its click intercepted; a ↗ *button* (not an anchor —
+   power.js would iconize a second link) is the escape hatch. `wireRowActions` delegates to the row's
+   own equip button, so the behaviour can't drift from it.
+7. DPS surfaced on the Optimizer tab too (summary column + set card row + a "readout, not objective"
+   section in the logic panel).
+8. Docs.
+
+**Verification:** 198 JS tests pass (24 in `compare.test.js`, 9 in `dps.test.js`). All 17 Lua parity
+checks pass and `gen-runner-fixtures` regenerates `runner_fixtures.lua` to **identical bytes**,
+confirming the runner additions moved nothing. Three throwaway harnesses in the scratchpad drove the
+real `web/sample-export.txt` end to end — worth rebuilding if this area is touched again, since none of
+it is reachable from `node --test`:
+  - the engine pipeline (every baseline row exactly 0.00/0.00 across 17 slots × 3 baselines × 2 gem modes);
+  - `web/app.js` itself running in a stubbed DOM via `node:vm`, so every template literal in the new tab
+    actually executed — no `undefined`/`NaN` reached the markup, and all six sort columns were clicked
+    in both directions;
+  - the fitting room: swaps stacking across slots, the strip's totals matching an independently
+    recomputed (working − frozen) difference, and undo/reset clearing cleanly.
+
+**Sample-character numbers, for a sanity anchor:** Raid Threat 471 DPS / 30.5k EHP, Survival 348 DPS /
+38.2k EHP, worn set 476 DPS / 29.6k EHP (that character is damage-leaning). Off the Raid baseline,
+Violet Badge in trinket2 reads +1081 EHP / −17.2 DPS; The Fel Barrier is flagged CRITTABLE rather than
+hidden.
+
+**Not done (deliberate):** no Lua/addon mirror of `dps.js`, so the in-game Live tab still shows no DPS;
+no white melee swings (see above); no seal/judgement selector, so Alliance and SoV paladins see the
+SoR + JoR rotation (the assumptions footnote says so out loud). All three are follow-ups — `threat.js`
+already has the seal/judgement formulas.
+
+---
+
 ## 2026-09-01 — "Re-gem everything" was handing back the whole worn set
 
 **Report:** the site isn't re-gemming everything even with that option selected.

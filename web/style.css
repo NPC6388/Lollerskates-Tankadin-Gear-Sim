@@ -385,3 +385,124 @@ tbody tr.sel { background: rgba(240,198,116,.08); }
   .ds-slot.right .bis-row { flex-direction: row; }
   .ds-slot.right.swapped:not(.pinned) { box-shadow: inset 2px 0 0 rgba(90,169,230,.5); padding-left: 6px; padding-right: 0; }
 }
+
+/* ---- site-level tabs (Optimized sets | Compare gear) ------------------------------------------
+   A level ABOVE the per-set .tabs inside the results panel, so they read as sections of the site
+   rather than another row of set buttons: wider, underlined-active, sitting on the page background
+   between the header and main. */
+.site-tabs { display: flex; justify-content: center; gap: 4px; max-width: 1000px; margin: 10px auto 0; padding: 0 20px; border-bottom: 1px solid var(--line); }
+.site-tabs button {
+  background: transparent; border: none; border-bottom: 2px solid transparent; border-radius: 0;
+  color: var(--muted); font-size: 15px; font-weight: 600; padding: 10px 20px; cursor: pointer;
+}
+.site-tabs button:hover { color: var(--text); }
+.site-tabs button.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* ---- Compare tab ------------------------------------------------------------------------------ */
+.cmp-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 18px; margin-bottom: 16px; }
+
+/* Baseline readout strip: what every delta below is measured against. */
+.cmp-readout { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; }
+.cmp-readout .cr-label { color: var(--muted); }
+.cmp-readout .cr-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cmp-readout .cr-set { color: var(--gold); font-weight: 700; }
+
+/* Slot rail: one chip per slot, labelled with what the baseline wears there. */
+.cmp-slots { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.cmp-slot {
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; color: var(--text);
+  cursor: pointer; padding: 5px 10px; text-align: left; line-height: 1.25; min-width: 104px;
+}
+.cmp-slot:hover { border-color: var(--accent); }
+.cmp-slot.active { border-color: var(--gold); background: rgba(240,198,116,.10); }
+.cmp-slot .cs-name { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.cmp-slot .cs-item { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.cmp-slot.active .cs-name { color: var(--gold); }
+.cmp-slot .cs-item.empty { color: var(--muted); font-style: italic; }
+.cmp-slot .cs-count { color: var(--muted); font-size: 11px; }
+
+/* Candidate table. Wide, so it scrolls inside its own box rather than the page. */
+.cmp-table-wrap { overflow-x: auto; }
+.cmp-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+.cmp-table tbody tr.is-baseline { background: rgba(240,198,116,.08); }
+.cmp-table tbody tr.illegal td { opacity: .72; }
+.cmp-table td.cmp-item { text-align: left; }
+.cmp-item-name { font-weight: 600; }
+.cmp-worn-tag { font-size: 11px; color: var(--gold); border: 1px solid rgba(240,198,116,.4); border-radius: 9px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
+.cmp-plan-tag { font-size: 11px; color: var(--accent); border: 1px solid rgba(90,169,230,.4); border-radius: 9px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
+.cmp-gems { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.cmp-gems .gem { color: var(--muted); }
+.delta.up { color: var(--good); }
+.delta.down { color: var(--bad); }
+.delta.flat { color: var(--muted); }
+.delta-sub { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+.cmp-gatecell { white-space: nowrap; }
+.cmp-gate { display: inline-block; font-size: 11px; border-radius: 9px; padding: 1px 7px; margin: 1px 2px 1px 0; border: 1px solid var(--line); cursor: help; }
+.cmp-gate.pass { color: var(--good); border-color: rgba(111,207,111,.4); }
+.cmp-gate.fail { color: var(--bad); border-color: rgba(224,109,109,.4); }
+.cmp-pin { font-size: 11px; padding: 3px 9px; white-space: nowrap; }
+.cmp-warn { font-size: 11px; color: var(--warn); margin-top: 3px; }
+.cmp-empty { color: var(--muted); padding: 18px 0; }
+
+/* Rotation assumptions footnote — the DPS number is a model, and says so. */
+.cmp-notes { margin-top: 16px; font-size: 12px; color: var(--muted); }
+.cmp-notes summary { cursor: pointer; color: var(--accent); }
+.cmp-notes ul { margin: 8px 0 0; padding-left: 20px; }
+.cmp-notes li { margin: 3px 0; }
+.dps-break { font-size: 12px; color: var(--muted); }
+
+/* Sortable column headers. The whole heading is a button (keyboard + screen-reader support for free);
+   the th itself loses its padding so the button fills the cell and the click target is the full
+   header, not just the text. */
+.cmp-table th.cmp-th { padding: 0; }
+.cmp-table .sort-btn {
+  display: flex; align-items: center; gap: 5px; justify-content: flex-end;
+  width: 100%; padding: 8px 10px; background: none; border: none; border-radius: 0;
+  color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.cmp-table th.cmp-th:first-child .sort-btn { justify-content: flex-start; }
+.cmp-table .sort-btn:hover { color: var(--text); background: rgba(255,255,255,.03); }
+.cmp-table th.cmp-th.sorted .sort-btn { color: var(--gold); }
+/* The arrow is always rendered so column widths don't shift between clicks — only its opacity moves. */
+.sort-arrow { font-size: 9px; line-height: 1; opacity: .22; }
+.cmp-table .sort-btn:hover .sort-arrow { opacity: .6; }
+.cmp-table th.cmp-th.sorted .sort-arrow { opacity: 1; }
+
+/* ---- clickable item rows ----------------------------------------------------------------------
+   Any list row that can put its item into the sim is clickable end to end, not just via its small
+   button — clicking the item name is the obvious gesture, so it does the obvious thing. The name is
+   still a Wowhead anchor (power.js needs that for the icon, quality colour and hover tooltip); the
+   click is intercepted, and .wh-out is the way through to Wowhead. */
+.row-act { cursor: pointer; border-radius: 6px; }
+.row-act:hover { background: rgba(90,169,230,.10); }
+.cmp-table tbody tr.row-act:hover { background: rgba(90,169,230,.10); }
+.cmp-table tbody tr.row-act.is-baseline:hover { background: rgba(240,198,116,.14); }
+/* The item name shouldn't advertise itself as a link when the click equips instead of navigating. */
+.row-act .ds-alt-item, .row-act .bis-item, .row-act .cmp-item-name a { text-decoration: none; }
+.row-act:hover .ds-alt-item, .row-act:hover .bis-item, .row-act:hover .cmp-item-name a { text-decoration: underline; }
+
+/* The escape hatch out to Wowhead. A button, not a link, so power.js doesn't iconize it too. */
+.wh-out {
+  background: none; border: none; padding: 0 5px; margin: 0 2px 0 4px;
+  color: var(--muted); cursor: pointer; font-size: 11px; line-height: 1; border-radius: 4px;
+}
+.wh-out:hover { color: var(--accent); background: rgba(90,169,230,.14); }
+
+/* ---- fitting room ------------------------------------------------------------------------------
+   The readout strip carries the running total against the frozen baseline, so each figure can show
+   both where you are and how far that is from where you started. */
+.cr-delta { margin-left: 5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cr-delta.up { color: var(--good); }
+.cr-delta.down { color: var(--bad); }
+.cr-delta.flat { color: var(--muted); }
+.cr-changed { color: var(--accent); font-size: 12px; border: 1px solid rgba(90,169,230,.4); border-radius: 9px; padding: 1px 8px; }
+.cmp-changes { background: rgba(90,169,230,.10); border-color: rgba(90,169,230,.35); }
+.cmp-chip em { font-style: normal; color: var(--muted); text-decoration: line-through; }
+.cmp-undo { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 2px; }
+.cmp-undo:hover { color: var(--bad); }
+.cmp-reset { font-size: 11px; padding: 2px 8px; margin-left: auto; }
+.cmp-gatewarn { margin: 0 0 10px; padding: 7px 10px; border-radius: 6px; font-size: 12px; color: var(--bad); background: rgba(224,109,109,.10); border: 1px solid rgba(224,109,109,.35); }
+/* A slot you've changed is marked in the rail, so the fitting room is visible without scrolling. */
+.cmp-slot.swapped { border-color: var(--accent); background: rgba(90,169,230,.10); }
+.cmp-slot.swapped .cs-name { color: var(--accent); }
+.cmp-orig-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 9px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
